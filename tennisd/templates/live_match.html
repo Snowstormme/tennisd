@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}{{ match.player1_name }} vs {{ match.player2_name }}{% endblock %}
+{% block content %}
+<div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches') }}">ALL MATCHES</a><span>{{ match.status|upper }}</span></div>
+<section class="page-banner"><div class="container"><p class="eyebrow">{{ match.tour }} · {{ match.tier|replace('_', ' ')|upper if match.tier else 'TOUR EVENT' }} · {{ match.draw|upper }}</p><h1>{{ match.player1_name }}<br><em>vs {{ match.player2_name }}</em></h1><p>{{ match.tournament }} · {{ match.round or 'Round unavailable' }} · {{ match.surface }} court</p></div></section>
+<main class="container page-section"><section class="detail-score"><div><span>{{ 'WINNER' if match.winner_side == 1 else 'PLAYER 1' }}</span><strong>{{ match.player1_name }}</strong></div><b>{{ match.score or 'Score unavailable' }}</b><div><span>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</span><strong>{{ match.player2_name }}</strong></div></section><div class="detail-meta"><span><small>STATUS</small>{{ match.status|title }}</span><span><small>START</small>{{ match.starts_at.strftime('%d %b %Y · %H:%M UTC') if match.starts_at else 'Unavailable' }}</span><span><small>FORMAT</small>{{ 'Doubles' if match.is_doubles else match.draw|title }}</span></div></main>
+{% endblock %}

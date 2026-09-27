@@ -29,6 +29,7 @@ class TennisdFlows(unittest.TestCase):
             self.match_id = match.id
             self.tournament_name = match.tournament
             self.tournament_tour = match.tour
+            self.tournament_year = match.week_start.year
 
     def tearDown(self):
         with self.app.app_context():
@@ -96,6 +97,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"Image:", tournament.data)
         self.assertIn(b'data-tournament-theme="court"', tournament.data)
         self.assertIn(b"+ Follow tournament", tournament.data)
+        edition = self.client.get(f"{tournament_path}/{self.tournament_year}")
+        self.assertEqual(edition.status_code, 200)
+        self.assertIn(b"TOURNAMENT EDITION", edition.data)
         jump = self.client.get(
             "/tournaments", query_string={
                 "event": f"{self.tournament_tour}|{tournament_slug(self.tournament_name)}"

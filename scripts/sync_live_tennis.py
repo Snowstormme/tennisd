@@ -18,7 +18,7 @@ def main():
     app = create_app({"AUTO_CREATE_DB": False})
     with app.app_context():
         count = sync_matches(mode)
-    print(f"Synced {count} {mode} Grand Slam, 1000 and 500 matches.")
+    print(f"Synced {count} {mode} ATP, WTA, Challenger and ITF matches.")
 
 
 if __name__ == "__main__":

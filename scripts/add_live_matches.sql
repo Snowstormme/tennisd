@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS live_match (
   tournament_id VARCHAR(80),
   surface VARCHAR(12) NOT NULL,
   round VARCHAR(32),
+  draw VARCHAR(16) NOT NULL DEFAULT 'singles',
+  is_doubles BOOLEAN NOT NULL DEFAULT FALSE,
+  tier VARCHAR(32),
   starts_at TIMESTAMPTZ,
   player1_name VARCHAR(120) NOT NULL,
   player2_name VARCHAR(120) NOT NULL,
@@ -14,6 +17,9 @@ CREATE TABLE IF NOT EXISTS live_match (
   player2_provider_id VARCHAR(32),
   score VARCHAR(160) NOT NULL DEFAULT '',
   server INTEGER,
+  winner_side INTEGER,
+  outcome VARCHAR(16),
+  finished_at TIMESTAMPTZ,
   provider_updated_at TIMESTAMPTZ,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tennisd import create_app, db
-from tennisd.live_tennis import display_score, normalize_match, sync_matches
+from tennisd.live_tennis import display_score, normalize_match, sync_matches, winner_from_score
 from tennisd.models import LiveMatch
 
 
@@ -85,7 +85,7 @@ class LiveTennisTests(unittest.TestCase):
         row["tier"] = "wta_500"
         self.assertEqual(normalize_match(row, now)["tournament"], "Berlin Open")
         row["tier"] = "wta_250"
-        self.assertIsNone(normalize_match(row, now))
+        self.assertEqual(normalize_match(row, now)["tier"], "wta_250")
 
     def test_upcoming_window_and_sync(self):
         now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)
@@ -98,11 +98,12 @@ class LiveTennisTests(unittest.TestCase):
             match = db.session.get(LiveMatch, "91234")
             self.assertEqual(match.player1_name, "Iga Swiatek")
             self.assertEqual(match.surface, "Grass")
-        self.assertEqual(
-            session.calls[0][1]["params"]["tier"],
-            "grand_slam,atp_1000,atp_500,wta_1000,wta_500",
-        )
-        self.assertEqual(session.calls[0][1]["params"]["draw"], "singles")
+        tiers = session.calls[0][1]["params"]["tier"].split(",")
+        self.assertIn("grand_slam", tiers)
+        self.assertIn("atp_250", tiers)
+        self.assertIn("challenger_100", tiers)
+        self.assertIn("itf_w35", tiers)
+        self.assertNotIn("draw", session.calls[0][1]["params"])
 
     def test_matches_page_and_internal_score_endpoint(self):
         with self.app.app_context():
@@ -119,6 +120,27 @@ class LiveTennisTests(unittest.TestCase):
         self.assertIn(b"Carlos Alcaraz", page.data)
         payload = self.client.get("/api/live-matches").get_json()
         self.assertEqual(payload["matches"][0]["score"], "6\u20134 2\u20133")
+
+    def test_finished_live_match_is_preserved_and_has_a_page(self):
+        now = datetime(2026, 7, 8, 16, tzinfo=timezone.utc)
+        with self.app.app_context():
+            db.session.add(LiveMatch(
+                provider_id="settled-1", status="live", tour="WTA", tournament="Wimbledon",
+                surface="Grass", round="F", starts_at=now - timedelta(hours=2),
+                player1_name="Iga Swiatek", player2_name="Aryna Sabalenka", score="6–4 6–3",
+            ))
+            db.session.commit()
+            with patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
+                self.assertEqual(sync_matches("live", session=Session([]), now=now), 0)
+            match = db.session.get(LiveMatch, "settled-1")
+            self.assertEqual(match.status, "finished")
+            self.assertEqual(match.winner_side, 1)
+        page = self.client.get("/live-matches/settled-1")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"PERMANENT", self.client.get("/matches").data)
+
+    def test_winner_from_final_score(self):
+        self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
 
 
 if __name__ == "__main__":

@@ -91,6 +91,62 @@ class Player(db.Model):
     lost_matches = db.relationship("Match", foreign_keys="Match.loser_id", back_populates="loser")
 
 
+class PlayerExternalId(db.Model):
+    __table_args__ = (UniqueConstraint("provider", "external_id", name="uq_player_provider_id"),)
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.String(24), db.ForeignKey("player.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider = db.Column(db.String(32), nullable=False)
+    external_id = db.Column(db.String(120), nullable=False)
+    player = db.relationship("Player")
+
+
+class PlayerPhoto(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.String(24), db.ForeignKey("player.id", ondelete="CASCADE"), nullable=False, index=True)
+    url = db.Column(db.String(1000), nullable=False)
+    source_url = db.Column(db.String(1000))
+    license_name = db.Column(db.String(80))
+    attribution = db.Column(db.String(300))
+    is_primary = db.Column(db.Boolean, default=False, nullable=False)
+    player = db.relationship("Player")
+
+
+class Tournament(db.Model):
+    __table_args__ = (UniqueConstraint("tour", "slug", name="uq_tournament_tour_slug"),)
+    id = db.Column(db.Integer, primary_key=True)
+    tour = db.Column(db.String(3), nullable=False, index=True)
+    slug = db.Column(db.String(160), nullable=False)
+    name = db.Column(db.String(160), nullable=False, index=True)
+    location = db.Column(db.String(160))
+    country = db.Column(db.String(3))
+    editions = db.relationship("TournamentEdition", back_populates="tournament", cascade="all, delete-orphan")
+
+
+class TournamentEdition(db.Model):
+    __table_args__ = (UniqueConstraint("tournament_id", "season", name="uq_tournament_season"),)
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey("tournament.id", ondelete="CASCADE"), nullable=False, index=True)
+    season = db.Column(db.Integer, nullable=False, index=True)
+    level = db.Column(db.String(24))
+    surface = db.Column(db.String(12))
+    starts_on = db.Column(db.Date)
+    ends_on = db.Column(db.Date)
+    status = db.Column(db.String(16), default="finished", nullable=False)
+    prize_money_usd = db.Column(db.BigInteger)
+    currency = db.Column(db.String(3), default="USD")
+    tournament = db.relationship("Tournament", back_populates="editions")
+
+
+class PrizeMoneyAward(db.Model):
+    __table_args__ = (UniqueConstraint("edition_id", "round", "currency", name="uq_edition_round_prize"),)
+    id = db.Column(db.Integer, primary_key=True)
+    edition_id = db.Column(db.Integer, db.ForeignKey("tournament_edition.id", ondelete="CASCADE"), nullable=False, index=True)
+    round = db.Column(db.String(32), nullable=False)
+    amount = db.Column(db.BigInteger, nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    source_url = db.Column(db.String(1000))
+
+
 class Match(db.Model):
     id = db.Column(db.String(100), primary_key=True)
     tour = db.Column(db.String(3), nullable=False, index=True)
@@ -98,6 +154,12 @@ class Match(db.Model):
     level = db.Column(db.String(12), nullable=False)
     surface = db.Column(db.String(12), nullable=False, index=True)
     week_start = db.Column(db.Date, nullable=False, index=True)
+    scheduled_at = db.Column(db.DateTime(timezone=True), index=True)
+    completed_at = db.Column(db.DateTime(timezone=True))
+    status = db.Column(db.String(16), default="finished", nullable=False, index=True)
+    provider = db.Column(db.String(32))
+    provider_id = db.Column(db.String(80), unique=True, index=True)
+    edition_id = db.Column(db.Integer, db.ForeignKey("tournament_edition.id"), index=True)
     round = db.Column(db.String(4), nullable=False)
     winner_id = db.Column(db.String(24), db.ForeignKey("player.id"), nullable=False, index=True)
     loser_id = db.Column(db.String(24), db.ForeignKey("player.id"), nullable=False, index=True)
@@ -123,6 +185,68 @@ class Match(db.Model):
     winner = db.relationship("Player", foreign_keys=[winner_id], back_populates="won_matches")
     loser = db.relationship("Player", foreign_keys=[loser_id], back_populates="lost_matches")
     reviews = db.relationship("Review", back_populates="match", cascade="all, delete-orphan")
+    edition = db.relationship("TournamentEdition")
+
+
+class RankingSnapshot(db.Model):
+    __table_args__ = (UniqueConstraint("player_id", "ranked_on", "ranking_type", name="uq_player_ranking_date_type"),)
+    id = db.Column(db.Integer, primary_key=True)
+    player_id = db.Column(db.String(24), db.ForeignKey("player.id", ondelete="CASCADE"), nullable=False, index=True)
+    ranked_on = db.Column(db.Date, nullable=False, index=True)
+    ranking_type = db.Column(db.String(16), nullable=False, default="singles")
+    rank = db.Column(db.Integer, nullable=False)
+    points = db.Column(db.Integer)
+    source = db.Column(db.String(32))
+    player = db.relationship("Player")
+
+
+class MatchStatistic(db.Model):
+    __table_args__ = (UniqueConstraint("match_id", "player_id", name="uq_match_player_stat"),)
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.String(100), db.ForeignKey("match.id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = db.Column(db.String(24), db.ForeignKey("player.id"), nullable=False, index=True)
+    aces = db.Column(db.Integer)
+    double_faults = db.Column(db.Integer)
+    serve_points = db.Column(db.Integer)
+    first_serves_in = db.Column(db.Integer)
+    first_serve_points_won = db.Column(db.Integer)
+    break_points_saved = db.Column(db.Integer)
+    break_points_faced = db.Column(db.Integer)
+    source = db.Column(db.String(32))
+
+
+class MatchParticipant(db.Model):
+    __table_args__ = (UniqueConstraint("match_id", "side", name="uq_match_side"),)
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.String(100), db.ForeignKey("match.id", ondelete="CASCADE"), nullable=False, index=True)
+    player_id = db.Column(db.String(24), db.ForeignKey("player.id"), index=True)
+    side = db.Column(db.Integer, nullable=False)
+    seed = db.Column(db.String(12))
+    entry = db.Column(db.String(12))
+    is_winner = db.Column(db.Boolean)
+    player = db.relationship("Player")
+
+
+class MatchSet(db.Model):
+    __table_args__ = (UniqueConstraint("match_id", "set_number", name="uq_match_set_number"),)
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.String(100), db.ForeignKey("match.id", ondelete="CASCADE"), nullable=False, index=True)
+    set_number = db.Column(db.Integer, nullable=False)
+    side1_games = db.Column(db.Integer)
+    side2_games = db.Column(db.Integer)
+    side1_tiebreak = db.Column(db.Integer)
+    side2_tiebreak = db.Column(db.Integer)
+
+
+class IngestionRun(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    provider = db.Column(db.String(32), nullable=False, index=True)
+    started_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    finished_at = db.Column(db.DateTime(timezone=True))
+    status = db.Column(db.String(16), default="running", nullable=False)
+    records_seen = db.Column(db.Integer, default=0, nullable=False)
+    records_written = db.Column(db.Integer, default=0, nullable=False)
+    error = db.Column(db.String(1000))
 
 
 class LiveMatch(db.Model):
@@ -135,6 +259,9 @@ class LiveMatch(db.Model):
     tournament_id = db.Column(db.String(80))
     surface = db.Column(db.String(12), nullable=False)
     round = db.Column(db.String(32))
+    draw = db.Column(db.String(16), default="singles", nullable=False)
+    is_doubles = db.Column(db.Boolean, default=False, nullable=False)
+    tier = db.Column(db.String(32))
     starts_at = db.Column(db.DateTime(timezone=True), index=True)
     player1_name = db.Column(db.String(120), nullable=False)
     player2_name = db.Column(db.String(120), nullable=False)
@@ -142,6 +269,9 @@ class LiveMatch(db.Model):
     player2_provider_id = db.Column(db.String(32))
     score = db.Column(db.String(160), default="", nullable=False)
     server = db.Column(db.Integer)
+    winner_side = db.Column(db.Integer)
+    outcome = db.Column(db.String(16))
+    finished_at = db.Column(db.DateTime(timezone=True))
     provider_updated_at = db.Column(db.DateTime(timezone=True))
     synced_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 

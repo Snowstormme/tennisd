@@ -27,16 +27,8 @@ from .tournament_catalog import tournament_level, tournament_profile, tournament
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
 
-TOURNAMENT_LOCATIONS = {
-    "australian open": "Melbourne, Australia",
-    "roland garros": "Paris, France",
-    "wimbledon": "London, United Kingdom",
-    "us open": "New York, United States",
-}
-
-
 def match_location(match):
-    return TOURNAMENT_LOCATIONS.get(match.tournament.lower(), "Location unavailable")
+    return tournament_profile(match.tournament).get("location", "Location unavailable")
 
 
 def resolve_tournament_name(tour, slug):
@@ -59,9 +51,11 @@ def current_match_rows(status):
             LiveMatch.starts_at >= utcnow() - timedelta(hours=6),
             LiveMatch.starts_at <= utcnow() + timedelta(days=7),
         )
-    return db.session.scalars(
-        statement.order_by(LiveMatch.starts_at, LiveMatch.tournament, LiveMatch.provider_id)
-    ).all()
+    if status in ("finished", "cancelled"):
+        statement = statement.order_by(LiveMatch.finished_at.desc(), LiveMatch.starts_at.desc()).limit(24)
+    else:
+        statement = statement.order_by(LiveMatch.starts_at, LiveMatch.tournament, LiveMatch.provider_id)
+    return db.session.scalars(statement).all()
 
 
 @lru_cache(maxsize=512)
@@ -377,11 +371,21 @@ def matches():
     pagination = db.paginate(statement, page=page, per_page=18, error_out=False)
     live_matches = current_match_rows("live")
     upcoming_matches = current_match_rows("upcoming")
+    finished_live_matches = current_match_rows("finished")
     return render_template(
         "matches.html", pagination=pagination, query=query, tour=tour,
         surface=surface, year=year, level=level, order=order, match_location=match_location,
         live_matches=live_matches, upcoming_matches=upcoming_matches,
+        finished_live_matches=finished_live_matches,
     )
+
+
+@site.get("/live-matches/<provider_id>")
+def live_match_detail(provider_id):
+    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+        abort(404)
+    match = db.get_or_404(LiveMatch, provider_id)
+    return render_template("live_match.html", match=match)
 
 
 @site.get("/api/live-matches")
@@ -619,6 +623,32 @@ def tournament_detail(tour, slug):
         live_matches=live_matches, match_location=match_location,
         subscriptions_ready=subscriptions_ready, subscribed=subscribed,
         subscriber_count=subscriber_count,
+    )
+
+
+@site.get("/tournaments/<tour>/<slug>/<int:season>")
+def tournament_edition_detail(tour, slug, season):
+    tour = tour.upper()
+    tournament_name = resolve_tournament_name(tour, slug)
+    if tournament_name is None or not 1968 <= season <= date.today().year + 1:
+        abort(404)
+    matches = db.session.scalars(
+        select(Match).where(
+            Match.tour == tour, Match.tournament == tournament_name,
+            func.extract("year", Match.week_start) == season,
+        ).options(joinedload(Match.winner), joinedload(Match.loser))
+        .order_by(Match.week_start, Match.round, Match.id)
+    ).all()
+    if not matches:
+        abort(404)
+    round_order = ("Q1", "Q2", "Q3", "R128", "R64", "R32", "R16", "QF", "SF", "F")
+    rounds = {round_name: [match for match in matches if match.round == round_name]
+              for round_name in round_order if any(match.round == round_name for match in matches)}
+    final = next((match for match in matches if match.round == "F"), None)
+    return render_template(
+        "tournament_edition.html", tournament=tournament_name, tour=tour, season=season,
+        matches=matches, rounds=rounds, final=final, surface=matches[0].surface,
+        profile=tournament_profile(tournament_name), slug=slug, match_location=match_location,
     )
 
 

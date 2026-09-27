@@ -199,6 +199,17 @@ def create_app(test_config=None):
             seed_samples()
         click.echo("Database initialized.")
 
+    @app.cli.command("upgrade-catalog")
+    def upgrade_catalog_command():
+        """Populate normalized tournaments, editions, rankings and statistics."""
+        from .catalog_upgrade import upgrade_catalog
+
+        result = upgrade_catalog()
+        click.echo(
+            "Normalized {matches} matches into {tournaments} tournaments and "
+            "{editions} editions ({updated} links updated).".format(**result)
+        )
+
     if app.config["AUTO_CREATE_DB"]:
         with app.app_context():
             db.create_all()

@@ -1,6 +1,7 @@
 """Import the free current top-tier slate from Live Tennis API."""
 
 import os
+import re
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -24,6 +25,10 @@ FEATURED_TIERS = (
     "atp_500",
     "wta_1000",
     "wta_500",
+    "atp_250", "wta_250", "wta_125",
+    "challenger_175", "challenger_125", "challenger_100", "challenger_75", "challenger_50",
+    "itf_m15", "itf_m25", "itf_w15", "itf_w25", "itf_w35", "itf_w40",
+    "itf_w50", "itf_w60", "itf_w75", "itf_w80", "itf_w100",
 )
 
 
@@ -63,16 +68,23 @@ def display_score(score):
     return " ".join(sets)
 
 
+def winner_from_score(score):
+    sets = re.findall(r"(\d+)[–-](\d+)", score or "")
+    won1 = sum(int(left) > int(right) for left, right in sets)
+    won2 = sum(int(right) > int(left) for left, right in sets)
+    return 1 if won1 > won2 else 2 if won2 > won1 else None
+
+
 def normalize_match(item, now=None):
     now = now or datetime.now(timezone.utc)
     tier = str(item.get("tier") or "").lower()
     tournament = slam_name(item.get("tournament")) or str(item.get("tournament") or "").strip()
-    tour = str(item.get("tour") or "").upper()
+    raw_tour = str(item.get("tour") or "").lower()
+    tour = "WTA" if tier.startswith(("wta_", "itf_w")) else "ATP" if tier.startswith(("atp_", "challenger_", "itf_m")) else raw_tour.upper()
     if not tournament or len(tournament) > 160 or tier not in FEATURED_TIERS or tour not in ("ATP", "WTA"):
         return None
-    if (tier.startswith("atp_") and tour != "ATP") or (tier.startswith("wta_") and tour != "WTA"):
-        return None
-    if item.get("draw") != "singles" or item.get("is_doubles") is True:
+    draw = str(item.get("draw") or "singles").lower()
+    if draw not in ("singles", "qualifying", "doubles"):
         return None
     status = item.get("status")
     if status not in ("live", "upcoming"):
@@ -93,6 +105,9 @@ def normalize_match(item, now=None):
         "tournament_id": str(item.get("tournament_id") or "") or None,
         "surface": surface if surface in ("Hard", "Clay", "Grass") else "Hard",
         "round": item.get("round_code") or item.get("round") or None,
+        "draw": draw,
+        "is_doubles": item.get("is_doubles") is True or draw == "doubles",
+        "tier": tier,
         "starts_at": starts_at,
         "player1_name": p1["name"],
         "player2_name": p2["name"],
@@ -111,13 +126,16 @@ def fetch_matches(status, session=requests):
         raise RuntimeError("LIVETENNISAPI_KEY is not configured.")
     matches = []
     offset = 0
-    while offset < 1000:
+    # Stay within the free 100 requests/day allowance at a 15-minute schedule:
+    # 92 live runs use one page and four midnight upcoming runs use two pages.
+    max_pages = 2 if status == "upcoming" else 1
+    pages = 0
+    while pages < max_pages:
         response = session.get(
             f"{API_ROOT}/matches",
             params={
                 "status": status,
                 "tier": ",".join(FEATURED_TIERS),
-                "draw": "singles",
                 "limit": 100,
                 "offset": offset,
             },
@@ -130,6 +148,7 @@ def fetch_matches(status, session=requests):
         if not isinstance(page, list):
             break
         matches.extend(page)
+        pages += 1
         if len(page) < 100:
             break
         offset += len(page)
@@ -153,7 +172,13 @@ def sync_matches(status, session=requests, now=None):
     stale = LiveMatch.query.filter_by(status=status).all()
     for match in stale:
         if match.provider_id not in current_ids:
-            db.session.delete(match)
+            # Keep the same provider record permanently. A later reconciliation
+            # can enrich its final outcome without losing its identity or score.
+            match.status = "finished" if status == "live" else "cancelled"
+            match.finished_at = now if status == "live" else None
+            match.outcome = "completed" if status == "live" else "cancelled"
+            match.winner_side = winner_from_score(match.score) if status == "live" else None
+            match.synced_at = now
     if status == "upcoming":
         LiveMatch.query.filter(LiveMatch.starts_at > now + timedelta(days=7)).delete(synchronize_session=False)
     db.session.commit()

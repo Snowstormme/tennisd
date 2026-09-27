@@ -30,14 +30,14 @@
 {% endmacro %}
 
 {% macro current_match_card(match) %}
-<article class="current-match-card surface-{{ match.surface|lower }}" data-live-match="{{ match.provider_id }}">
+<a class="current-match-card surface-{{ match.surface|lower }}" href="{{ url_for('site.live_match_detail', provider_id=match.provider_id) }}" data-live-match="{{ match.provider_id }}">
   <span class="showcase-wash" aria-hidden="true"></span>
-  <div class="current-match-top"><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ 'LIVE' if match.status == 'live' else 'UPCOMING' }}</span><span>{{ match.tour }} · {{ match.tournament }}</span></div>
+  <div class="current-match-top"><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ match.status|upper }}</span><span>{{ match.tour }} · {{ match.tournament }}</span></div>
   <span class="court-badge"><i aria-hidden="true"></i>{{ match.surface }} court</span>
   <div class="current-match-players"><strong>{{ match.player1_name }}</strong><small>vs</small><strong>{{ match.player2_name }}</strong></div>
   <strong class="current-match-score" data-live-score>{{ match.score or ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed') }}</strong>
   <div class="current-match-bottom"><span>{{ match.round or 'Round to be confirmed' }}</span><span>{% if match.starts_at %}{{ match.starts_at.strftime('%d %b %Y') }}{% endif %}</span></div>
-</article>
+</a>
 {% endmacro %}
 
 {% macro report_form(target, target_id) %}

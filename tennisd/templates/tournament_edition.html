@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import archive_match_card %}
+{% block title %}{{ tournament }} {{ season }} · {{ tour }}{% endblock %}
+{% block content %}
+<section class="page-banner"><div class="container"><a class="back-link" href="{{ url_for('site.tournament_detail', tour=tour|lower, slug=slug) }}">{{ tournament|upper }}</a><p class="eyebrow">{{ tour }} · {{ surface }} · TOURNAMENT EDITION</p><h1>{{ tournament }} <em>{{ season }}</em></h1>{% if final %}<p>Champion: {{ final.winner.name }} · Final score {{ final.score }}</p>{% else %}<p>{{ matches|length }} recorded matches.</p>{% endif %}</div></section>
+<main class="container page-section">
+  {% for round_name, round_matches in rounds.items() %}<section class="page-section compact"><div class="section-head"><div><p class="eyebrow">DRAW</p><h2>{{ round_name }}<span>.</span></h2></div><span>{{ round_matches|length }} matches</span></div><div class="archive-match-grid">{% for match in round_matches %}{{ archive_match_card(match, match_location) }}{% endfor %}</div></section>{% endfor %}
+</main>
+{% endblock %}

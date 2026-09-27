@@ -32,3 +32,8 @@ jobs:
           with psycopg.connect(url) as connection:
               connection.execute(open('scripts/expand_tennis_database.sql').read())
           PY
+      - name: Backfill normalized catalog
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
+          AUTO_CREATE_DB: 'false'
+        run: flask --app wsgi upgrade-catalog
