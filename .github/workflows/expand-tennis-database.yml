@@ -35,5 +35,11 @@ jobs:
       - name: Backfill normalized catalog
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
-          AUTO_CREATE_DB: 'false'
-        run: flask --app wsgi upgrade-catalog
+        run: |
+          python - <<'PY'
+          import os, re
+          import psycopg
+          url = re.sub(r'^postgresql\+[^:]+://', 'postgresql://', os.environ['DATABASE_URL'])
+          with psycopg.connect(url) as connection:
+              connection.execute(open('scripts/backfill_tennis_database.sql').read())
+          PY
