@@ -11,9 +11,11 @@ LANGUAGE SQL IMMUTABLE STRICT AS $$
 $$;
 
 INSERT INTO tournament (tour, slug, name)
-SELECT DISTINCT tour, tennisd_slug(tournament), tournament
+SELECT DISTINCT ON (tour, tennisd_slug(tournament))
+       tour, tennisd_slug(tournament), tournament
 FROM "match"
 WHERE tournament IS NOT NULL AND tournament <> ''
+ORDER BY tour, tennisd_slug(tournament), tournament
 ON CONFLICT (tour, slug) DO UPDATE SET name = EXCLUDED.name;
 
 INSERT INTO tournament_edition (tournament_id, season, level, surface, starts_on, status)
