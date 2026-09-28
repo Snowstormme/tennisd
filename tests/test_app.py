@@ -49,7 +49,7 @@ class TennisdFlows(unittest.TestCase):
         }, follow_redirects=True)
 
     def test_core_pages_and_search(self):
-        for path in ("/", "/matches", "/players", "/rankings", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
+        for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
         home = self.client.get("/")
         self.assertNotIn(b"hero-counts", home.data)
@@ -60,8 +60,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"court-badge", home.data)
         self.assertIn(b"/photo", home.data)
         self.assertNotIn(b"nav-discover", home.data)
-        for item in (b"nav-matches", b"nav-players", b"nav-rankings", b"nav-tournaments", b"nav-notifications", b"nav-news", b"nav-search"):
+        for item in (b"nav-matches", b"nav-players", b"nav-tournaments", b"nav-notifications", b"nav-news", b"nav-search"):
             self.assertIn(item, home.data)
+        self.assertNotIn(b"nav-rankings", home.data)
         self.assertIn(b"mobile-notifications", home.data)
         self.assertIn(b"<em></em><strong></strong><i></i><b></b>", home.data)
         register = self.client.get("/register")
@@ -82,8 +83,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b">All</option>", players.data)
         self.assertNotIn(b"ATP + WTA", players.data)
         self.assertIn(b"MOST WATCHED IN THE CATALOG", players.data)
-        rankings = self.client.get("/rankings")
-        self.assertIn(b"Singles rankings", rankings.data)
+        rankings = self.client.get("/players?view=rankings")
+        self.assertIn(b"ranked players", rankings.data)
+        self.assertEqual(self.client.get("/rankings").status_code, 301)
         tournaments = self.client.get("/tournaments")
         self.assertIn(b"Go straight to a tournament", tournaments.data)
         self.assertIn(b"tournament-browser", tournaments.data)
@@ -138,10 +140,12 @@ class TennisdFlows(unittest.TestCase):
             ))
             db.session.commit()
             player_name = player.name.encode()
-        response = self.client.get("/rankings")
+        response = self.client.get("/players?view=rankings")
         self.assertEqual(response.status_code, 200)
         self.assertIn(player_name, response.data)
-        self.assertIn(b'ranking-number">7', response.data)
+        self.assertIn(b'player-ranking-badge">#7', response.data)
+        searched = self.client.get(f"/players?view=rankings&q={player_name.decode()}")
+        self.assertIn(player_name, searched.data)
 
     def test_search_engine_discovery_files(self):
         verification = self.client.get("/google872d566cb03fdad0.html")

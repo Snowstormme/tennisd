@@ -253,7 +253,7 @@ def sitemap_index():
 @site.get("/sitemap-core.xml")
 def sitemap_core():
     endpoints = (
-        "site.home", "site.matches", "site.players", "site.rankings", "site.tournaments",
+        "site.home", "site.matches", "site.players", "site.tournaments",
         "site.news", "site.about", "site.privacy",
     )
     entries = "".join(
@@ -497,6 +497,9 @@ def toggle_watchlist(match_id):
 def players():
     query = request.args.get("q", "").strip()[:80]
     tour = request.args.get("tour", "")
+    view = request.args.get("view", "players")
+    if view not in ("players", "rankings"):
+        view = "players"
     appearances = union_all(
         select(Match.winner_id.label("player_id")),
         select(Match.loser_id.label("player_id")),
@@ -507,25 +510,44 @@ def players():
     follower_counts = select(
         FollowedPlayer.player_id, func.count().label("follower_count")
     ).group_by(FollowedPlayer.player_id).subquery()
-    statement = (
-        select(Player)
-        .outerjoin(match_counts, match_counts.c.player_id == Player.id)
-        .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
-    )
-    if query:
-        statement = statement.where(Player.name.ilike(f"%{query}%"))
-    if tour in ("ATP", "WTA"):
-        statement = statement.where(Player.tour == tour)
-    statement = statement.order_by(
-        func.coalesce(follower_counts.c.follower_count, 0).desc(),
-        func.coalesce(match_counts.c.match_count, 0).desc(),
-        Player.wikidata_id.is_(None), Player.name,
-    )
+    if view == "rankings":
+        latest_dates = select(
+            RankingSnapshot.player_id,
+            func.max(RankingSnapshot.ranked_on).label("ranked_on"),
+        ).group_by(RankingSnapshot.player_id).subquery()
+        statement = select(RankingSnapshot).options(joinedload(RankingSnapshot.player)).join(
+            latest_dates, latest_dates.c.player_id == RankingSnapshot.player_id
+        ).join(Player, Player.id == RankingSnapshot.player_id).where(
+            RankingSnapshot.ranked_on == latest_dates.c.ranked_on,
+        )
+        if query:
+            statement = statement.where(Player.name.ilike(f"%{query}%"))
+        if tour in ("ATP", "WTA"):
+            statement = statement.where(Player.tour == tour)
+        statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name)
+    else:
+        statement = (
+            select(Player)
+            .outerjoin(match_counts, match_counts.c.player_id == Player.id)
+            .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
+        )
+        if query:
+            statement = statement.where(Player.name.ilike(f"%{query}%"))
+        if tour in ("ATP", "WTA"):
+            statement = statement.where(Player.tour == tour)
+        statement = statement.order_by(
+            func.coalesce(follower_counts.c.follower_count, 0).desc(),
+            func.coalesce(match_counts.c.match_count, 0).desc(),
+            Player.wikidata_id.is_(None), Player.name,
+        )
     pagination = db.paginate(
         statement, page=max(1, request.args.get("page", 1, type=int)),
-        per_page=24, error_out=False,
+        per_page=30, error_out=False,
     )
-    player_ids = [player.id for player in pagination.items]
+    player_ids = [
+        item.player_id if view == "rankings" else item.id
+        for item in pagination.items
+    ]
     metrics = {player_id: {"matches": 0, "followers": 0, "rank": None} for player_id in player_ids}
     if player_ids:
         for player_id, count in db.session.execute(
@@ -553,33 +575,16 @@ def players():
         ):
             metrics[player_id]["rank"] = rank
     return render_template(
-        "players.html", pagination=pagination, query=query, tour=tour,
+        "players.html", pagination=pagination, query=query, tour=tour, view=view,
         player_metrics=metrics,
     )
 
 
 @site.get("/rankings")
 def rankings():
-    tour = request.args.get("tour", "")
-    latest_dates = select(
-        RankingSnapshot.player_id,
-        func.max(RankingSnapshot.ranked_on).label("ranked_on"),
-    ).group_by(RankingSnapshot.player_id).subquery()
-    statement = select(RankingSnapshot).options(joinedload(RankingSnapshot.player)).join(
-        latest_dates, latest_dates.c.player_id == RankingSnapshot.player_id
-    ).join(
-        Player, Player.id == RankingSnapshot.player_id,
-    ).where(
-        RankingSnapshot.ranked_on == latest_dates.c.ranked_on,
-    )
-    if tour in ("ATP", "WTA"):
-        statement = statement.where(Player.tour == tour)
-    statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name)
-    pagination = db.paginate(
-        statement, page=max(1, request.args.get("page", 1, type=int)),
-        per_page=50, error_out=False,
-    )
-    return render_template("rankings.html", pagination=pagination, tour=tour)
+    args = request.args.to_dict(flat=True)
+    args["view"] = "rankings"
+    return redirect(url_for("site.players", **args), code=301)
 
 
 @site.get("/tournaments")
