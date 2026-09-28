@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FollowedPlayer, Match, Player, ProfileImage, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FollowedPlayer, Match, Player, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_slug
@@ -49,7 +49,7 @@ class TennisdFlows(unittest.TestCase):
         }, follow_redirects=True)
 
     def test_core_pages_and_search(self):
-        for path in ("/", "/matches", "/players", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
+        for path in ("/", "/matches", "/players", "/rankings", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
         home = self.client.get("/")
         self.assertNotIn(b"hero-counts", home.data)
@@ -60,7 +60,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"court-badge", home.data)
         self.assertIn(b"/photo", home.data)
         self.assertNotIn(b"nav-discover", home.data)
-        for item in (b"nav-matches", b"nav-players", b"nav-tournaments", b"nav-notifications", b"nav-news", b"nav-search"):
+        for item in (b"nav-matches", b"nav-players", b"nav-rankings", b"nav-tournaments", b"nav-notifications", b"nav-news", b"nav-search"):
             self.assertIn(item, home.data)
         self.assertIn(b"mobile-notifications", home.data)
         self.assertIn(b"<em></em><strong></strong><i></i><b></b>", home.data)
@@ -79,6 +79,11 @@ class TennisdFlows(unittest.TestCase):
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
         self.assertIn(b"/photo", players.data)
+        self.assertIn(b">All</option>", players.data)
+        self.assertNotIn(b"ATP + WTA", players.data)
+        self.assertIn(b"MOST WATCHED IN THE CATALOG", players.data)
+        rankings = self.client.get("/rankings")
+        self.assertIn(b"Singles rankings", rankings.data)
         tournaments = self.client.get("/tournaments")
         self.assertIn(b"Go straight to a tournament", tournaments.data)
         self.assertIn(b"tournament-browser", tournaments.data)
@@ -86,6 +91,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"tournament-card-trophy", tournaments.data)
         self.assertNotIn(b"trophy-mark", tournaments.data)
         self.assertIn(b"Tournament value", tournaments.data)
+
         tournament_path = (
             f"/tournaments/{self.tournament_tour.lower()}/"
             f"{tournament_slug(self.tournament_name)}"
@@ -122,6 +128,20 @@ class TennisdFlows(unittest.TestCase):
         news_status = self.client.get("/api/news-status?source=wta")
         self.assertEqual(news_status.json["total"], 0)
         self.assertEqual(news_status.headers["Cache-Control"], "no-store")
+
+    def test_rankings_render_loaded_rows(self):
+        with self.app.app_context():
+            player = db.session.scalar(select(Player).limit(1))
+            db.session.add(RankingSnapshot(
+                player_id=player.id, ranked_on=datetime(2026, 9, 28).date(),
+                ranking_type="singles", rank=7, source="test",
+            ))
+            db.session.commit()
+            player_name = player.name.encode()
+        response = self.client.get("/rankings")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(player_name, response.data)
+        self.assertIn(b'ranking-number">7', response.data)
 
     def test_search_engine_discovery_files(self):
         verification = self.client.get("/google872d566cb03fdad0.html")

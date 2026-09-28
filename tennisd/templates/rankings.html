@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Rankings{% endblock %}
+{% block content %}
+<div class="page-banner rankings-banner"><div class="container"><p class="eyebrow">THE ORDER OF PLAY</p><h1>Rankings from<br><em>the archive.</em></h1><p>The latest ranking recorded for each player in the Tennisd match catalog.</p></div></div>
+<div class="container page-section">
+  <nav class="directory-tabs" aria-label="Player directory"><a href="{{ url_for('site.players') }}">Players</a><a href="{{ url_for('site.rankings') }}" aria-current="page">Rankings</a></nav>
+  <div class="section-head"><div><p class="eyebrow">LATEST CATALOG POSITION</p><h2>Singles rankings<span>.</span></h2></div><p class="section-subtle">These positions come from each player’s latest loaded match, not a live official ranking.</p></div>
+  <div class="ranking-filters"><a href="{{ url_for('site.rankings') }}"{% if not tour %} aria-current="page"{% endif %}>All</a><a href="{{ url_for('site.rankings', tour='ATP') }}"{% if tour == 'ATP' %} aria-current="page"{% endif %}>ATP</a><a href="{{ url_for('site.rankings', tour='WTA') }}"{% if tour == 'WTA' %} aria-current="page"{% endif %}>WTA</a></div>
+  {% if pagination.items %}<div class="ranking-list">{% for ranking in pagination.items %}{% set player = ranking.player %}<a class="ranking-row" href="{{ url_for('site.player_detail', player_id=player.id) }}"><span class="ranking-number">{{ ranking.rank }}</span><img src="{{ url_for('site.player_photo', player_id=player.id, v=3) }}" alt="" loading="lazy" referrerpolicy="no-referrer"><span class="ranking-player"><strong>{{ player.name }}</strong><small>{{ player.tour }} · {{ player.country or '—' }}</small></span><time datetime="{{ ranking.ranked_on.isoformat() }}">{{ ranking.ranked_on.strftime('%d %b %Y') }}</time><span class="ranking-open">View profile</span></a>{% endfor %}</div>{% else %}<div class="empty-state"><h3>No ranking data found.</h3><p>Try another tour.</p></div>{% endif %}
+  <div class="pagination">{% if pagination.has_prev %}<a href="{{ url_for('site.rankings', tour=tour, page=pagination.prev_num) }}">Previous</a>{% endif %}{% if pagination.has_next %}<a href="{{ url_for('site.rankings', tour=tour, page=pagination.next_num) }}">Next</a>{% endif %}</div>
+</div>
+{% endblock %}

@@ -13,11 +13,11 @@ import requests
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import delete, func, inspect, or_, select
+from sqlalchemy import delete, func, inspect, or_, select, union_all
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, Match, Player, ProfileImage, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerPhoto, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
@@ -114,8 +114,40 @@ def wikipedia_player_photo(name):
     return None
 
 
+@lru_cache(maxsize=2048)
+def wikidata_search_player_photo(name):
+    """Find portraits missed by exact Wikipedia title matching."""
+    if not name or len(name) > 120:
+        return None
+    try:
+        response = requests.get(
+            "https://www.wikidata.org/w/api.php",
+            params={
+                "action": "wbsearchentities", "search": name, "language": "en",
+                "uselang": "en", "type": "item", "limit": 6, "format": "json",
+            },
+            headers={"User-Agent": "Tennisd/1.0 (player portraits)"}, timeout=4,
+        )
+        response.raise_for_status()
+        target = normalized_person_name(name)
+        for item in response.json().get("search", []):
+            label = normalized_person_name(item.get("label", ""))
+            description = (item.get("description") or "").casefold()
+            if label == target and "tennis" in description:
+                photo = wikimedia_player_photo(item.get("id"))
+                if photo:
+                    return photo
+    except (AttributeError, TypeError, ValueError, requests.RequestException):
+        pass
+    return None
+
+
 def public_player_photo(player):
-    return wikimedia_player_photo(player.wikidata_id) or wikipedia_player_photo(player.name)
+    stored = db.session.scalar(
+        select(PlayerPhoto.url).where(PlayerPhoto.player_id == player.id)
+        .order_by(PlayerPhoto.is_primary.desc(), PlayerPhoto.id)
+    )
+    return stored or wikimedia_player_photo(player.wikidata_id) or wikipedia_player_photo(player.name) or wikidata_search_player_photo(player.name)
 
 
 def prepare_profile_image(upload):
@@ -221,7 +253,7 @@ def sitemap_index():
 @site.get("/sitemap-core.xml")
 def sitemap_core():
     endpoints = (
-        "site.home", "site.matches", "site.players", "site.tournaments",
+        "site.home", "site.matches", "site.players", "site.rankings", "site.tournaments",
         "site.news", "site.about", "site.privacy",
     )
     entries = "".join(
@@ -465,17 +497,89 @@ def toggle_watchlist(match_id):
 def players():
     query = request.args.get("q", "").strip()[:80]
     tour = request.args.get("tour", "")
-    statement = select(Player)
+    appearances = union_all(
+        select(Match.winner_id.label("player_id")),
+        select(Match.loser_id.label("player_id")),
+    ).subquery()
+    match_counts = select(
+        appearances.c.player_id, func.count().label("match_count")
+    ).group_by(appearances.c.player_id).subquery()
+    follower_counts = select(
+        FollowedPlayer.player_id, func.count().label("follower_count")
+    ).group_by(FollowedPlayer.player_id).subquery()
+    statement = (
+        select(Player)
+        .outerjoin(match_counts, match_counts.c.player_id == Player.id)
+        .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
+    )
     if query:
         statement = statement.where(Player.name.ilike(f"%{query}%"))
     if tour in ("ATP", "WTA"):
         statement = statement.where(Player.tour == tour)
-    statement = statement.order_by(Player.wikidata_id.is_(None), Player.name)
+    statement = statement.order_by(
+        func.coalesce(follower_counts.c.follower_count, 0).desc(),
+        func.coalesce(match_counts.c.match_count, 0).desc(),
+        Player.wikidata_id.is_(None), Player.name,
+    )
     pagination = db.paginate(
         statement, page=max(1, request.args.get("page", 1, type=int)),
         per_page=24, error_out=False,
     )
-    return render_template("players.html", pagination=pagination, query=query, tour=tour)
+    player_ids = [player.id for player in pagination.items]
+    metrics = {player_id: {"matches": 0, "followers": 0, "rank": None} for player_id in player_ids}
+    if player_ids:
+        for player_id, count in db.session.execute(
+            select(match_counts.c.player_id, match_counts.c.match_count)
+            .where(match_counts.c.player_id.in_(player_ids))
+        ):
+            metrics[player_id]["matches"] = count
+        for player_id, count in db.session.execute(
+            select(follower_counts.c.player_id, follower_counts.c.follower_count)
+            .where(follower_counts.c.player_id.in_(player_ids))
+        ):
+            metrics[player_id]["followers"] = count
+        latest_dates = select(
+            RankingSnapshot.player_id,
+            func.max(RankingSnapshot.ranked_on).label("ranked_on"),
+        ).where(RankingSnapshot.player_id.in_(player_ids)).group_by(
+            RankingSnapshot.player_id
+        ).subquery()
+        for player_id, rank in db.session.execute(
+            select(RankingSnapshot.player_id, RankingSnapshot.rank).join(
+                latest_dates,
+                (latest_dates.c.player_id == RankingSnapshot.player_id)
+                & (latest_dates.c.ranked_on == RankingSnapshot.ranked_on),
+            )
+        ):
+            metrics[player_id]["rank"] = rank
+    return render_template(
+        "players.html", pagination=pagination, query=query, tour=tour,
+        player_metrics=metrics,
+    )
+
+
+@site.get("/rankings")
+def rankings():
+    tour = request.args.get("tour", "")
+    latest_dates = select(
+        RankingSnapshot.player_id,
+        func.max(RankingSnapshot.ranked_on).label("ranked_on"),
+    ).group_by(RankingSnapshot.player_id).subquery()
+    statement = select(RankingSnapshot).options(joinedload(RankingSnapshot.player)).join(
+        latest_dates, latest_dates.c.player_id == RankingSnapshot.player_id
+    ).join(
+        Player, Player.id == RankingSnapshot.player_id,
+    ).where(
+        RankingSnapshot.ranked_on == latest_dates.c.ranked_on,
+    )
+    if tour in ("ATP", "WTA"):
+        statement = statement.where(Player.tour == tour)
+    statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name)
+    pagination = db.paginate(
+        statement, page=max(1, request.args.get("page", 1, type=int)),
+        per_page=50, error_out=False,
+    )
+    return render_template("rankings.html", pagination=pagination, tour=tour)
 
 
 @site.get("/tournaments")
