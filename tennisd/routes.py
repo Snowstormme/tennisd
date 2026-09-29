@@ -793,20 +793,23 @@ def search():
     players_found, matches_found, members = [], [], []
     if query:
         players_found = db.session.scalars(
-            select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name).limit(8)
+            select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name).limit(15)
         ).all()
         winner, loser = aliased(Player), aliased(Player)
         matches_found = db.session.scalars(
             select(Match).join(winner, Match.winner).join(loser, Match.loser).where(or_(
                 Match.tournament.ilike(f"%{query}%"), winner.name.ilike(f"%{query}%"),
                 loser.name.ilike(f"%{query}%"),
-            )).order_by(Match.week_start.desc()).limit(8)
+            )).order_by(Match.week_start.desc()).limit(9)
         ).all()
         members = db.session.scalars(
             select(User).where(or_(User.username.ilike(f"%{query}%"), User.display_name.ilike(f"%{query}%")))
-            .order_by(User.username).limit(8)
+            .order_by(User.username).limit(15)
         ).all()
-    return render_template("search.html", query=query, players=players_found, matches=matches_found, members=members)
+    return render_template(
+        "search.html", query=query, players=players_found, matches=matches_found,
+        members=members, match_location=match_location,
+    )
 
 
 @site.get("/news")
