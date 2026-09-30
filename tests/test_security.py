@@ -54,7 +54,7 @@ class AccountSecurityFlows(unittest.TestCase):
     def test_public_catalog_does_not_create_session_and_uses_browser_cache(self):
         response = self.client.get("/players")
         self.assertNotIn("Set-Cookie", response.headers)
-        self.assertIn("private", response.headers["Cache-Control"])
+        self.assertIn("public", response.headers["Cache-Control"])
         self.assertIn("max-age=60", response.headers["Cache-Control"])
         self.assertIn("max-age=60", response.headers["Vercel-CDN-Cache-Control"])
         with self.client.session_transaction() as session:
