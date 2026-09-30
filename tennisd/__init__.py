@@ -132,9 +132,14 @@ def create_app(test_config=None):
 
     @app.context_processor
     def csrf_context():
-        if "csrf_token" not in session:
+        form_endpoints = {
+            "site.register", "site.login", "site.check_email",
+            "site.resend_verification", "site.verify_email",
+            "site.forgot_password", "site.reset_password",
+        }
+        if (current_user.is_authenticated or request.endpoint in form_endpoints) and "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)
-        return {"csrf_token": session["csrf_token"]}
+        return {"csrf_token": session.get("csrf_token", "")}
 
     @app.after_request
     def security_headers(response):
@@ -158,6 +163,22 @@ def create_app(test_config=None):
         if current_user.is_authenticated:
             response.cache_control.no_store = True
             response.cache_control.private = True
+        elif (
+            request.method == "GET"
+            and response.status_code == 200
+            and request.endpoint in {
+                "site.home", "site.matches", "site.players", "site.tournaments",
+                "site.news", "site.search", "site.about", "site.privacy",
+                "site.player_detail", "site.match_detail", "site.tournament_detail",
+                "site.tournament_edition_detail", "site.news_story",
+            }
+        ):
+            # Keep anonymous HTML briefly in the visitor's browser. This makes a
+            # prefetched section open immediately without sharing personalized
+            # pages through a CDN cache.
+            response.cache_control.private = True
+            response.cache_control.max_age = 60
+            response.cache_control.stale_while_revalidate = 300
         return response
 
     from .routes import site

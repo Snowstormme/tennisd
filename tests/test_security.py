@@ -51,6 +51,19 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/login")
         return code
 
+    def test_public_catalog_does_not_create_session_and_uses_browser_cache(self):
+        response = self.client.get("/players")
+        self.assertNotIn("Set-Cookie", response.headers)
+        self.assertIn("private", response.headers["Cache-Control"])
+        self.assertIn("max-age=60", response.headers["Cache-Control"])
+        with self.client.session_transaction() as session:
+            self.assertNotIn("csrf_token", session)
+
+        form = self.client.get("/register")
+        self.assertIn("Set-Cookie", form.headers)
+        with self.client.session_transaction() as session:
+            self.assertTrue(session["csrf_token"])
+
     def test_email_verification_is_required_and_single_use(self):
         self.assertEqual(self.register().headers["Location"], "/check-email")
         self.client.get("/login")
