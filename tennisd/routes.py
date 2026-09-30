@@ -58,6 +58,33 @@ def current_match_rows(status):
     return db.session.scalars(statement).all()
 
 
+def current_match_slate():
+    """Load every visible live state with one table check and one query."""
+    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+        return {"live": [], "upcoming": [], "finished": []}
+    now = utcnow()
+    rows = db.session.scalars(
+        select(LiveMatch).where(
+            or_(
+                LiveMatch.status == "live",
+                (LiveMatch.status == "upcoming")
+                & (LiveMatch.starts_at >= now - timedelta(hours=6))
+                & (LiveMatch.starts_at <= now + timedelta(days=7)),
+                LiveMatch.status == "finished",
+            )
+        ).order_by(LiveMatch.starts_at, LiveMatch.tournament, LiveMatch.provider_id)
+    ).all()
+    slate = {"live": [], "upcoming": [], "finished": []}
+    for row in rows:
+        slate[row.status].append(row)
+    slate["finished"] = sorted(
+        slate["finished"],
+        key=lambda row: (row.finished_at or row.starts_at or datetime.min.replace(tzinfo=timezone.utc)),
+        reverse=True,
+    )[:24]
+    return slate
+
+
 @lru_cache(maxsize=512)
 def wikimedia_player_photo(wikidata_id):
     if not wikidata_id or not re.fullmatch(r"Q[1-9][0-9]*", wikidata_id):
@@ -401,14 +428,12 @@ def matches():
     )
     page = max(1, request.args.get("page", 1, type=int))
     pagination = db.paginate(statement, page=page, per_page=18, error_out=False)
-    live_matches = current_match_rows("live")
-    upcoming_matches = current_match_rows("upcoming")
-    finished_live_matches = current_match_rows("finished")
+    current_slate = current_match_slate()
     return render_template(
         "matches.html", pagination=pagination, query=query, tour=tour,
         surface=surface, year=year, level=level, order=order, match_location=match_location,
-        live_matches=live_matches, upcoming_matches=upcoming_matches,
-        finished_live_matches=finished_live_matches,
+        live_matches=current_slate["live"], upcoming_matches=current_slate["upcoming"],
+        finished_live_matches=current_slate["finished"],
     )
 
 
@@ -641,26 +666,19 @@ def tournaments():
     tournament_rows.sort(key=lambda item: (
         item["priority"], -item["latest"].toordinal(), item["tournament"], item["tour"],
     ))
-    option_rows = db.session.execute(
-        select(Match.tournament, Match.tour, Match.level).distinct()
-    ).all()
-    option_groups = {}
-    for option in option_rows:
-        option_groups.setdefault((option.tour, option.tournament), set()).add(option.level)
-    options = []
-    for (option_tour, option_name), option_levels in option_groups.items():
-        priority, value_label, _ = tournament_level(option_levels)
-        options.append({
-            "tour": option_tour, "tournament": option_name,
-            "slug": tournament_slug(option_name), "priority": priority,
-            "value_label": value_label,
-        })
-    options.sort(key=lambda item: (item["priority"], item["tournament"], item["tour"]))
     filtered = bool(query or tour or surface or level)
     featured = [] if filtered else [item for item in tournament_rows if item["priority"] == 0]
-    remaining = tournament_rows if filtered else [item for item in tournament_rows if item["priority"] != 0]
+    all_remaining = tournament_rows if filtered else [item for item in tournament_rows if item["priority"] != 0]
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = 36
+    total = len(all_remaining)
+    pages = max(1, ceil(total / per_page))
+    if page > pages:
+        page = pages
+    remaining = all_remaining[(page - 1) * per_page:page * per_page]
     return render_template(
-        "tournaments.html", tournaments=remaining, featured=featured, options=options,
+        "tournaments.html", tournaments=remaining, featured=featured,
+        tournament_total=total, page=page, pages=pages,
         query=query, tour=tour, surface=surface, level=level,
         tournament_slug=tournament_slug,
     )

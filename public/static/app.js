@@ -1,4 +1,25 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const canPrefetch = !connection?.saveData && !/2g/.test(connection?.effectiveType || "");
+  const prefetched = new Set();
+  if (canPrefetch) {
+    document.querySelectorAll(".main-nav a, .brand").forEach((anchor) => {
+      const prefetch = () => {
+        const url = new URL(anchor.href, window.location.href);
+        if (url.origin !== window.location.origin || url.href === window.location.href || prefetched.has(url.href)) return;
+        prefetched.add(url.href);
+        const hint = document.createElement("link");
+        hint.rel = "prefetch";
+        hint.href = url.href;
+        hint.as = "document";
+        document.head.appendChild(hint);
+      };
+      anchor.addEventListener("pointerenter", prefetch, { once: true, passive: true });
+      anchor.addEventListener("touchstart", prefetch, { once: true, passive: true });
+      anchor.addEventListener("focus", prefetch, { once: true, passive: true });
+    });
+  }
+
   document.querySelectorAll("[data-news-card-image]").forEach((image) => {
     image.addEventListener("error", () => image.remove());
   });
