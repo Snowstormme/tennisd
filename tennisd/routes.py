@@ -58,31 +58,27 @@ def current_match_rows(status):
     return db.session.scalars(statement).all()
 
 
-def current_match_slate():
-    """Load every visible live state with one table check and one query."""
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
-        return {"live": [], "upcoming": [], "finished": []}
-    now = utcnow()
-    rows = db.session.scalars(
-        select(LiveMatch).where(
-            or_(
-                LiveMatch.status == "live",
-                (LiveMatch.status == "upcoming")
-                & (LiveMatch.starts_at >= now - timedelta(hours=6))
-                & (LiveMatch.starts_at <= now + timedelta(days=7)),
-                LiveMatch.status == "finished",
-            )
-        ).order_by(LiveMatch.starts_at, LiveMatch.tournament, LiveMatch.provider_id)
+def current_match_players(matches):
+    """Match live-feed names to catalog players with one indexed query."""
+    names = {
+        name.casefold()
+        for match in matches
+        for name in (match.player1_name, match.player2_name)
+        if name
+    }
+    if not names:
+        return {}
+    players = db.session.scalars(
+        select(Player).where(func.lower(Player.name).in_(names))
     ).all()
-    slate = {"live": [], "upcoming": [], "finished": []}
-    for row in rows:
-        slate[row.status].append(row)
-    slate["finished"] = sorted(
-        slate["finished"],
-        key=lambda row: (row.finished_at or row.starts_at or datetime.min.replace(tzinfo=timezone.utc)),
-        reverse=True,
-    )[:24]
-    return slate
+    by_name = {normalized_person_name(player.name): player for player in players}
+    return {
+        match.provider_id: (
+            by_name.get(normalized_person_name(match.player1_name)),
+            by_name.get(normalized_person_name(match.player2_name)),
+        )
+        for match in matches
+    }
 
 
 @lru_cache(maxsize=512)
@@ -399,12 +395,27 @@ def profile_avatar(username):
 
 @site.get("/matches")
 def matches():
+    view = request.args.get("view", "archive")
+    if view not in ("archive", "live", "upcoming", "finished"):
+        view = "archive"
     query = request.args.get("q", "").strip()[:80]
     tour = request.args.get("tour", "")
     surface = request.args.get("surface", "")
     year = request.args.get("year", "")
     level = request.args.get("level", "")
     order = request.args.get("order", "newest")
+    pagination = None
+    current_matches = []
+    live_players = {}
+    if view != "archive":
+        current_matches = current_match_rows(view)
+        live_players = current_match_players(current_matches)
+        return render_template(
+            "matches.html", view=view, pagination=pagination, current_matches=current_matches,
+            live_players=live_players, query=query, tour=tour, surface=surface,
+            year=year, level=level, order=order, match_location=match_location,
+        )
+
     statement = select(Match).options(joinedload(Match.winner), joinedload(Match.loser))
     if query:
         winner = aliased(Player)
@@ -430,12 +441,10 @@ def matches():
     )
     page = max(1, request.args.get("page", 1, type=int))
     pagination = db.paginate(statement, page=page, per_page=18, error_out=False)
-    current_slate = current_match_slate()
     return render_template(
-        "matches.html", pagination=pagination, query=query, tour=tour,
+        "matches.html", view=view, pagination=pagination, current_matches=current_matches,
+        live_players=live_players, query=query, tour=tour,
         surface=surface, year=year, level=level, order=order, match_location=match_location,
-        live_matches=current_slate["live"], upcoming_matches=current_slate["upcoming"],
-        finished_live_matches=current_slate["finished"],
     )
 
 

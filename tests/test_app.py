@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FollowedPlayer, Match, Player, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FollowedPlayer, LiveMatch, Match, Player, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_slug
@@ -139,6 +139,33 @@ class TennisdFlows(unittest.TestCase):
         news_status = self.client.get("/api/news-status?source=wta")
         self.assertEqual(news_status.json["total"], 0)
         self.assertEqual(news_status.headers["Cache-Control"], "no-store")
+
+    def test_match_sections_keep_archive_default_and_show_live_player_photos(self):
+        with self.app.app_context():
+            players = db.session.scalars(select(Player).order_by(Player.id).limit(2)).all()
+            live = LiveMatch(
+                provider_id="test-live-photo-card", status="live", tour="ATP",
+                tournament="Test Open", surface="Hard", round="SF", draw="singles",
+                player1_name=players[0].name, player2_name=players[1].name,
+                score="6–4 2–1", starts_at=datetime.now(timezone.utc),
+            )
+            db.session.add(live)
+            db.session.commit()
+            player_ids = [player.id.encode() for player in players]
+
+        archive = self.client.get("/matches")
+        self.assertIn(b'aria-current="page">All matches</a>', archive.data)
+        self.assertIn(b"listing-layout", archive.data)
+        self.assertNotIn(b"test-live-photo-card", archive.data)
+
+        live_page = self.client.get("/matches?view=live")
+        self.assertIn(b'aria-current="page">Live</a>', live_page.data)
+        self.assertIn(b"test-live-photo-card", live_page.data)
+        self.assertIn(b"current-player-photo-left", live_page.data)
+        self.assertIn(b"current-player-photo-right", live_page.data)
+        for player_id in player_ids:
+            self.assertIn(b"/players/" + player_id + b"/photo", live_page.data)
+        self.assertNotIn(b"listing-layout", live_page.data)
 
     def test_rankings_render_loaded_rows(self):
         with self.app.app_context():

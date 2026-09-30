@@ -114,7 +114,7 @@ class LiveTennisTests(unittest.TestCase):
                 player2_name="Jannik Sinner", score="6–4 2–3", server=2,
             ))
             db.session.commit()
-        page = self.client.get("/matches")
+        page = self.client.get("/matches?view=live")
         self.assertIn(b"Live on court", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)
@@ -137,7 +137,7 @@ class LiveTennisTests(unittest.TestCase):
             self.assertEqual(match.winner_side, 1)
         page = self.client.get("/live-matches/settled-1")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"PERMANENT", self.client.get("/matches").data)
+        self.assertIn(b"PERMANENT", self.client.get("/matches?view=finished").data)
 
     def test_winner_from_final_score(self):
         self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
