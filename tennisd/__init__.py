@@ -63,7 +63,7 @@ def create_app(test_config=None):
     ))))
 
     app.config.update(
-        SECRET_KEY=os.environ.get("SECRET_KEY") or "0b05d2f1325f5d95636a86db1fe926a5d0240a30b313d5eac003b52bd5742d0c",
+        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(32),
         SQLALCHEMY_DATABASE_URI=database_url or f"sqlite:///{instance_path / 'tennisd.db'}",
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
@@ -96,7 +96,7 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
     if production:
-        if not app.secret_key or len(app.secret_key) < 32:
+        if not os.environ.get("SECRET_KEY") or len(app.secret_key) < 32:
             raise RuntimeError("Set a stable SECRET_KEY of at least 32 characters in production.")
         if not app.config["SQLALCHEMY_DATABASE_URI"].startswith("postgresql+psycopg://"):
             raise RuntimeError("Production requires a persistent PostgreSQL DATABASE_URL.")
