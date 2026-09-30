@@ -5,6 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#10231f">
+  <meta name="application-name" content="Tennisd">
   <meta name="description" content="{% block meta_description %}Tennisd is a tennis match diary for discovering ATP and WTA matches, rating what you watched, and following players and tournaments.{% endblock %}">
   <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large{% endblock %}">
   <link rel="canonical" href="{{ request.base_url }}">
@@ -14,7 +15,20 @@
   <meta property="og:description" content="Tennisd is a tennis match diary for discovering matches, keeping a diary, and sharing reviews.">
   <meta property="og:url" content="{{ request.base_url }}">
   <meta name="twitter:card" content="summary">
-  <title>{% block title %}Tennisd{% endblock %} · The tennis match diary</title>
+  <title>Tennisd · {% block title %}Tennis Match Diary{% endblock %}</title>
+  <script type="application/ld+json">{{ {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Tennisd",
+    "alternateName": ["Tennisd Tennis", "Tennisd Match Diary"],
+    "url": config.PUBLIC_BASE_URL.rstrip('/') ~ '/',
+    "description": "A tennis match diary for discovering ATP and WTA matches, ratings, reviews, players and tournaments.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": config.PUBLIC_BASE_URL.rstrip('/') ~ '/search?q={search_term_string}',
+      "query-input": "required name=search_term_string"
+    }
+  }|tojson }}</script>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

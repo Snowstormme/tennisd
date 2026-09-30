@@ -52,6 +52,10 @@ class TennisdFlows(unittest.TestCase):
         for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
         home = self.client.get("/")
+        self.assertIn(b"<title>Tennisd \xc2\xb7 Tennis Match Diary</title>", home.data)
+        self.assertIn(b'application/ld+json', home.data)
+        self.assertIn(b'"name": "Tennisd"', home.data)
+        self.assertIn(b"Tennisd is your tennis match diary", home.data)
         self.assertNotIn(b"hero-counts", home.data)
         self.assertNotIn(b"Start your diary", home.data)
         self.assertNotIn(b"Make every watch count", home.data)
