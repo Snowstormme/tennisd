@@ -173,6 +173,16 @@ def public_player_photo(player):
     return stored or wikimedia_player_photo(player.wikidata_id) or wikipedia_player_photo(player.name) or wikidata_search_player_photo(player.name)
 
 
+def player_placeholder(name, max_age=86400):
+    initials = html.escape("".join(part[0] for part in name.split()[:2]).upper())
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="420" height="560" viewBox="0 0 420 560"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#335b48"/><stop offset="1" stop-color="#13271f"/></linearGradient></defs><rect width="420" height="560" fill="url(#g)"/><circle cx="210" cy="190" r="82" fill="#9fb4a4" opacity=".38"/><path d="M70 560c8-150 65-226 140-226s132 76 140 226" fill="#9fb4a4" opacity=".38"/><text x="210" y="305" text-anchor="middle" fill="#d6ed80" font-family="Arial,sans-serif" font-size="64" font-weight="700">{initials}</text></svg>'''
+    response = Response(svg, mimetype="image/svg+xml")
+    response.cache_control.public = True
+    response.cache_control.max_age = max_age
+    response.headers["Vercel-CDN-Cache-Control"] = f"max-age={max_age}"
+    return response
+
+
 def prepare_profile_image(upload):
     raw = upload.read(1_500_001)
     if not raw or len(raw) > 1_500_000:
@@ -370,13 +380,25 @@ def player_photo(player_id):
         response.cache_control.max_age = 604800
         response.headers["Vercel-CDN-Cache-Control"] = "max-age=604800"
         return response
-    initials = html.escape("".join(part[0] for part in player.name.split()[:2]).upper())
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="420" height="560" viewBox="0 0 420 560"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#335b48"/><stop offset="1" stop-color="#13271f"/></linearGradient></defs><rect width="420" height="560" fill="url(#g)"/><circle cx="210" cy="190" r="82" fill="#9fb4a4" opacity=".38"/><path d="M70 560c8-150 65-226 140-226s132 76 140 226" fill="#9fb4a4" opacity=".38"/><text x="210" y="305" text-anchor="middle" fill="#d6ed80" font-family="Arial,sans-serif" font-size="64" font-weight="700">{initials}</text></svg>'''
-    response = Response(svg, mimetype="image/svg+xml")
-    response.cache_control.public = True
-    response.cache_control.max_age = 86400
-    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400"
-    return response
+    return player_placeholder(player.name)
+
+
+@site.get("/live-matches/<provider_id>/players/<int:side>/photo")
+def live_player_photo(provider_id, side):
+    if side not in (1, 2) or not inspect(db.engine).has_table(LiveMatch.__tablename__):
+        abort(404)
+    match = db.get_or_404(LiveMatch, provider_id)
+    name = match.player1_name if side == 1 else match.player2_name
+    photo_url = None
+    if "/" not in name:
+        photo_url = wikipedia_player_photo(name) or wikidata_search_player_photo(name)
+    if photo_url:
+        response = redirect(photo_url)
+        response.cache_control.public = True
+        response.cache_control.max_age = 604800
+        response.headers["Vercel-CDN-Cache-Control"] = "max-age=604800"
+        return response
+    return player_placeholder(name)
 
 
 @site.get("/u/<username>/avatar")

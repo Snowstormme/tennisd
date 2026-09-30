@@ -48,15 +48,11 @@
 {% endmacro %}
 
 {% macro current_match_card(match, player_pair) %}
-<a class="current-match-card surface-{{ match.surface|lower }}" href="{{ url_for('site.live_match_detail', provider_id=match.provider_id) }}" data-live-match="{{ match.provider_id }}">
+<a class="archive-match-card live-feed-match-card surface-{{ match.surface|lower }}" href="{{ url_for('site.live_match_detail', provider_id=match.provider_id) }}" data-live-match="{{ match.provider_id }}">
   <span class="showcase-wash" aria-hidden="true"></span>
-  <div class="current-match-top"><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ match.status|upper }}</span><span>{{ match.tour }} · {{ match.tournament }}</span></div>
-  <div class="current-match-stage">
-    <span class="current-player-photo current-player-photo-left">{% if player_pair and player_pair[0] %}<img src="{{ url_for('site.player_photo', player_id=player_pair[0].id, v=4) }}" alt="{{ match.player1_name }}" loading="lazy" referrerpolicy="no-referrer">{% else %}<b aria-hidden="true">{{ match.player1_name[:1] }}</b>{% endif %}</span>
-    <span class="current-match-center"><span class="court-badge"><i aria-hidden="true"></i>{{ match.surface }} court</span><span class="current-match-players"><strong>{{ match.player1_name }}</strong><small>vs</small><strong>{{ match.player2_name }}</strong></span><strong class="current-match-score" data-live-score>{{ match.score or ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed') }}</strong></span>
-    <span class="current-player-photo current-player-photo-right">{% if player_pair and player_pair[1] %}<img src="{{ url_for('site.player_photo', player_id=player_pair[1].id, v=4) }}" alt="{{ match.player2_name }}" loading="lazy" referrerpolicy="no-referrer">{% else %}<b aria-hidden="true">{{ match.player2_name[:1] }}</b>{% endif %}</span>
-  </div>
-  <div class="current-match-bottom"><span>{{ match.round or 'Round to be confirmed' }}</span><span>{% if match.starts_at %}{{ match.starts_at.strftime('%d %b %Y') }}{% endif %}</span></div>
+  <span class="match-portrait match-portrait-left"><img src="{{ url_for('site.player_photo', player_id=player_pair[0].id, v=5) if player_pair and player_pair[0] else url_for('site.live_player_photo', provider_id=match.provider_id, side=1, v=1) }}" alt="{{ match.player1_name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ match.player1_name }}</strong></span>
+  <span class="archive-match-center"><span class="archive-match-meta"><b><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ match.status|upper }}</span> · {{ match.tour }}</b><b>{{ match.starts_at.year if match.starts_at else '' }}</b></span><span class="court-badge"><i aria-hidden="true"></i>{{ match.surface }} court</span><span class="archive-match-event">{{ match.tournament }}</span><span class="archive-match-players"><strong>{{ match.player1_name }}</strong><small>vs</small><strong>{{ match.player2_name }}</strong></span><span class="archive-match-score" data-live-score>{{ match.score or ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed') }}</span><span class="archive-match-facts"><span><small>STATUS</small>{{ match.status|upper }}</span><span><small>{{ 'STARTS' if match.status == 'upcoming' else 'MATCH DATE' }}</small>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'TBC' }}</span><span><small>ROUND</small>{{ match.round or 'TBC' }}</span></span></span>
+  <span class="match-portrait match-portrait-right"><img src="{{ url_for('site.player_photo', player_id=player_pair[1].id, v=5) if player_pair and player_pair[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=1) }}" alt="{{ match.player2_name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ match.player2_name }}</strong></span>
 </a>
 {% endmacro %}
 

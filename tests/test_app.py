@@ -161,11 +161,37 @@ class TennisdFlows(unittest.TestCase):
         live_page = self.client.get("/matches?view=live")
         self.assertIn(b'aria-current="page">Live</a>', live_page.data)
         self.assertIn(b"test-live-photo-card", live_page.data)
-        self.assertIn(b"current-player-photo-left", live_page.data)
-        self.assertIn(b"current-player-photo-right", live_page.data)
+        self.assertIn(b"archive-match-card live-feed-match-card", live_page.data)
+        self.assertIn(b"match-portrait-left", live_page.data)
+        self.assertIn(b"match-portrait-right", live_page.data)
         for player_id in player_ids:
             self.assertIn(b"/players/" + player_id + b"/photo", live_page.data)
         self.assertNotIn(b"listing-layout", live_page.data)
+
+    def test_live_player_photo_discovers_portrait_then_falls_back(self):
+        with self.app.app_context():
+            db.session.add(LiveMatch(
+                provider_id="test-unmatched-photo", status="upcoming", tour="WTA",
+                tournament="Test Open", surface="Clay", round="R32", draw="singles",
+                player1_name="Unlisted Player", player2_name="Another Unlisted Player",
+                starts_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            ))
+            db.session.commit()
+
+        page = self.client.get("/matches?view=upcoming")
+        self.assertIn(b"/live-matches/test-unmatched-photo/players/1/photo", page.data)
+        self.assertIn(b"/live-matches/test-unmatched-photo/players/2/photo", page.data)
+
+        with patch("tennisd.routes.wikipedia_player_photo", return_value="https://upload.wikimedia.org/player.jpg"):
+            photo = self.client.get("/live-matches/test-unmatched-photo/players/1/photo")
+        self.assertEqual(photo.status_code, 302)
+        self.assertEqual(photo.headers["Location"], "https://upload.wikimedia.org/player.jpg")
+
+        with patch("tennisd.routes.wikipedia_player_photo", return_value=None), patch("tennisd.routes.wikidata_search_player_photo", return_value=None):
+            fallback = self.client.get("/live-matches/test-unmatched-photo/players/2/photo")
+        self.assertEqual(fallback.status_code, 200)
+        self.assertEqual(fallback.mimetype, "image/svg+xml")
+        self.assertIn(b"AU", fallback.data)
 
     def test_rankings_render_loaded_rows(self):
         with self.app.app_context():
