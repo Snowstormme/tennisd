@@ -160,7 +160,10 @@ def create_app(test_config=None):
         )
         if production:
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
-        if current_user.is_authenticated:
+        if request.endpoint == "static" and request.args.get("v"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            response.headers["Vercel-CDN-Cache-Control"] = "max-age=31536000"
+        elif current_user.is_authenticated:
             response.cache_control.no_store = True
             response.cache_control.private = True
         elif (

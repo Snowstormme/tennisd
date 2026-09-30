@@ -372,12 +372,14 @@ def player_photo(player_id):
         response = redirect(photo_url)
         response.cache_control.public = True
         response.cache_control.max_age = 604800
+        response.headers["Vercel-CDN-Cache-Control"] = "max-age=604800"
         return response
     initials = html.escape("".join(part[0] for part in player.name.split()[:2]).upper())
     svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="420" height="560" viewBox="0 0 420 560"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#335b48"/><stop offset="1" stop-color="#13271f"/></linearGradient></defs><rect width="420" height="560" fill="url(#g)"/><circle cx="210" cy="190" r="82" fill="#9fb4a4" opacity=".38"/><path d="M70 560c8-150 65-226 140-226s132 76 140 226" fill="#9fb4a4" opacity=".38"/><text x="210" y="305" text-anchor="middle" fill="#d6ed80" font-family="Arial,sans-serif" font-size="64" font-weight="700">{initials}</text></svg>'''
     response = Response(svg, mimetype="image/svg+xml")
     response.cache_control.public = True
     response.cache_control.max_age = 86400
+    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400"
     return response
 
 
@@ -920,6 +922,7 @@ def news_image(source_key, story_id):
         abort(404)
     response = Response(upstream.content, mimetype=content_type)
     response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
+    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400, stale-while-revalidate=604800"
     return response
 
 

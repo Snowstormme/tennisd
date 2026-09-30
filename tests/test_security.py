@@ -64,6 +64,13 @@ class AccountSecurityFlows(unittest.TestCase):
         with self.client.session_transaction() as session:
             self.assertTrue(session["csrf_token"])
 
+    def test_versioned_static_assets_are_immutable(self):
+        response = self.client.get("/static/app.js?v=test-release")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("max-age=31536000", response.headers["Cache-Control"])
+        self.assertIn("immutable", response.headers["Cache-Control"])
+        self.assertEqual(response.headers["Vercel-CDN-Cache-Control"], "max-age=31536000")
+
     def test_email_verification_is_required_and_single_use(self):
         self.assertEqual(self.register().headers["Location"], "/check-email")
         self.client.get("/login")
