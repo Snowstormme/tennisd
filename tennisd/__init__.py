@@ -84,9 +84,6 @@ def create_app(test_config=None):
         SEED_FULL_CATALOG=os.environ.get("SEED_FULL_CATALOG", "true" if production else "false") == "true",
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
-        REMEMBER_COOKIE_SECURE=production,
-        REMEMBER_COOKIE_HTTPONLY=True,
-        REMEMBER_COOKIE_SAMESITE="Lax",
     )
     if production:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
