@@ -182,12 +182,6 @@ def create_app(test_config=None):
             response.cache_control.private = True
             response.cache_control.max_age = 60
             response.cache_control.stale_while_revalidate = 300
-            if not request.cookies.get(app.config["SESSION_COOKIE_NAME"]):
-                response.cache_control.private = None
-                response.cache_control.public = True
-                response.headers["Vercel-CDN-Cache-Control"] = (
-                    "max-age=60, stale-while-revalidate=300"
-                )
         return response
 
     from .routes import site

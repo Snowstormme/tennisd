@@ -1,0 +1,43 @@
+name: Add database performance indexes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennisd-performance-indexes
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install 'psycopg[binary]>=3.2,<4'
+      - name: Add non-blocking query indexes
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import psycopg
+
+          url = re.sub(r'^postgresql\+[^:]+://', 'postgresql://', os.environ['DATABASE_URL'])
+          statements = [
+              statement.strip()
+              for statement in open('scripts/add_performance_indexes.sql').read().split(';')
+              if statement.strip()
+          ]
+          with psycopg.connect(url, autocommit=True) as connection:
+              for statement in statements:
+                  connection.execute(statement)
+          print('Performance indexes are ready.')
+          PY
