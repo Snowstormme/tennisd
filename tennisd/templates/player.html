@@ -1,6 +1,19 @@
 {% extends 'base.html' %}
 {% from '_macros.html' import archive_match_card, current_match_card %}
 {% block title %}{{ player.name }}{% endblock %}
+{% block meta_description %}{{ player.name }} tennis profile: matches, results, rankings, titles, surfaces, opponents and career statistics in the Tennisd archive.{% endblock %}
+{% block social_type %}profile{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": player.name,
+  "nationality": player.country or none,
+  "birthDate": player.born_on.isoformat() if player.born_on else none,
+  "height": (player.height_cm|string ~ " cm") if player.height_cm else none,
+  "image": config.PUBLIC_BASE_URL.rstrip('/') ~ url_for('site.player_photo', player_id=player.id),
+  "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path,
+  "description": player.tour ~ " tennis player profile on Tennisd"
+}|tojson }}</script>{% endblock %}
 {% block content %}
 <div class="container detail-top"><a class="back-link" href="{{ url_for('site.players') }}">ALL PLAYERS</a><span>{{ player.tour }} PLAYER PROFILE</span></div>
 <section class="player-hero"><div class="container player-hero-inner"><div class="player-hero-photo"><img src="{{ url_for('site.player_photo', player_id=player.id, v=2) }}" alt="{{ player.name }}" referrerpolicy="no-referrer"></div><div class="player-hero-content"><p class="eyebrow">{{ player.tour }} <span class="context-slash">/</span> {{ player.country or 'COUNTRY UNKNOWN' }}</p><h1>{{ player.name }}</h1><div class="player-profile-facts"><span>{{ 'Right-handed' if player.hand == 'R' else 'Left-handed' if player.hand == 'L' else 'Hand unknown' }}</span>{% if player.height_cm %}<span>{{ player.height_cm }} cm</span>{% endif %}{% if player.born_on %}<span>Born {{ player.born_on.strftime('%d %b %Y') }}</span>{% endif %}</div></div><div class="player-hero-action">{% if current_user.is_authenticated %}<form method="post" action="{{ url_for('site.follow_player', player_id=player.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button button-outline" type="submit">{{ 'Following ✓' if following else '+ Follow player' }}</button></form>{% else %}<a class="button button-outline" href="{{ url_for('site.login', next=request.path) }}">+ Follow player</a>{% endif %}</div></div></section>

@@ -1,6 +1,17 @@
 {% extends 'base.html' %}
 {% from '_macros.html' import archive_match_card, current_match_card %}
 {% block title %}{{ tournament }} · {{ tour }}{% endblock %}
+{% block meta_description %}{{ tournament }} {{ tour }} tennis tournament: seasons, champions, results, live matches and historical match archive on Tennisd.{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "SportsOrganization",
+  "name": tournament,
+  "sport": "Tennis",
+  "description": profile.summary,
+  "location": {"@type": "Place", "name": profile.location},
+  "image": profile.image_url,
+  "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path
+}|tojson }}</script>{% endblock %}
 {% block content %}
 <div class="tournament-page surface-{{ (surfaces|first)|lower }}" data-tournament-theme-root data-tournament-theme="court">
   <section class="tournament-hero">

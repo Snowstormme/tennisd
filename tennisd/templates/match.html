@@ -2,6 +2,23 @@
 {% from '_avatars.html' import user_avatar %}
 {% from '_macros.html' import report_form with context %}
 {% block title %}{{ match.winner.name }} vs {{ match.loser.name }}{% endblock %}
+{% block meta_description %}{{ match.winner.name }} vs {{ match.loser.name }} at {{ match.tournament }} {{ match.week_start.year }}. Final score {{ match.score }}. Match details, statistics, ratings and reviews.{% endblock %}
+{% block social_type %}article{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "SportsEvent",
+  "name": match.winner.name ~ " vs " ~ match.loser.name,
+  "startDate": match.week_start.isoformat(),
+  "eventStatus": "https://schema.org/EventCompleted",
+  "sport": "Tennis",
+  "description": match.tournament ~ " " ~ match.week_start.year|string ~ " " ~ match.round ~ ". Final score: " ~ match.score,
+  "location": {"@type": "Place", "name": match_location(match)},
+  "competitor": [
+    {"@type": "Person", "name": match.winner.name, "url": config.PUBLIC_BASE_URL.rstrip('/') ~ url_for('site.player_detail', player_id=match.winner_id)},
+    {"@type": "Person", "name": match.loser.name, "url": config.PUBLIC_BASE_URL.rstrip('/') ~ url_for('site.player_detail', player_id=match.loser_id)}
+  ],
+  "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path
+}|tojson }}</script>{% endblock %}
 {% block content %}
 <div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches') }}">ALL MATCHES</a><div class="detail-top-right"><span class="pill pill-{{ match.tour|lower }}">{{ match.tour }}</span><span>{{ match.surface|upper }} COURT</span></div></div>
 <section class="match-hero surface-{{ match.surface|lower }}"><div class="container match-hero-inner"><div class="match-context"><p class="eyebrow">{{ match.tournament|upper }} <span class="context-slash">/</span> {{ match.week_start.year }}</p><p>{{ match.round }} · {{ match.surface }} · Tournament week of {{ match.week_start.strftime('%d %b %Y') }}</p></div><div class="match-scoreboard"><div class="scoreboard-player"><a class="scoreboard-photo" href="{{ url_for('site.player_detail', player_id=match.winner_id) }}"><img src="{{ url_for('site.player_photo', player_id=match.winner_id, v=6) }}" alt="{{ match.winner.name }}" referrerpolicy="no-referrer"></a><div class="scoreboard-name"><a href="{{ url_for('site.player_detail', player_id=match.winner_id) }}">{{ match.winner.name }}</a><small>{{ match.winner.country or match.tour }}{% if match.winner_rank %} · RANK {{ match.winner_rank }}{% endif %}</small></div></div><div class="scoreboard-vs"><span>WINNER</span><strong>VS</strong><span>RUNNER-UP</span></div><div class="scoreboard-player scoreboard-player-right"><a class="scoreboard-photo" href="{{ url_for('site.player_detail', player_id=match.loser_id) }}"><img src="{{ url_for('site.player_photo', player_id=match.loser_id, v=6) }}" alt="{{ match.loser.name }}" referrerpolicy="no-referrer"></a><div class="scoreboard-name"><a href="{{ url_for('site.player_detail', player_id=match.loser_id) }}">{{ match.loser.name }}</a><small>{{ match.loser.country or match.tour }}{% if match.loser_rank %} · RANK {{ match.loser_rank }}{% endif %}</small></div></div></div><div class="match-score-strip"><span>FINAL SCORE</span><strong>{{ match.score }}</strong>{% if match.minutes %}<span>{{ match.minutes // 60 }}h {{ '%02d'|format(match.minutes % 60) }}m</span>{% endif %}</div></div></section>

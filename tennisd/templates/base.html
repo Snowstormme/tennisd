@@ -8,13 +8,16 @@
   <meta name="application-name" content="Tennisd">
   <meta name="description" content="{% block meta_description %}Tennisd is a tennis match diary for discovering ATP and WTA matches, rating what you watched, and following players and tournaments.{% endblock %}">
   <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large{% endblock %}">
-  <link rel="canonical" href="{{ request.base_url }}">
+  {% set canonical_url = config.PUBLIC_BASE_URL.rstrip('/') ~ request.path %}
+  <link rel="canonical" href="{{ canonical_url }}">
   <meta property="og:site_name" content="Tennisd">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="{% block social_title %}Tennisd · The tennis match diary{% endblock %}">
-  <meta property="og:description" content="Tennisd is a tennis match diary for discovering matches, keeping a diary, and sharing reviews.">
-  <meta property="og:url" content="{{ request.base_url }}">
+  <meta property="og:type" content="{% block social_type %}website{% endblock %}">
+  <meta property="og:title" content="{% block social_title %}Tennisd · {{ self.title()|striptags|trim }}{% endblock %}">
+  <meta property="og:description" content="{{ self.meta_description()|striptags|trim }}">
+  <meta property="og:url" content="{{ canonical_url }}">
   <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Tennisd · {{ self.title()|striptags|trim }}">
+  <meta name="twitter:description" content="{{ self.meta_description()|striptags|trim }}">
   <title>Tennisd · {% block title %}Tennis Match Diary{% endblock %}</title>
   <script type="application/ld+json">{{ {
     "@context": "https://schema.org",
@@ -29,6 +32,7 @@
       "query-input": "required name=search_term_string"
     }
   }|tojson }}</script>
+  {% block structured_data %}{% endblock %}
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg', v='20260930-4') }}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

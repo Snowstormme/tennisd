@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Tournaments{% endblock %}
+{% block meta_description %}Explore Grand Slams, ATP and WTA tournaments, seasons, champions, results and tournament histories on Tennisd.{% endblock %}
 {% macro tournament_card(item) %}
 <a class="tournament-card surface-{{ (item.surfaces|sort|first)|lower }}" href="{{ url_for('site.tournament_detail', tour=item.tour|lower, slug=item.slug) }}">
   <img class="tournament-card-trophy" src="{{ item.profile.image_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">

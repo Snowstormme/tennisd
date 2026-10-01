@@ -339,6 +339,7 @@ def sitemap_index():
         public_url("/sitemap-core.xml"),
         public_url("/sitemap-players.xml"),
         public_url("/sitemap-tournaments.xml"),
+        public_url("/sitemap-tournament-editions.xml"),
     ]
     locations.extend(
         public_url(f"/sitemap-matches-{page}.xml")
@@ -391,6 +392,30 @@ def sitemap_tournaments():
     entries = "".join(
         f"<url><loc>{xml_escape(public_url(url_for('site.tournament_detail', tour=tour.lower(), slug=tournament_slug(name))))}</loc></url>"
         for tour, name in tournaments
+    )
+    return xml_response(
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{entries}</urlset>"
+    )
+
+
+@site.get("/sitemap-tournament-editions.xml")
+def sitemap_tournament_editions():
+    editions = db.session.execute(
+        select(
+            Match.tour,
+            Match.tournament,
+            func.extract("year", Match.week_start).label("season"),
+            func.max(Match.week_start).label("last_match_week"),
+        )
+        .group_by(Match.tour, Match.tournament, func.extract("year", Match.week_start))
+        .order_by(Match.tour, Match.tournament, func.extract("year", Match.week_start))
+    ).all()
+    entries = "".join(
+        f"<url><loc>{xml_escape(public_url(url_for('site.tournament_edition_detail', tour=tour.lower(), slug=tournament_slug(name), season=int(season))))}</loc>"
+        f"<lastmod>{last_match_week.isoformat()}</lastmod></url>"
+        for tour, name, season, last_match_week in editions
     )
     return xml_response(
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -598,7 +623,7 @@ def match_detail(match_id):
     return render_template(
         "match.html", match=match, reviews=reviews, own_review=own_review,
         community=community_statistics(match), serve_stats=serve_stats,
-        today=date.today(), on_watchlist=on_watchlist,
+        today=date.today(), on_watchlist=on_watchlist, match_location=match_location,
     )
 
 

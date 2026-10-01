@@ -227,22 +227,31 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"sitemap-core.xml", sitemap.data)
         self.assertIn(b"sitemap-players.xml", sitemap.data)
         self.assertIn(b"sitemap-tournaments.xml", sitemap.data)
+        self.assertIn(b"sitemap-tournament-editions.xml", sitemap.data)
         self.assertIn(b"sitemap-matches-1.xml", sitemap.data)
 
         self.assertIn(b"/matches/", self.client.get("/sitemap-matches-1.xml").data)
         self.assertIn(b"/players/", self.client.get("/sitemap-players.xml").data)
         self.assertIn(b"/tournaments/", self.client.get("/sitemap-tournaments.xml").data)
+        self.assertIn(b"/tournaments/", self.client.get("/sitemap-tournament-editions.xml").data)
 
         home = self.client.get("/")
         self.assertIn(b'rel="canonical"', home.data)
         self.assertIn(b'name="robots" content="index, follow', home.data)
         self.assertIn(b'property="og:site_name" content="Tennisd"', home.data)
+        self.assertIn(b'property="og:title" content="Tennisd', home.data)
+        self.assertIn(b'name="twitter:description"', home.data)
         self.assertIn(b'name="robots" content="noindex, follow"', self.client.get("/login").data)
         with self.app.app_context():
             player_id = db.session.scalar(select(Player.id).limit(1))
         profile = self.client.get(f"/players/{player_id}")
         self.assertIn(b"player-hero-photo", profile.data)
         self.assertIn(f"/players/{player_id}/photo".encode(), profile.data)
+        self.assertIn(b'"@type": "Person"', profile.data)
+
+        match = self.client.get(f"/matches/{self.match_id}")
+        self.assertIn(b'"@type": "SportsEvent"', match.data)
+        self.assertIn(b"Final score", match.data)
 
     def test_tournament_follow_is_saved_and_shown_in_profile(self):
         self.register("alice")
