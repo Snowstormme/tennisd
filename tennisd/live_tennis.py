@@ -2,12 +2,16 @@
 
 import os
 import re
+import hashlib
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 import requests
+from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
 
 from . import db
-from .models import LiveMatch
+from .models import LiveMatch, Player, PlayerExternalId
 
 
 API_ROOT = "https://api.livetennisapi.com/api/public/v1"
@@ -30,6 +34,69 @@ FEATURED_TIERS = (
     "itf_m15", "itf_m25", "itf_w15", "itf_w25", "itf_w35", "itf_w40",
     "itf_w50", "itf_w60", "itf_w75", "itf_w80", "itf_w100",
 )
+
+
+def normalized_player_name(value):
+    value = unicodedata.normalize("NFKD", value or "")
+    value = "".join(character for character in value if not unicodedata.combining(character))
+    return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
+
+
+def live_player_id(tour, provider_id, name):
+    identity = provider_id or normalized_player_name(name)
+    digest = hashlib.sha256(f"{tour}:{identity}".encode()).hexdigest()[:16]
+    return f"lt-{digest}"
+
+
+def ensure_live_player_profiles(matches):
+    """Attach singles-feed identities to permanent Tennisd player profiles."""
+    participants = []
+    for match in matches:
+        if match.is_doubles:
+            continue
+        participants.extend((
+            (match.tour, match.player1_name, match.player1_provider_id),
+            (match.tour, match.player2_name, match.player2_provider_id),
+        ))
+    if not participants:
+        return 0
+
+    provider_ids = {provider_id for _, _, provider_id in participants if provider_id}
+    external_rows = db.session.scalars(
+        select(PlayerExternalId)
+        .where(
+            PlayerExternalId.provider == "livetennisapi",
+            PlayerExternalId.external_id.in_(provider_ids),
+        )
+        .options(joinedload(PlayerExternalId.player))
+    ).all() if provider_ids else []
+    by_external = {row.external_id: row.player for row in external_rows}
+
+    lowered_names = {name.casefold() for _, name, _ in participants if name}
+    named_players = db.session.scalars(
+        select(Player).where(func.lower(Player.name).in_(lowered_names))
+    ).all() if lowered_names else []
+    by_name = {(player.tour, normalized_player_name(player.name)): player for player in named_players}
+
+    created = 0
+    mapped_ids = set(by_external)
+    for tour, name, provider_id in participants:
+        player = by_external.get(provider_id) if provider_id else None
+        if player is None:
+            key = (tour, normalized_player_name(name))
+            player = by_name.get(key)
+            if player is None:
+                player = Player(id=live_player_id(tour, provider_id, name), tour=tour, name=name)
+                db.session.add(player)
+                by_name[key] = player
+                created += 1
+        if provider_id and provider_id not in mapped_ids:
+            db.session.add(PlayerExternalId(
+                player=player, provider="livetennisapi", external_id=provider_id,
+            ))
+            by_external[provider_id] = player
+            mapped_ids.add(provider_id)
+    return created
 
 
 def parse_instant(value):
@@ -169,6 +236,14 @@ def sync_matches(status, session=requests, now=None):
             db.session.add(match)
         for field, value in row.items():
             setattr(match, field, value)
+    db.session.flush()
+    recent_feed_matches = db.session.scalars(
+        select(LiveMatch)
+        .where(LiveMatch.is_doubles.is_(False))
+        .order_by(LiveMatch.synced_at.desc())
+        .limit(500)
+    ).all()
+    ensure_live_player_profiles(recent_feed_matches)
     stale = LiveMatch.query.filter_by(status=status).all()
     for match in stale:
         if match.provider_id not in current_ids:

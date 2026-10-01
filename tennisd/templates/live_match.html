@@ -1,7 +1,32 @@
 {% extends 'base.html' %}
 {% block title %}{{ match.player1_name }} vs {{ match.player2_name }}{% endblock %}
 {% block content %}
-<div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches') }}">ALL MATCHES</a><span>{{ match.status|upper }}</span></div>
-<section class="page-banner"><div class="container"><p class="eyebrow">{{ match.tour }} · {{ match.tier|replace('_', ' ')|upper if match.tier else 'TOUR EVENT' }} · {{ match.draw|upper }}</p><h1>{{ match.player1_name }}<br><em>vs {{ match.player2_name }}</em></h1><p>{{ match.tournament }} · {{ match.round or 'Round unavailable' }} · {{ match.surface }} court</p></div></section>
-<main class="container page-section"><section class="detail-score"><div><span>{{ 'WINNER' if match.winner_side == 1 else 'PLAYER 1' }}</span><strong>{{ match.player1_name }}</strong></div><b>{{ match.score or 'Score unavailable' }}</b><div><span>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</span><strong>{{ match.player2_name }}</strong></div></section><div class="detail-meta"><span><small>STATUS</small>{{ match.status|title }}</span><span><small>START</small>{{ match.starts_at.strftime('%d %b %Y · %H:%M UTC') if match.starts_at else 'Unavailable' }}</span><span><small>FORMAT</small>{{ 'Doubles' if match.is_doubles else match.draw|title }}</span></div></main>
+<div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches', view=match.status if match.status in ('live', 'upcoming', 'finished') else 'archive') }}">BACK TO MATCHES</a><div class="detail-top-right"><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ match.status|upper }}</span><span>{{ match.tour }} · {{ match.draw|upper }}</span></div></div>
+<section class="live-detail-hero surface-{{ match.surface|lower }}" data-live-match="{{ match.provider_id }}">
+  <span class="showcase-wash" aria-hidden="true"></span>
+  <div class="container live-detail-grid">
+    <div class="live-detail-player live-detail-player-left">
+      {% if players[0] %}<a href="{{ url_for('site.player_detail', player_id=players[0].id) }}">{% endif %}<img src="{{ url_for('site.player_photo', player_id=players[0].id, v=6) if players[0] else url_for('site.live_player_photo', provider_id=match.provider_id, side=1, v=2) }}" alt="{{ match.player1_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 1 else 'PLAYER 1' }}</small><strong>{{ match.player1_name }}</strong>{% if players[0] %}<b>View player profile</b>{% endif %}</span>{% if players[0] %}</a>{% endif %}
+    </div>
+    <div class="live-detail-center">
+      <p class="eyebrow">{{ match.tour }} · {{ match.tier|replace('_', ' ')|upper if match.tier else 'TOUR EVENT' }}</p>
+      <span class="court-badge"><i aria-hidden="true"></i>{{ match.surface }} court</span>
+      <h1>{{ match.tournament }}</h1>
+      <p>{{ match.round or 'Round unavailable' }}</p>
+      <strong class="live-detail-score" data-live-score>{{ match.score or ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed') }}</strong>
+    </div>
+    <div class="live-detail-player live-detail-player-right">
+      {% if players[1] %}<a href="{{ url_for('site.player_detail', player_id=players[1].id) }}">{% endif %}<img src="{{ url_for('site.player_photo', player_id=players[1].id, v=6) if players[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=2) }}" alt="{{ match.player2_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</small><strong>{{ match.player2_name }}</strong>{% if players[1] %}<b>View player profile</b>{% endif %}</span>{% if players[1] %}</a>{% endif %}
+    </div>
+  </div>
+</section>
+<main class="container live-detail-body">
+  <section class="live-detail-facts">
+    <span><small>STATUS</small><strong>{{ match.status|title }}</strong></span>
+    <span><small>START</small><strong>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'Unavailable' }}</strong><b>{{ match.starts_at.strftime('%H:%M UTC') if match.starts_at else '' }}</b></span>
+    <span><small>FORMAT</small><strong>{{ 'Doubles' if match.is_doubles else match.draw|title }}</strong></span>
+    <span><small>ROUND</small><strong>{{ match.round or 'TBC' }}</strong></span>
+  </section>
+  <div class="live-detail-notes"><section><p class="eyebrow">MATCH TIMELINE</p><h2>{{ 'On court now' if match.status == 'live' else 'Scheduled match' if match.status == 'upcoming' else 'Permanent result' }}<span>.</span></h2><p>{{ 'The score refreshes automatically from the live feed.' if match.status == 'live' else 'This page will become the permanent result when the match finishes.' if match.status == 'upcoming' else 'This match remains in the Tennisd database with its final score and winner.' }}</p></section><section><p class="eyebrow">DATA STATUS</p><h2>Last checked<span>.</span></h2><p>{{ match.synced_at.strftime('%d %b %Y · %H:%M UTC') if match.synced_at else 'Update time unavailable' }}</p><p class="muted">Live feed information can change until the result is settled.</p></section></div>
+</main>
 {% endblock %}

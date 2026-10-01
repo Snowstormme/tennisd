@@ -13,11 +13,11 @@ import requests
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import delete, func, inspect, or_, select, union_all
+from sqlalchemy import case, delete, func, inspect, or_, select, union_all
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerPhoto, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
@@ -59,7 +59,22 @@ def current_match_rows(status):
 
 
 def current_match_players(matches):
-    """Match live-feed names to catalog players with one indexed query."""
+    """Match live-feed participants to permanent profiles by provider ID or name."""
+    external_ids = {
+        provider_id
+        for match in matches
+        for provider_id in (match.player1_provider_id, match.player2_provider_id)
+        if provider_id
+    }
+    external_rows = db.session.scalars(
+        select(PlayerExternalId)
+        .where(
+            PlayerExternalId.provider == "livetennisapi",
+            PlayerExternalId.external_id.in_(external_ids),
+        )
+        .options(joinedload(PlayerExternalId.player))
+    ).all() if external_ids else []
+    by_external = {row.external_id: row.player for row in external_rows}
     names = {
         name.casefold()
         for match in matches
@@ -74,11 +89,58 @@ def current_match_players(matches):
     by_name = {normalized_person_name(player.name): player for player in players}
     return {
         match.provider_id: (
-            by_name.get(normalized_person_name(match.player1_name)),
-            by_name.get(normalized_person_name(match.player2_name)),
+            by_external.get(match.player1_provider_id) or by_name.get(normalized_person_name(match.player1_name)),
+            by_external.get(match.player2_provider_id) or by_name.get(normalized_person_name(match.player2_name)),
         )
         for match in matches
     }
+
+
+def player_live_matches(player, limit=12):
+    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+        return []
+    external_ids = db.session.scalars(
+        select(PlayerExternalId.external_id).where(
+            PlayerExternalId.player_id == player.id,
+            PlayerExternalId.provider == "livetennisapi",
+        )
+    ).all()
+    identity = normalized_person_name(player.name)
+    conditions = [
+        func.lower(LiveMatch.player1_name) == player.name.casefold(),
+        func.lower(LiveMatch.player2_name) == player.name.casefold(),
+    ]
+    if external_ids:
+        conditions.extend((
+            LiveMatch.player1_provider_id.in_(external_ids),
+            LiveMatch.player2_provider_id.in_(external_ids),
+        ))
+    status_order = case(
+        (LiveMatch.status == "live", 0),
+        (LiveMatch.status == "upcoming", 1),
+        (LiveMatch.status == "finished", 2),
+        else_=3,
+    )
+    matches = db.session.scalars(
+        select(LiveMatch)
+        .where(
+            LiveMatch.is_doubles.is_(False),
+            LiveMatch.status != "cancelled",
+            or_(*conditions),
+        )
+        .order_by(status_order, LiveMatch.starts_at.desc())
+        .limit(limit)
+    ).all()
+    # SQLite and some feeds compare accented names differently; provider IDs remain authoritative.
+    return [
+        match for match in matches
+        if any((
+            match.player1_provider_id in external_ids,
+            match.player2_provider_id in external_ids,
+            normalized_person_name(match.player1_name) == identity,
+            normalized_person_name(match.player2_name) == identity,
+        ))
+    ]
 
 
 @lru_cache(maxsize=512)
@@ -482,7 +544,8 @@ def live_match_detail(provider_id):
     if not inspect(db.engine).has_table(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
-    return render_template("live_match.html", match=match)
+    players = current_match_players([match]).get(match.provider_id, (None, None))
+    return render_template("live_match.html", match=match, players=players)
 
 
 @site.get("/api/live-matches")
@@ -1018,6 +1081,7 @@ def player_detail(player_id):
     player = db.get_or_404(Player, player_id)
     update_prize_money(player)
     stats = player_statistics(player)
+    live_matches = player_live_matches(player)
     following = False
     if current_user.is_authenticated:
         following = db.session.scalar(
@@ -1028,6 +1092,7 @@ def player_detail(player_id):
         ) is not None
     return render_template(
         "player.html", player=player, stats=stats, following=following,
+        live_matches=live_matches, live_players=current_match_players(live_matches),
         match_location=match_location,
     )
 

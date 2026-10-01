@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 from tennisd import create_app, db
 from tennisd.live_tennis import display_score, normalize_match, sync_matches, winner_from_score
-from tennisd.models import LiveMatch
+from tennisd.models import LiveMatch, Player, PlayerExternalId
+from sqlalchemy import select
 
 
 def fixture(status="live", starts_at=None):
@@ -120,6 +121,43 @@ class LiveTennisTests(unittest.TestCase):
         self.assertIn(b"Carlos Alcaraz", page.data)
         payload = self.client.get("/api/live-matches").get_json()
         self.assertEqual(payload["matches"][0]["score"], "6\u20134 2\u20133")
+
+    def test_sync_creates_permanent_profiles_for_new_live_players(self):
+        now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)
+        row = fixture("upcoming", now + timedelta(days=2))
+        row["players"] = {
+            "p1": {"id": 88001, "name": "New Tour Player"},
+            "p2": {"id": 88002, "name": "Second Tour Player"},
+        }
+        with self.app.app_context(), patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
+            self.assertEqual(sync_matches("upcoming", session=Session([row]), now=now), 1)
+            first = db.session.scalar(select(Player).where(Player.name == "New Tour Player"))
+            second = db.session.scalar(select(Player).where(Player.name == "Second Tour Player"))
+            self.assertIsNotNone(first)
+            self.assertIsNotNone(second)
+            self.assertEqual(first.tour, "WTA")
+            self.assertEqual(
+                db.session.scalar(select(PlayerExternalId.player_id).where(
+                    PlayerExternalId.provider == "livetennisapi",
+                    PlayerExternalId.external_id == "88001",
+                )),
+                first.id,
+            )
+            self.assertEqual(sync_matches("upcoming", session=Session([row]), now=now), 1)
+            self.assertEqual(
+                len(db.session.scalars(select(Player).where(Player.name == "New Tour Player")).all()),
+                1,
+            )
+            first_id = first.id
+
+        detail = self.client.get("/live-matches/91234")
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn(f'/players/{first_id}'.encode(), detail.data)
+        self.assertIn(b"View player profile", detail.data)
+        profile = self.client.get(f"/players/{first_id}")
+        self.assertEqual(profile.status_code, 200)
+        self.assertIn(b"CURRENT TOUR FEED", profile.data)
+        self.assertIn(b"Second Tour Player", profile.data)
 
     def test_finished_live_match_is_preserved_and_has_a_page(self):
         now = datetime(2026, 7, 8, 16, tzinfo=timezone.utc)
