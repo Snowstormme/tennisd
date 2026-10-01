@@ -87,6 +87,7 @@ def create_app(test_config=None):
         REMEMBER_COOKIE_SECURE=production,
         REMEMBER_COOKIE_HTTPONLY=True,
         REMEMBER_COOKIE_SAMESITE="Lax",
+        REMEMBER_COOKIE_DURATION=timedelta(days=30),
     )
     if production:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {

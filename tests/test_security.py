@@ -89,6 +89,26 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/me")
         self.assertEqual(self.client.get("/me").status_code, 302)
 
+    def test_login_survives_loss_of_browser_session_cookie(self):
+        self.register()
+        self.verify()
+        self.client.get("/login")
+        response = self.client.post("/login", data={
+            "csrf_token": self.token(), "identity": "alice", "password": "long-test-password",
+        })
+
+        cookies = response.headers.getlist("Set-Cookie")
+        remember_cookie = next(cookie for cookie in cookies if cookie.startswith("remember_token="))
+        session_cookie = next(cookie for cookie in cookies if cookie.startswith("session="))
+        self.assertIn("Expires=", remember_cookie)
+        self.assertIn("HttpOnly", remember_cookie)
+        self.assertIn("SameSite=Lax", remember_cookie)
+        self.assertIn("Expires=", session_cookie)
+
+        self.client.delete_cookie(self.app.config["SESSION_COOKIE_NAME"])
+        restored = self.client.get("/me")
+        self.assertEqual(restored.headers["Location"], "/u/alice")
+
     def test_reset_invalidates_sessions_and_old_password(self):
         self.register()
         self.verify()

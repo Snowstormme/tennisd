@@ -223,6 +223,13 @@ def safe_next(default="site.home"):
     )
 
 
+def sign_in_user(user):
+    """Create a persistent login that remains revocable via session_version."""
+    session.clear()
+    session.permanent = True
+    login_user(user, remember=True)
+
+
 def public_url(path):
     return f"{current_app.config['PUBLIC_BASE_URL'].rstrip('/')}{path}"
 
@@ -1079,8 +1086,7 @@ def register():
                     current_app.logger.exception("Verification email delivery failed")
                     flash("We could not send your email. Use the resend link shortly.", "error")
                 return redirect(url_for("site.check_email"))
-            session.clear()
-            login_user(user)
+            sign_in_user(user)
             flash("Welcome to Tennisd. Your diary is ready.", "success")
             return redirect(url_for("site.my_profile"))
     return render_template("auth.html", mode="register")
@@ -1107,8 +1113,7 @@ def login():
             if not user.password_hash.startswith("$argon2id$"):
                 user.set_password(password)
                 db.session.commit()
-            session.clear()
-            login_user(user)
+            sign_in_user(user)
             return redirect(safe_next("site.my_profile"))
         flash("Incorrect username, email or password.", "error")
     return render_template("auth.html", mode="login")
@@ -1219,8 +1224,8 @@ def reset_password(token):
 @site.post("/logout")
 @login_required
 def logout():
-    logout_user()
     session.clear()
+    logout_user()
     return redirect(url_for("site.home"))
 
 
@@ -1335,8 +1340,7 @@ def settings():
                 current_user.auth_state.session_version += 1
             db.session.commit()
             if new_password:
-                session.clear()
-                login_user(current_user)
+                sign_in_user(current_user)
             flash("Settings saved.", "success")
             return redirect(url_for("site.settings"))
     return render_template("settings.html")
@@ -1431,8 +1435,8 @@ def delete_account():
     db.session.execute(delete(WatchlistItem).where(WatchlistItem.user_id == user.id))
     db.session.delete(user)
     db.session.commit()
-    logout_user()
     session.clear()
+    logout_user()
     flash("Your account and diary have been deleted.", "success")
     return redirect(url_for("site.home"))
 
