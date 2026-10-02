@@ -102,10 +102,32 @@ def send_account_email(user, purpose):
             "Enter this code on Tennisd. It expires in 10 minutes. "
             "If you did not create an account, ignore this email."
         )
+        html_body = (
+            '<div style="max-width:520px;margin:32px auto;padding:32px;'
+            'background:#10231f;color:#f7f2e8;font-family:Arial,sans-serif">'
+            '<p style="margin:0 0 24px;color:#8ed3b1;font-weight:700;letter-spacing:2px">TENNISD</p>'
+            '<h1 style="font-size:24px;margin:0 0 12px">Verify your email</h1>'
+            '<p style="color:#c9d5cf">Enter this code on Tennisd. It expires in 10 minutes.</p>'
+            f'<p style="font-size:36px;letter-spacing:8px;font-weight:700;margin:28px 0">{code}</p>'
+            '<p style="font-size:13px;color:#91a39a">If you did not create an account, you can ignore this email.</p>'
+            '</div>'
+        )
     else:
         raw = issue_token(user, purpose, 1800)
         subject = "Reset your Tennisd password"
-        body = f"Reset your Tennisd password:\n\n{base}/reset-password/{raw}\n\nThis link expires in 30 minutes. If you did not request it, ignore this email."
+        reset_url = f"{base}/reset-password/{raw}"
+        body = f"Reset your Tennisd password:\n\n{reset_url}\n\nThis link expires in 30 minutes. If you did not request it, ignore this email."
+        html_body = (
+            '<div style="max-width:520px;margin:32px auto;padding:32px;'
+            'background:#10231f;color:#f7f2e8;font-family:Arial,sans-serif">'
+            '<p style="margin:0 0 24px;color:#8ed3b1;font-weight:700;letter-spacing:2px">TENNISD</p>'
+            '<h1 style="font-size:24px;margin:0 0 12px">Reset your password</h1>'
+            '<p style="color:#c9d5cf">This secure link expires in 30 minutes.</p>'
+            f'<p style="margin:28px 0"><a href="{reset_url}" style="display:inline-block;padding:12px 18px;'
+            'background:#8ed3b1;color:#10231f;text-decoration:none;font-weight:700">Reset password</a></p>'
+            '<p style="font-size:13px;color:#91a39a">If you did not request this, you can ignore this email.</p>'
+            '</div>'
+        )
 
     delivery = current_app.config.get("MAIL_DELIVERY")
     if delivery:
@@ -119,6 +141,7 @@ def send_account_email(user, purpose):
             "to": [user.email],
             "subject": subject,
             "text": body,
+            "html": html_body,
         },
         timeout=10,
     )

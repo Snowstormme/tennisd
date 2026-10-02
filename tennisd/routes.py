@@ -1198,6 +1198,7 @@ def login():
             if current_app.config["REQUIRE_EMAIL_VERIFICATION"] and (
                 user.auth_state is None or user.auth_state.email_verified_at is None
             ):
+                session["verification_email"] = user.email
                 flash("Verify your email before logging in.", "error")
                 return redirect(url_for("site.check_email"))
             if not user.password_hash.startswith("$argon2id$"):
@@ -1238,6 +1239,7 @@ def resend_verification():
     if request.method == "POST":
         limit_action("resend-ip", client_ip(), 5, 3600)
         email = request.form.get("email", "").strip().lower()[:255]
+        limit_action("resend-email", email, 3, 3600)
         user = db.session.scalar(select(User).where(User.email == email))
         if user and (not user.auth_state or not user.auth_state.email_verified_at):
             try:

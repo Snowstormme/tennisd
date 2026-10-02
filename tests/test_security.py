@@ -78,6 +78,9 @@ class AccountSecurityFlows(unittest.TestCase):
             "csrf_token": self.token(), "identity": "alice", "password": "long-test-password",
         })
         self.assertEqual(response.headers["Location"], "/check-email")
+        self.assertIn(
+            b'value="alice@example.com"', self.client.get("/check-email").data,
+        )
         code = self.verify()
         response = self.client.post("/check-email", data={
             "csrf_token": self.token(), "email": "alice@example.com", "code": code,
@@ -156,6 +159,20 @@ class AccountSecurityFlows(unittest.TestCase):
             "csrf_token": self.token(), "email": "alice@example.com", "code": second_code,
         })
         self.assertEqual(accepted.headers["Location"], "/login")
+
+    def test_resend_is_limited_per_email_address(self):
+        self.register()
+        for _ in range(3):
+            self.client.get("/resend-verification")
+            response = self.client.post("/resend-verification", data={
+                "csrf_token": self.token(), "email": "alice@example.com",
+            })
+            self.assertEqual(response.status_code, 302)
+        self.client.get("/resend-verification")
+        blocked = self.client.post("/resend-verification", data={
+            "csrf_token": self.token(), "email": "alice@example.com",
+        })
+        self.assertEqual(blocked.status_code, 429)
 
     def test_login_limit_and_security_headers(self):
         self.register()
