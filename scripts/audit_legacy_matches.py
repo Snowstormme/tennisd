@@ -9,7 +9,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import delete, func, or_, select
 
 from tennisd import create_app, db
-from tennisd.models import Comment, Match, MatchParticipant, MatchSet, MatchStatistic, Report, Review, WatchlistItem
+from tennisd.live_tennis import ensure_live_player_profiles, preserve_finished_match
+from tennisd.models import Comment, LiveMatch, Match, MatchParticipant, MatchSet, MatchStatistic, Report, Review, WatchlistItem
 
 
 def legacy_filter():
@@ -46,6 +47,15 @@ def purge():
     db.session.commit()
 
 
+def preserve_live_history():
+    finished = db.session.scalars(select(LiveMatch).where(LiveMatch.status == "finished")).all()
+    ensure_live_player_profiles(finished)
+    db.session.flush()
+    archived = sum(preserve_finished_match(match, match.finished_at or match.synced_at) is not None for match in finished)
+    db.session.commit()
+    return archived
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--apply", action="store_true")
@@ -58,5 +68,7 @@ if __name__ == "__main__":
         if args.apply:
             if not args.delete_community_data and any(before[key] for key in ("reviews", "comments", "watchlist_items", "reports")):
                 raise SystemExit("Refusing to remove user data without --delete-community-data.")
+            archived = preserve_live_history()
+            print(f"Preserved {archived} finished live-feed matches before removal.")
             purge()
             print("Legacy catalog removed. Remaining impact:", counts())

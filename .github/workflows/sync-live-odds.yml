@@ -28,4 +28,9 @@ jobs:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
           AUTO_CREATE_DB: 'false'
-        run: python scripts/sync_odds.py
+        run: |
+          if [ -z "$THE_ODDS_API_KEY" ]; then
+            echo "THE_ODDS_API_KEY is not configured; odds sync remains dormant."
+            exit 0
+          fi
+          python scripts/sync_odds.py
