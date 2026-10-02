@@ -25,7 +25,7 @@ def main():
     removed = db.session.execute(delete(Match).where(Match.provider == "livetennisapi")).rowcount
 
     now = datetime.now(timezone.utc)
-    rows = db.session.scalars(select(LiveMatch).where(LiveMatch.status.in_(("finished", "pending_result")))).all()
+    rows = db.session.scalars(select(LiveMatch).where(LiveMatch.status.in_(("finished", "verifying")))).all()
     ensure_live_player_profiles(rows)
     db.session.flush()
     preserved = 0
@@ -39,7 +39,7 @@ def main():
             match.finished_at = match.finished_at or now
             preserved += preserve_finished_match(match, match.finished_at) is not None
         else:
-            match.status = "pending_result"
+            match.status = "verifying"
             match.winner_side = None
             match.outcome = "pending_verification"
             match.finished_at = None

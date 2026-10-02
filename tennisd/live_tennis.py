@@ -346,7 +346,7 @@ def sync_matches(status, session=requests, now=None):
         .limit(500)
     ).all()
     ensure_live_player_profiles(recent_feed_matches)
-    stale_statuses = (status, "pending_result") if status == "live" else (status,)
+    stale_statuses = (status, "verifying") if status == "live" else (status,)
     stale = LiveMatch.query.filter(LiveMatch.status.in_(stale_statuses)).all()
     for match in stale:
         if match.provider_id not in current_ids:
@@ -355,7 +355,7 @@ def sync_matches(status, session=requests, now=None):
             winner = winner_from_score(match.score) if status == "live" else None
             score_aged = score_is_aged(match.provider_updated_at, now)
             verified = status == "live" and winner and score_is_final(match) and score_aged
-            match.status = "finished" if verified else "pending_result" if status == "live" else "cancelled"
+            match.status = "finished" if verified else "verifying" if status == "live" else "cancelled"
             match.finished_at = now if verified else None
             match.outcome = "completed" if verified else "pending_verification" if status == "live" else "cancelled"
             match.winner_side = winner if verified else None
