@@ -1,0 +1,23 @@
+name: Repair live match archive
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Rebuild verified completed matches
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/repair_live_archive.py

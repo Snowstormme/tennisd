@@ -166,6 +166,7 @@ class LiveTennisTests(unittest.TestCase):
                 provider_id="settled-1", status="live", tour="WTA", tournament="Wimbledon",
                 surface="Grass", round="F", starts_at=now - timedelta(hours=2),
                 player1_name="Iga Swiatek", player2_name="Aryna Sabalenka", score="6–4 6–3",
+                provider_updated_at=now - timedelta(minutes=31),
             ))
             db.session.commit()
             with patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
@@ -182,6 +183,7 @@ class LiveTennisTests(unittest.TestCase):
 
     def test_winner_from_final_score(self):
         self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
+        self.assertIsNone(winner_from_score("6–4 5–2"))
 
 
 if __name__ == "__main__":

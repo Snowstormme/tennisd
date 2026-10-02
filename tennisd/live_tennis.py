@@ -137,9 +137,45 @@ def display_score(score):
 
 def winner_from_score(score):
     sets = re.findall(r"(\d+)[–-](\d+)", score or "")
-    won1 = sum(int(left) > int(right) for left, right in sets)
-    won2 = sum(int(right) > int(left) for left, right in sets)
-    return 1 if won1 > won2 else 2 if won2 > won1 else None
+    def completed_winner(left, right):
+        left, right = int(left), int(right)
+        if (left >= 6 or right >= 6) and abs(left - right) >= 2:
+            return 1 if left > right else 2
+        if (left, right) in ((7, 5), (7, 6)):
+            return 1
+        if (right, left) in ((7, 5), (7, 6)):
+            return 2
+        return None
+    completed = [completed_winner(left, right) for left, right in sets]
+    won1 = completed.count(1)
+    won2 = completed.count(2)
+    return 1 if won1 >= 2 and won1 > won2 else 2 if won2 >= 2 and won2 > won1 else None
+
+
+def score_is_aged(provider_updated_at, now, minutes=30):
+    if not provider_updated_at:
+        return False
+    if provider_updated_at.tzinfo is None:
+        provider_updated_at = provider_updated_at.replace(tzinfo=timezone.utc)
+    return provider_updated_at <= now - timedelta(minutes=minutes)
+
+
+def score_is_final(match):
+    """Require enough completed sets and no in-game point score before archiving."""
+    if not match.score or "(" in match.score:
+        return False
+    sets = re.findall(r"(\d+)[–-](\d+)", match.score)
+    completed = []
+    for left, right in sets:
+        left, right = int(left), int(right)
+        if (left >= 6 or right >= 6) and abs(left - right) >= 2:
+            completed.append(1 if left > right else 2)
+        elif (left, right) in ((7, 5), (7, 6)):
+            completed.append(1)
+        elif (right, left) in ((7, 5), (7, 6)):
+            completed.append(2)
+    required = 3 if match.tour == "ATP" and match.tier == "grand_slam" and match.draw == "singles" else 2
+    return completed.count(1) >= required or completed.count(2) >= required
 
 
 def score_from_winner_side(score, winner_side):
@@ -182,7 +218,10 @@ def permanent_profile(match, side):
 
 def preserve_finished_match(live_match, now):
     """Copy a settled singles feed row into the permanent community catalog once."""
-    if live_match.is_doubles or live_match.winner_side not in (1, 2) or not live_match.starts_at:
+    if (
+        live_match.is_doubles or live_match.winner_side not in (1, 2)
+        or not live_match.starts_at or not score_is_final(live_match)
+    ):
         return None
     provider_id = f"livetennisapi:{live_match.provider_id}"
     existing = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
@@ -307,17 +346,21 @@ def sync_matches(status, session=requests, now=None):
         .limit(500)
     ).all()
     ensure_live_player_profiles(recent_feed_matches)
-    stale = LiveMatch.query.filter_by(status=status).all()
+    stale_statuses = (status, "pending_result") if status == "live" else (status,)
+    stale = LiveMatch.query.filter(LiveMatch.status.in_(stale_statuses)).all()
     for match in stale:
         if match.provider_id not in current_ids:
             # Keep the same provider record permanently. A later reconciliation
             # can enrich its final outcome without losing its identity or score.
-            match.status = "finished" if status == "live" else "cancelled"
-            match.finished_at = now if status == "live" else None
-            match.outcome = "completed" if status == "live" else "cancelled"
-            match.winner_side = winner_from_score(match.score) if status == "live" else None
+            winner = winner_from_score(match.score) if status == "live" else None
+            score_aged = score_is_aged(match.provider_updated_at, now)
+            verified = status == "live" and winner and score_is_final(match) and score_aged
+            match.status = "finished" if verified else "pending_result" if status == "live" else "cancelled"
+            match.finished_at = now if verified else None
+            match.outcome = "completed" if verified else "pending_verification" if status == "live" else "cancelled"
+            match.winner_side = winner if verified else None
             match.synced_at = now
-            if status == "live":
+            if verified:
                 preserve_finished_match(match, now)
     if status == "upcoming":
         LiveMatch.query.filter(LiveMatch.starts_at > now + timedelta(days=7)).delete(synchronize_session=False)
