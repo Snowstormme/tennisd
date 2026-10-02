@@ -13,13 +13,7 @@ pip install -r requirements.txt
 flask --app wsgi run --debug
 ```
 
-Open <http://127.0.0.1:5000>. The first run creates the local database and imports 16 real Grand Slam finals from 2024–2025 so the site is usable immediately. `instance/tennisd.db` is ignored by Git. To load a larger catalog:
-
-```bash
-flask --app wsgi import-tennis --from-year 2023 --to-year 2026
-```
-
-That command downloads ATP and WTA CSV files from the [Sackmann archive](https://github.com/Aneeshers/tennis-sackmann-archive). It can be run again safely: existing matches are skipped. For complete historical career title counts, import more years. The archive snapshot contains data only through **June 2026**, even though a 2026 CSV exists. It is not a live score feed.
+Open <http://127.0.0.1:5000>. Test runs receive a small fixed fixture catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled Live Tennis API feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary.
 
 ## What is here
 
@@ -39,7 +33,7 @@ That command downloads ATP and WTA CSV files from the [Sackmann archive](https:/
 - The dataset's `tourney_date` is the **start of the tournament week**, not an exact match date. The interface labels it accordingly.
 - Win rates, titles, head-to-head and rankings are calculated from **loaded matches only**. Rankings shown are from the player's latest imported match, not current rankings.
 - Prize money appears only when [Wikidata](https://www.wikidata.org/) lists a USD amount for that player's linked entity. The source and date are visible. Missing data is shown as unavailable. A displayed amount may be out of date.
-- Sample CSV-derived JSON in `data/` is CC BY-NC-SA 4.0. See [DATA_LICENSE.md](DATA_LICENSE.md). This project is intended for non-commercial use.
+- The discontinued development fixture catalog in `data/` remains CC BY-NC-SA 4.0 and is never loaded into a new production database. See [DATA_LICENSE.md](DATA_LICENSE.md).
 
 ## Security model
 
@@ -67,9 +61,13 @@ Tennisd can run as one Flask function on Vercel Hobby with automatic HTTPS and r
 
 ### Live top-tier feed
 
-Tennisd mirrors ATP and WTA singles at Grand Slams and ATP/WTA 1000 and 500 events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It refreshes the stored live slate every 15 minutes and replaces those cards' score text in open browsers once a minute. One midnight UTC hour refreshes fixtures for the next seven days instead, keeping the scheduled use inside the free plan's 100 request daily allowance.
+Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It refreshes the stored live slate every 15 minutes and replaces those cards' score text in open browsers once a minute. One midnight UTC hour refreshes fixtures for the next seven days instead, keeping the scheduled use inside the free plan's 100 request daily allowance. Finished singles matches are promoted into Tennisd's permanent `match` table and no longer depend on the old historical catalog.
 
-The **Import match history since 2010** workflow imports the attributed ATP and WTA results archive into the production database. It is safe to rerun because existing match IDs are skipped. The free Live Tennis API plan does not include unrestricted completed-match history, so future finished matches cannot be copied automatically into the permanent diary catalog from that API without its BASIC plan. Live and upcoming cards still update automatically on the free plan.
+### Current odds
+
+Tennisd can show decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Add `THE_ODDS_API_KEY` to GitHub, run **Add live odds table** once, then enable **Sync live tennis odds**. The workflow runs every 90 minutes and rotates through one active tennis competition per run. That is 16 charged requests per day and at most 496 in a 31-day month, inside the current 500-credit free tier. With several simultaneous competitions, each individual competition updates less often than 90 minutes. The interface identifies the bookmaker, update time and that the values are informational market estimates.
+
+The Jeff Sackmann production importer has been disabled. `scripts/audit_legacy_matches.py` reports exactly how many old matches, reviews, comments and watchlist entries would be affected before removal. It refuses to delete linked community data unless the explicit destructive flag is supplied.
 
 This is near-live on the free plan rather than point-by-point streaming. The API key is used only by GitHub Actions and must not be placed in Vercel or sent to the browser.
 

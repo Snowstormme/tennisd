@@ -1,0 +1,37 @@
+name: Audit legacy match catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Audit only, or remove legacy matches and linked community records
+        required: true
+        default: audit
+        type: choice
+        options: [audit, remove]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Count affected records
+        if: inputs.mode == 'audit'
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/audit_legacy_matches.py
+      - name: Remove legacy records
+        if: inputs.mode == 'remove'
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/audit_legacy_matches.py --apply --delete-community-data

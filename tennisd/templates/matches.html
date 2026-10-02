@@ -12,7 +12,7 @@
 </nav></div>
 {% if view != 'archive' %}<section class="container live-slate selected-live-slate"{% if view == 'live' %} data-live-slate{% endif %}>
   <div class="section-head"><div><p class="eyebrow">{{ 'ON TOUR NOW' if view == 'live' else 'NEXT SEVEN DAYS' if view == 'upcoming' else 'PERMANENT RESULTS' }}</p><h2>{{ 'Live on court' if view == 'live' else 'Coming up' if view == 'upcoming' else 'Recently finished' }}<span>.</span></h2></div><span class="section-subtle">{{ 'Scores refresh automatically' if view == 'live' else 'Main draw, qualifying and doubles' if view == 'upcoming' else 'Saved after the live feed ends' }}</span></div>
-  {% if current_matches %}<div class="current-match-grid">{% for match in current_matches %}{{ current_match_card(match, live_players.get(match.provider_id)) }}{% endfor %}</div>{% else %}<div class="empty-state"><h3>{{ 'No live matches right now.' if view == 'live' else 'No upcoming matches are scheduled.' if view == 'upcoming' else 'No recently finished matches yet.' }}</h3><p>The live feed refreshes every 15 minutes.</p></div>{% endif %}
+  {% if current_matches %}<div class="current-match-grid">{% for match in current_matches %}{{ current_match_card(match, live_players.get(match.provider_id), live_odds.get(match.provider_id)) }}{% endfor %}</div>{% else %}<div class="empty-state"><h3>{{ 'No live matches right now.' if view == 'live' else 'No upcoming matches are scheduled.' if view == 'upcoming' else 'No recently finished matches yet.' }}</h3><p>The live feed refreshes every 15 minutes.</p></div>{% endif %}
 </section>{% endif %}
 {% if view == 'archive' %}
 <div class="container listing-layout">

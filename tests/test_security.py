@@ -212,19 +212,18 @@ class ProductionConfig(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "SECRET_KEY"):
                 create_app({"TESTING": True})
 
-    def test_catalog_bootstrap_command(self):
+    def test_database_bootstrap_does_not_load_legacy_catalog(self):
         with tempfile.TemporaryDirectory() as directory:
             app = create_app({
                 "TESTING": True,
                 "SECRET_KEY": "test-only-secret",
                 "SQLALCHEMY_DATABASE_URI": f"sqlite:///{Path(directory) / 'catalog.db'}",
                 "AUTO_CREATE_DB": False,
-                "SEED_FULL_CATALOG": True,
             })
             result = app.test_cli_runner().invoke(args=["init-db"])
             self.assertEqual(result.exit_code, 0, result.output)
             with app.app_context():
-                self.assertEqual(db.session.scalar(select(func.count(Match.id))), 19903)
+                self.assertEqual(db.session.scalar(select(func.count(Match.id))), 0)
                 db.session.remove()
                 db.engine.dispose()
 

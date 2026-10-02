@@ -81,7 +81,7 @@ def create_app(test_config=None):
         MAIL_DELIVERY=None,
         ADMIN_EMAIL=os.environ.get("ADMIN_EMAIL", "").strip().lower(),
         CONTACT_EMAIL=os.environ.get("CONTACT_EMAIL", "").strip().lower(),
-        SEED_FULL_CATALOG=os.environ.get("SEED_FULL_CATALOG", "true" if production else "false") == "true",
+        SEED_LEGACY_CATALOG=os.environ.get("SEED_LEGACY_CATALOG", "false") == "true",
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
         REMEMBER_COOKIE_SECURE=production,
@@ -203,28 +203,13 @@ def create_app(test_config=None):
         db.session.execute(text("SELECT 1"))
         return "ok", 200, {"Cache-Control": "no-store"}
 
-    @app.cli.command("import-tennis")
-    @click.option("--from-year", default=2023, type=int, show_default=True)
-    @click.option("--to-year", default=2026, type=int, show_default=True)
-    def import_tennis(from_year, to_year):
-        """Import ATP and WTA results from the Sackmann archive."""
-        from .importer import import_archive
-
-        if from_year > to_year or from_year < 1968 or to_year > 2026:
-            raise click.BadParameter("Choose a year range from 1968 through 2026.")
-        count = import_archive(from_year, to_year)
-        click.echo(f"Imported {count} new matches.")
-
     @app.cli.command("init-db")
     def init_db():
-        """Create tables and seed the catalog using a database owner connection."""
-        from .importer import seed_catalog, seed_samples
-
+        """Create tables using a database owner connection."""
         db.create_all()
-        if app.config["SEED_FULL_CATALOG"]:
+        if app.config["SEED_LEGACY_CATALOG"]:
+            from .importer import seed_catalog
             seed_catalog()
-        else:
-            seed_samples()
         click.echo("Database initialized.")
 
     @app.cli.command("upgrade-catalog")
@@ -241,11 +226,8 @@ def create_app(test_config=None):
     if app.config["AUTO_CREATE_DB"]:
         with app.app_context():
             db.create_all()
-            from .importer import seed_catalog, seed_samples
-
-            if app.config["SEED_FULL_CATALOG"]:
-                seed_catalog()
-            else:
+            if app.config["TESTING"]:
+                from .importer import seed_samples
                 seed_samples()
 
     return app

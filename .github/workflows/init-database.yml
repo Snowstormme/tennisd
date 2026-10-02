@@ -16,11 +16,10 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Create schema and seed match catalog
+      - name: Create schema
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
           AUTO_CREATE_DB: "false"
-          SEED_FULL_CATALOG: "true"
         run: flask --app wsgi init-db
       - name: Restrict and verify application database role
         env:

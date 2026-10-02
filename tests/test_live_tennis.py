@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from tennisd import create_app, db
 from tennisd.live_tennis import display_score, normalize_match, sync_matches, winner_from_score
-from tennisd.models import LiveMatch, Player, PlayerExternalId
+from tennisd.models import LiveMatch, Match, Player, PlayerExternalId
 from sqlalchemy import select
 
 
@@ -173,6 +173,9 @@ class LiveTennisTests(unittest.TestCase):
             match = db.session.get(LiveMatch, "settled-1")
             self.assertEqual(match.status, "finished")
             self.assertEqual(match.winner_side, 1)
+            archived = db.session.scalar(select(Match).where(Match.provider == "livetennisapi"))
+            self.assertIsNotNone(archived)
+            self.assertEqual(archived.score, "6–4 6–3")
         page = self.client.get("/live-matches/settled-1")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"PERMANENT", self.client.get("/matches?view=finished").data)

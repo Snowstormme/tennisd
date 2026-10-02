@@ -274,6 +274,31 @@ class LiveMatch(db.Model):
     finished_at = db.Column(db.DateTime(timezone=True))
     provider_updated_at = db.Column(db.DateTime(timezone=True))
     synced_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    odds_quotes = db.relationship("LiveOdds", back_populates="match", cascade="all, delete-orphan")
+
+
+class LiveOdds(db.Model):
+    """A bookmaker snapshot for a current match, kept separate from the result feed."""
+
+    __table_args__ = (
+        UniqueConstraint("live_match_id", "bookmaker", "market", name="uq_live_match_bookmaker_market"),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    live_match_id = db.Column(
+        db.String(64), db.ForeignKey("live_match.provider_id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    provider_event_id = db.Column(db.String(100), nullable=False)
+    provider = db.Column(db.String(32), default="the_odds_api", nullable=False)
+    bookmaker = db.Column(db.String(64), nullable=False)
+    market = db.Column(db.String(16), default="h2h", nullable=False)
+    player1_price = db.Column(db.Float, nullable=False)
+    player2_price = db.Column(db.Float, nullable=False)
+    player1_probability = db.Column(db.Float, nullable=False)
+    player2_probability = db.Column(db.Float, nullable=False)
+    source_updated_at = db.Column(db.DateTime(timezone=True))
+    fetched_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    match = db.relationship("LiveMatch", back_populates="odds_quotes")
 
 
 class Review(db.Model):

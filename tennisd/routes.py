@@ -17,7 +17,7 @@ from sqlalchemy import case, delete, func, inspect, or_, select, union_all
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FollowedPlayer, Friendship, LiveMatch, LiveOdds, Match, Player, PlayerExternalId, PlayerPhoto, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
@@ -94,6 +94,17 @@ def current_match_players(matches):
         )
         for match in matches
     }
+
+
+def current_match_odds(matches):
+    """Return the newest display quote without requiring the migration during deploy."""
+    if not matches or not inspect(db.engine).has_table(LiveOdds.__tablename__):
+        return {}
+    ids = [match.provider_id for match in matches]
+    rows = db.session.scalars(
+        select(LiveOdds).where(LiveOdds.live_match_id.in_(ids)).order_by(LiveOdds.fetched_at.desc())
+    ).all()
+    return {row.live_match_id: row for row in rows}
 
 
 def player_live_matches(player, limit=12):
@@ -526,9 +537,10 @@ def matches():
     if view != "archive":
         current_matches = current_match_rows(view)
         live_players = current_match_players(current_matches)
+        live_odds = current_match_odds(current_matches)
         return render_template(
             "matches.html", view=view, pagination=pagination, current_matches=current_matches,
-            live_players=live_players, query=query, tour=tour, surface=surface,
+            live_players=live_players, live_odds=live_odds, query=query, tour=tour, surface=surface,
             year=year, level=level, order=order, match_location=match_location,
         )
 
@@ -570,16 +582,25 @@ def live_match_detail(provider_id):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
     players = current_match_players([match]).get(match.provider_id, (None, None))
-    return render_template("live_match.html", match=match, players=players)
+    odds = current_match_odds([match]).get(match.provider_id)
+    return render_template("live_match.html", match=match, players=players, odds=odds)
 
 
 @site.get("/api/live-matches")
 def live_matches_api():
     matches = current_match_rows("live")
+    odds = current_match_odds(matches)
     response = jsonify({
         "matches": [{
             "id": match.provider_id, "score": match.score,
             "server": match.server, "synced_at": match.synced_at.isoformat(),
+            "odds": ({
+                "player1_price": odds[match.provider_id].player1_price,
+                "player2_price": odds[match.provider_id].player2_price,
+                "player1_probability": odds[match.provider_id].player1_probability,
+                "player2_probability": odds[match.provider_id].player2_probability,
+                "updated_at": odds[match.provider_id].fetched_at.isoformat(),
+            } if match.provider_id in odds else None),
         } for match in matches]
     })
     response.cache_control.no_store = True

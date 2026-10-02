@@ -14,6 +14,7 @@
       <h1>{{ match.tournament }}</h1>
       <p>{{ match.round or 'Round unavailable' }}</p>
       <strong class="live-detail-score" data-live-score>{{ match.score or ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed') }}</strong>
+      {% if odds %}<div class="live-detail-odds" data-live-odds><span>FULL MATCH · PINNACLE</span><div><b>{{ match.player1_name }} <strong data-odds-price="1">{{ '%.2f'|format(odds.player1_price) }}</strong><small data-odds-probability="1">{{ '%.1f'|format(odds.player1_probability) }}%</small></b><b>{{ match.player2_name }} <strong data-odds-price="2">{{ '%.2f'|format(odds.player2_price) }}</strong><small data-odds-probability="2">{{ '%.1f'|format(odds.player2_probability) }}%</small></b></div><p>Market estimate · informational only · updated {{ odds.fetched_at.strftime('%H:%M UTC') }}</p></div>{% endif %}
     </div>
     <div class="live-detail-player live-detail-player-right">
       {% if players[1] %}<a href="{{ url_for('site.player_detail', player_id=players[1].id) }}">{% endif %}<img src="{{ url_for('site.player_photo', player_id=players[1].id, v=6) if players[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=2) }}" alt="{{ match.player2_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</small><strong>{{ match.player2_name }}</strong>{% if players[1] %}<b>View player profile</b>{% endif %}</span>{% if players[1] %}</a>{% endif %}

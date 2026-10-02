@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from . import db
-from .models import LiveMatch, Player, PlayerExternalId
+from .models import LiveMatch, Match, Player, PlayerExternalId
 
 
 API_ROOT = "https://api.livetennisapi.com/api/public/v1"
@@ -142,6 +142,69 @@ def winner_from_score(score):
     return 1 if won1 > won2 else 2 if won2 > won1 else None
 
 
+def score_from_winner_side(score, winner_side):
+    if winner_side != 2:
+        return score
+    return re.sub(r"(\d+)[–-](\d+)", lambda item: f"{item.group(2)}–{item.group(1)}", score or "")
+
+
+def archive_level(tier):
+    tier = (tier or "").lower()
+    if tier == "grand_slam":
+        return "G"
+    if tier == "atp_1000":
+        return "M"
+    if tier == "wta_1000":
+        return "PM"
+    if tier.startswith("atp_"):
+        return "A"
+    if tier.startswith("wta_"):
+        return "P"
+    return "I"
+
+
+def permanent_profile(match, side):
+    provider_id = match.player1_provider_id if side == 1 else match.player2_provider_id
+    name = match.player1_name if side == 1 else match.player2_name
+    if provider_id:
+        profile = db.session.scalar(
+            select(Player).join(PlayerExternalId).where(
+                PlayerExternalId.provider == "livetennisapi",
+                PlayerExternalId.external_id == provider_id,
+            )
+        )
+        if profile:
+            return profile
+    return db.session.scalar(
+        select(Player).where(Player.tour == match.tour, func.lower(Player.name) == name.casefold())
+    )
+
+
+def preserve_finished_match(live_match, now):
+    """Copy a settled singles feed row into the permanent community catalog once."""
+    if live_match.is_doubles or live_match.winner_side not in (1, 2) or not live_match.starts_at:
+        return None
+    provider_id = f"livetennisapi:{live_match.provider_id}"
+    existing = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
+    if existing:
+        return existing
+    winner = permanent_profile(live_match, live_match.winner_side)
+    loser = permanent_profile(live_match, 2 if live_match.winner_side == 1 else 1)
+    if not winner or not loser:
+        return None
+    archived = Match(
+        id=f"lt-{live_match.provider_id}", provider="livetennisapi", provider_id=provider_id,
+        status="finished", tour=live_match.tour, tournament=live_match.tournament,
+        level=archive_level(live_match.tier), surface=live_match.surface,
+        week_start=live_match.starts_at.date(), scheduled_at=live_match.starts_at,
+        completed_at=now, round=(live_match.round or "R?")[:4],
+        winner=winner, loser=loser,
+        score=score_from_winner_side(live_match.score, live_match.winner_side),
+    )
+    db.session.add(archived)
+    return archived
+
+
 def normalize_match(item, now=None):
     now = now or datetime.now(timezone.utc)
     tier = str(item.get("tier") or "").lower()
@@ -254,6 +317,8 @@ def sync_matches(status, session=requests, now=None):
             match.outcome = "completed" if status == "live" else "cancelled"
             match.winner_side = winner_from_score(match.score) if status == "live" else None
             match.synced_at = now
+            if status == "live":
+                preserve_finished_match(match, now)
     if status == "upcoming":
         LiveMatch.query.filter(LiveMatch.starts_at > now + timedelta(days=7)).delete(synchronize_session=False)
     db.session.commit()

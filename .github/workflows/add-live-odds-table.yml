@@ -1,0 +1,22 @@
+name: Add live odds table
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Create odds table
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
+        run: python -c "import os, psycopg; sql=open('scripts/add_live_odds.sql').read(); conn=psycopg.connect(os.environ['DATABASE_URL']); conn.execute(sql); conn.commit(); conn.close()"

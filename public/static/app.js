@@ -98,17 +98,29 @@ document.addEventListener("DOMContentLoaded", () => {
     applyTheme(theme);
   });
 
-  const liveSlate = document.querySelector("[data-live-slate]");
-  if (liveSlate) {
+  const liveMatches = document.querySelectorAll("[data-live-match]");
+  if (liveMatches.length) {
     const refreshScores = async () => {
       try {
         const response = await fetch("/api/live-matches", { cache: "no-store" });
         if (!response.ok) return;
         const payload = await response.json();
         payload.matches.forEach((match) => {
-          const card = liveSlate.querySelector(`[data-live-match="${CSS.escape(match.id)}"]`);
-          const score = card?.querySelector("[data-live-score]");
-          if (score && match.score) score.textContent = match.score;
+          document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
+            const score = card.querySelector("[data-live-score]");
+            if (score && match.score) score.textContent = match.score;
+            if (!match.odds) return;
+            [1, 2].forEach((number) => {
+              const price = Number(match.odds[`player${number}_price`]);
+              const probability = Number(match.odds[`player${number}_probability`]);
+              const side = card.querySelector(`[data-odds-side="${number}"]`);
+              const priceNode = card.querySelector(`[data-odds-price="${number}"]`);
+              const probabilityNode = card.querySelector(`[data-odds-probability="${number}"]`);
+              if (side && Number.isFinite(price) && Number.isFinite(probability)) side.textContent = `${price.toFixed(2)} · ${probability.toFixed(0)}%`;
+              if (priceNode && Number.isFinite(price)) priceNode.textContent = price.toFixed(2);
+              if (probabilityNode && Number.isFinite(probability)) probabilityNode.textContent = `${probability.toFixed(1)}%`;
+            });
+          });
         });
       } catch (_) {
         // Keep the most recently stored score when a refresh is unavailable.

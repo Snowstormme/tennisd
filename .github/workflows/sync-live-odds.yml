@@ -1,0 +1,31 @@
+name: Sync live tennis odds
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+    - cron: '30 1-23/3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-tennis-odds-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Refresh one active tennis market within the free quota
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/sync_odds.py

@@ -37,8 +37,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261002-2') }}">
-  <script src="{{ url_for('static', filename='app.js', v='20260930-4') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261002-3') }}">
+  <script src="{{ url_for('static', filename='app.js', v='20261002-1') }}" defer></script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
 </head>
@@ -74,7 +74,7 @@
     <div class="container footer-inner">
       <div><a class="footer-brand" href="{{ url_for('site.home') }}">TENNISD<span>.</span></a><p>A place for the matches that stayed with you.</p></div>
       <div class="footer-links"><a href="{{ url_for('site.about') }}">About & data</a><a href="{{ url_for('site.privacy') }}">Privacy</a><a href="{{ url_for('site.matches') }}">Explore matches</a><a href="{{ url_for('site.players') }}">Explore players</a></div>
-      <p class="data-credit">Match data: Jeff Sackmann / Tennis Abstract, <a href="https://github.com/Aneeshers/tennis-sackmann-archive" target="_blank" rel="noopener noreferrer">CC BY-NC-SA 4.0 archive</a>. Non-commercial project. Data coverage is explained on the <a href="{{ url_for('site.about') }}">About page</a>.</p>
+      <p class="data-credit">Tennis data sources, update schedules and coverage are explained on the <a href="{{ url_for('site.about') }}">About page</a>.</p>
     </div>
   </footer>
 </body>
