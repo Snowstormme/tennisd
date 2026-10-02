@@ -41,7 +41,7 @@ def main():
         else:
             match.status = "verifying"
             match.winner_side = None
-            match.outcome = "pending_verification"
+            match.outcome = "unverified"
             match.finished_at = None
     db.session.commit()
     print(f"Removed {removed} unverified archive rows; preserved {preserved} verified finals.")

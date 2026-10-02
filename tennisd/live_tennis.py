@@ -357,7 +357,7 @@ def sync_matches(status, session=requests, now=None):
             verified = status == "live" and winner and score_is_final(match) and score_aged
             match.status = "finished" if verified else "verifying" if status == "live" else "cancelled"
             match.finished_at = now if verified else None
-            match.outcome = "completed" if verified else "pending_verification" if status == "live" else "cancelled"
+            match.outcome = "completed" if verified else "unverified" if status == "live" else "cancelled"
             match.winner_side = winner if verified else None
             match.synced_at = now
             if verified:
