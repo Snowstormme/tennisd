@@ -3,7 +3,7 @@
 {% block title %}Matches{% endblock %}
 {% block meta_description %}Explore ATP and WTA tennis matches, live scores, upcoming fixtures and historical results in the Tennisd match archive.{% endblock %}
 {% block content %}
-<div class="page-banner"><div class="container"><p class="eyebrow">THE MATCH ARCHIVE</p><h1>Find your next<br><em>great match.</em></h1><p>Explore real results from ATP and WTA history. The date shown is the tournament week, since the archive does not provide exact match dates.</p></div></div>
+<div class="page-banner"><div class="container"><p class="eyebrow">THE MATCH ARCHIVE</p><h1>Find your next<br><em>great match.</em></h1><p>Explore permanent ATP and WTA results collected from the Tennisd live feed, with verified final scores and match dates.</p></div></div>
 <div class="container match-view-switcher"><nav class="directory-tabs match-view-tabs" aria-label="Match sections">
   <a href="{{ url_for('site.matches') }}"{% if view == 'archive' %} aria-current="page"{% endif %}>All matches</a>
   <a href="{{ url_for('site.matches', view='live') }}"{% if view == 'live' %} aria-current="page"{% endif %}>Live</a>

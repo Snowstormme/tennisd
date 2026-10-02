@@ -19,7 +19,7 @@
     <span class="showcase-event">{{ match.tournament }}</span>
     <span class="search-showcase-players"><strong>{{ match.winner.name }}</strong><small>vs</small><strong>{{ match.loser.name }}</strong></span>
     <span class="showcase-score">{{ match.score }}</span>
-    <span class="showcase-facts"><span><small>TOURNAMENT WEEK</small>{{ match.week_start.strftime('%d %b %Y') }}</span><span><small>LOCATION</small>{{ match_location(match) }}</span><span><small>ROUND</small>{{ match.round }}</span></span>
+    <span class="showcase-facts"><span><small>{{ 'MATCH DATE' if match.provider == 'livetennisapi' else 'TOURNAMENT WEEK' }}</small>{{ match.week_start.strftime('%d %b %Y') }}</span><span><small>LOCATION</small>{{ match_location(match) }}</span><span><small>ROUND</small>{{ match.round }}</span></span>
   </span>
   {{ player_portrait(match.loser, 'right') }}
 </a>
@@ -38,7 +38,7 @@
     <span class="archive-match-event">{{ match.tournament }}</span>
     <span class="archive-match-players"><strong>{{ match.winner.name }}</strong><small>vs</small><strong>{{ match.loser.name }}</strong></span>
     <span class="archive-match-score">{{ match.score }}</span>
-    <span class="archive-match-facts"><span><small>TOURNAMENT WEEK</small>{{ match.week_start.strftime('%d %b %Y') }}</span><span><small>LOCATION</small>{{ match_location(match) }}</span><span><small>ROUND</small>{{ match.round }}</span></span>
+    <span class="archive-match-facts"><span><small>{{ 'MATCH DATE' if match.provider == 'livetennisapi' else 'TOURNAMENT WEEK' }}</small>{{ match.week_start.strftime('%d %b %Y') }}</span><span><small>LOCATION</small>{{ match_location(match) }}</span><span><small>ROUND</small>{{ match.round }}</span></span>
   </span>
   <span class="match-portrait match-portrait-right">
     <img src="{{ url_for('site.player_photo', player_id=match.loser.id, v=2) }}" alt="{{ match.loser.name }}" loading="lazy" referrerpolicy="no-referrer">
