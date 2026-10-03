@@ -81,7 +81,6 @@ def create_app(test_config=None):
         MAIL_DELIVERY=None,
         ADMIN_EMAIL=os.environ.get("ADMIN_EMAIL", "").strip().lower(),
         CONTACT_EMAIL=os.environ.get("CONTACT_EMAIL", "").strip().lower(),
-        SEED_LEGACY_CATALOG=os.environ.get("SEED_LEGACY_CATALOG", "false") == "true",
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
         REMEMBER_COOKIE_SECURE=production,
@@ -207,21 +206,7 @@ def create_app(test_config=None):
     def init_db():
         """Create tables using a database owner connection."""
         db.create_all()
-        if app.config["SEED_LEGACY_CATALOG"]:
-            from .importer import seed_catalog
-            seed_catalog()
         click.echo("Database initialized.")
-
-    @app.cli.command("upgrade-catalog")
-    def upgrade_catalog_command():
-        """Populate normalized tournaments, editions, rankings and statistics."""
-        from .catalog_upgrade import upgrade_catalog
-
-        result = upgrade_catalog()
-        click.echo(
-            "Normalized {matches} matches into {tournaments} tournaments and "
-            "{editions} editions ({updated} links updated).".format(**result)
-        )
 
     if app.config["AUTO_CREATE_DB"]:
         with app.app_context():

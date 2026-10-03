@@ -139,6 +139,10 @@ class TennisdFlows(unittest.TestCase):
         news_status = self.client.get("/api/news-status?source=wta")
         self.assertEqual(news_status.json["total"], 0)
         self.assertEqual(news_status.headers["Cache-Control"], "no-store")
+        about = self.client.get("/about")
+        self.assertIn(b"Tennis API on RapidAPI", about.data)
+        self.assertNotIn(b"Jeff", about.data)
+        self.assertNotIn(b"Sackmann", about.data)
 
     def test_match_sections_keep_archive_default_and_show_live_player_photos(self):
         with self.app.app_context():

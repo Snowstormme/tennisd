@@ -9,10 +9,10 @@ Verified handoff commit: `4e5206d` (`Compact search results and showcase matches
 ## Copy this prompt into Antigravity AI
 
 ```text
-You are continuing the existing Tennisd project. Work in the existing repository and preserve its architecture, data attribution, security controls, visual language, and deployed behavior.
+You are continuing the existing Tennisd project. Work in the existing repository and preserve its architecture, provider provenance, security controls, visual language, and deployed behavior.
 
 Before changing anything:
-1. Read ANTIGRAVITY_HANDOFF.md, README.md, SECURITY.md, DATA_LICENSE.md, DESIGN.md and .env.example.
+1. Read ANTIGRAVITY_HANDOFF.md, README.md, SECURITY.md, DESIGN.md and .env.example.
 2. Inspect git status and recent commits. Do not overwrite uncommitted work.
 3. Read tennisd/__init__.py, tennisd/models.py, tennisd/routes.py and the files directly related to the requested feature.
 4. Run the existing test suite with `.venv/bin/python -m pytest -q` (or `python -m unittest discover -s tests -v` in a clean environment).
@@ -23,7 +23,7 @@ Implementation rules:
 - Keep SQLite usable for clean local development and PostgreSQL/Neon for production.
 - Production schema changes must be explicit, rerunnable migrations/scripts. The Vercel web process must never create schema.
 - Preserve CSRF, rate limits, password hashing, email verification, host validation, CSP/security headers, privacy boundaries, and the restricted `rallylog_web` database role.
-- Preserve source attribution and non-commercial constraints for historical match data.
+- Preserve provider provenance for imported match data and keep API keys server-side.
 - Live matches must transition upcoming → live → finished/cancelled without deleting their provider record.
 - Rankings are latest positions present in the loaded catalog, not guaranteed official live rankings. Label them honestly.
 - News may show publisher metadata, images where permitted, and extracted previews. Do not republish copyrighted full articles without a license.
@@ -52,7 +52,7 @@ The intended long-term product is a global tennis database and community platfor
 | Production database | Neon PostgreSQL over TLS |
 | Production web host | Vercel at `https://tennisd.vercel.app` |
 | Live feed | Live Tennis API, fetched only by GitHub Actions |
-| Historical data | Jeff Sackmann/Tennis Abstract archive, CC BY-NC-SA 4.0 |
+| Historical data | Tennis API on RapidAPI, fetched only by GitHub Actions |
 | News discovery | Google News RSS pointing to ATP, WTA, ITF, Wimbledon, BBC, ESPN, Sky and Tennis365 |
 | Transactional email | Resend HTTPS API |
 | CI/operations | GitHub Actions |
@@ -69,16 +69,15 @@ render.yaml                     alternative Render deployment
 .env.example                    environment variable names only
 README.md                       main setup/deployment documentation
 SECURITY.md                     vulnerability reporting and security notes
-DATA_LICENSE.md                 data attribution and license rules
 DESIGN.md                       visual/product direction
 
 tennisd/__init__.py             app factory, config, security headers, CLI commands
 tennisd/models.py               all SQLAlchemy models
 tennisd/routes.py               pages, APIs and state-changing form handlers
 tennisd/security.py             email, tokens, abuse limits and auth helpers
-tennisd/importer.py             historical ATP/WTA import and starter seed
+tennisd/importer.py             local demo seed for tests and development
 tennisd/live_tennis.py          live/upcoming API normalization and persistence
-tennisd/catalog_upgrade.py      normalized tennis catalog backfill
+tennisd/tennis_api.py           free Tennis API historical-result sync
 tennisd/stats.py                player/profile/community statistics
 tennisd/tournament_catalog.py   tournament profiles, tier mapping, slugs
 tennisd/news_feed.py            RSS aggregation and article preview extraction
@@ -89,7 +88,6 @@ public/static/style.css         full responsive design system
 public/static/app.js            browser behaviors/live refresh
 public/static/images/           checked-in static fallback images
 
-data/                           starter/full compressed catalog assets
 scripts/                        SQL migrations and operational scripts
 tests/                          app, live-data and security tests
 .github/workflows/              CI, imports, migrations, sync and backup jobs
@@ -184,21 +182,17 @@ Important invariants:
 
 ### Historical results
 
-`flask --app wsgi import-tennis --from-year 2010 --to-year 2026`
+Historical ATP and WTA results are imported through Tennis API on RapidAPI.
 
-- Downloads/imports ATP and WTA CSV records from the attributed archive.
-- Existing match IDs are skipped, so reruns are intended to be safe.
-- Tournament dates represent tournament-week start, not exact match dates.
-- Data is currently non-commercial under CC BY-NC-SA 4.0. Read `DATA_LICENSE.md` before monetization or redistribution decisions.
-
-### Normalized catalog
-
-The production expansion uses:
-
-1. `scripts/expand_tennis_database.sql`
-2. `scripts/backfill_tennis_database.sql`
-
-These populate tournament editions, rankings, statistics, participants and sets from existing catalog data. The workflow is `.github/workflows/expand-tennis-database.yml`.
+- Workflow: `.github/workflows/sync-tennis-api-history.yml`.
+- Script: `scripts/sync_tennis_api.py`.
+- Importer: `tennisd/tennis_api.py`.
+- Cursor table: `ingestion_cursor`.
+- GitHub secret: `RAPIDAPI_TENNIS_KEY`.
+- The free plan is budgeted at 48 requests per run.
+- The importer refreshes recent finals, then backfills 7-day historical chunks down to 2010.
+- It writes tournaments, editions, matches, participants and provider IDs as part of the import.
+- Live-feed finished matches are deduplicated by provider ID and by same tour/date/tournament/player pair.
 
 ### Live/upcoming matches
 
@@ -350,9 +344,9 @@ Rollback: use Vercel's prior successful deployment or revert the faulty Git comm
 ## 11. GitHub workflows
 
 - `tests.yml` — tests and dependency audit on push/PR.
-- `init-database.yml` — creates initial schema/catalog and restricted role.
-- `expand-tennis-database.yml` — normalized schema and backfill.
-- `import-history.yml` — historical ATP/WTA import.
+- `init-database.yml` — creates initial schema and restricted role.
+- `add-tennis-api-sync.yml` — adds the durable historical import cursor table.
+- `sync-tennis-api-history.yml` — daily historical-result sync through Tennis API.
 - `add-live-matches-table.yml` — live-match migration.
 - `add-tournament-subscriptions.yml` — subscription migration.
 - `sync-live-matches.yml` — live/upcoming sync every 15 minutes.
@@ -394,10 +388,10 @@ Current UI expectations:
 
 ## 14. Known limitations and technical debt
 
-1. There is no licensed comprehensive free official ATP/WTA/ITF historical + live API covering every desired field. Current sources must remain clearly attributed.
+1. There is no single free official ATP/WTA/ITF API covering every desired field. Current provider limits and provenance must remain visible.
 2. The live free API request budget prevents high-frequency point-by-point coverage.
-3. Live finished rows are retained, but a complete reconciliation into the historical `Match` table still needs a reliable licensed completed-results source and player identity matching.
-4. Ranking snapshots are catalog-derived rather than a complete official weekly ranking archive.
+3. Live finished rows are retained and copied into `Match`, but player identity matching still needs continued hardening as the archive grows.
+4. Ranking snapshots are imported only when a source provides them or when tests seed them; there is no complete official weekly ranking archive.
 5. Prize money is sparse and may be outdated because it depends on available Wikidata values.
 6. Player photo coverage depends on freely hosted/licensed sources; placeholders are correct when none exists.
 7. News extraction is fragile because publisher pages and Google News resolution can change. Full copyrighted republication is not permitted by default.

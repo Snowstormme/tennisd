@@ -1,22 +1,53 @@
-"""Import match records from the non-commercial Sackmann dataset archive."""
+"""Small local fixtures used only for development and automated tests."""
 
-import csv
-import gzip
-import json
-from datetime import date as date_type, datetime
-from io import StringIO
-from pathlib import Path
+from datetime import datetime
 
-import requests
-from sqlalchemy import insert, select
+from sqlalchemy import select
 
 from . import db
 from .models import Match, Player
 
-ARCHIVE = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive/main"
-SAMPLE_FILE = Path(__file__).resolve().parent.parent / "data" / "sample_matches.json"
-SAMPLE_PLAYERS_FILE = Path(__file__).resolve().parent.parent / "data" / "sample_players.json"
-CATALOG_FILE = Path(__file__).resolve().parent.parent / "data" / "catalog_2023_2026.json.gz"
+
+DEMO_PLAYERS = {
+    "ATP": {
+        "100644": {"ioc": "GER", "hand": "R", "height": "198", "dob": "19970420", "wikidata_id": "Q13990552"},
+        "104925": {"ioc": "SRB", "hand": "R", "height": "188", "dob": "19870522", "wikidata_id": "Q5812"},
+        "106421": {"ioc": "RUS", "hand": "R", "height": "198", "dob": "19960211", "wikidata_id": "Q21622022"},
+        "126203": {"ioc": "USA", "hand": "R", "height": "196", "dob": "19971028", "wikidata_id": "Q17660516"},
+        "206173": {"ioc": "ITA", "hand": "R", "height": "191", "dob": "20010816", "wikidata_id": "Q54812588"},
+        "207989": {"ioc": "ESP", "hand": "R", "height": "183", "dob": "20030505", "wikidata_id": "Q85518537"},
+    },
+    "WTA": {
+        "201619": {"ioc": "USA", "hand": "R", "height": "178", "dob": "19950217", "wikidata_id": "Q34403"},
+        "202468": {"ioc": "USA", "hand": "R", "height": "170", "dob": "19940224", "wikidata_id": "Q24159"},
+        "206252": {"ioc": "CZE", "hand": "R", "height": "178", "dob": "19951218", "wikidata_id": "Q23959634"},
+        "214981": {"ioc": "USA", "hand": "R", "height": "175", "dob": "20040313", "wikidata_id": "Q66793148"},
+        "216347": {"ioc": "POL", "hand": "R", "height": "176", "dob": "20010531", "wikidata_id": "Q56488014"},
+        "221815": {"ioc": "CHN", "hand": "R", "height": "178", "dob": "20021008", "wikidata_id": "Q97647457"},
+        "223341": {"ioc": "USA", "hand": "R", "height": "180", "dob": "20010831", "wikidata_id": "Q28658562"},
+        "225805": {"ioc": "BLR", "hand": "R", "height": "182", "dob": "19980505", "wikidata_id": "Q24059291"},
+    },
+}
+
+
+DEMO_MATCHES = [
+    ("ATP", "2024-580", "Australian Open", "Hard", "G", "20240115", "226", "206173", "Jannik Sinner", "106421", "Daniil Medvedev", "3-6 3-6 6-4 6-4 6-3", "F", "5", "224", "4", "3"),
+    ("ATP", "2024-520", "Roland Garros", "Clay", "G", "20240527", "401", "207989", "Carlos Alcaraz", "100644", "Alexander Zverev", "6-3 2-6 5-7 6-1 6-2", "F", "5", "", "3", "4"),
+    ("ATP", "2024-540", "Wimbledon", "Grass", "G", "20240701", "226", "207989", "Carlos Alcaraz", "104925", "Novak Djokovic", "6-2 6-2 7-6(4)", "F", "5", "147", "3", "2"),
+    ("ATP", "2024-560", "US Open", "Hard", "G", "20240826", "226", "206173", "Jannik Sinner", "126203", "Taylor Fritz", "6-3 6-4 7-5", "F", "5", "136", "1", "12"),
+    ("ATP", "2025-580", "Australian Open", "Hard", "G", "20250113", "226", "206173", "Jannik Sinner", "100644", "Alexander Zverev", "6-3 7-6(4) 6-3", "F", "5", "162", "1", "2"),
+    ("ATP", "2025-520", "Roland Garros", "Clay", "G", "20250526", "401", "207989", "Carlos Alcaraz", "206173", "Jannik Sinner", "4-6 6-7(4) 6-4 7-6(3) 7-6(2)", "F", "5", "", "2", "1"),
+    ("ATP", "2025-540", "Wimbledon", "Grass", "G", "20250630", "226", "206173", "Jannik Sinner", "207989", "Carlos Alcaraz", "4-6 6-4 6-4 6-4", "F", "5", "", "1", "2"),
+    ("ATP", "2025-560", "US Open", "Hard", "G", "20250825", "226", "207989", "Carlos Alcaraz", "206173", "Jannik Sinner", "6-2 3-6 6-1 6-4", "F", "5", "", "2", "1"),
+    ("WTA", "2024-580", "Australian Open", "Hard", "G", "20240115", "226", "225805", "Aryna Sabalenka", "221815", "Qinwen Zheng", "6-3 6-2", "F", "3", "76", "2", "15"),
+    ("WTA", "2024-520", "Roland Garros", "Clay", "G", "20240527", "226", "216347", "Iga Swiatek", "230234", "Jasmine Paolini", "6-2 6-1", "F", "3", "68", "1", "12"),
+    ("WTA", "2024-540", "Wimbledon", "Grass", "G", "20240701", "226", "206252", "Barbora Krejcikova", "230234", "Jasmine Paolini", "6-2 2-6 6-4", "F", "3", "116", "32", "7"),
+    ("WTA", "2024-560", "US Open", "Hard", "G", "20240826", "226", "225805", "Aryna Sabalenka", "202468", "Jessica Pegula", "7-5 7-5", "F", "3", "113", "2", "6"),
+    ("WTA", "2025-580", "Australian Open", "Hard", "G", "20250113", "226", "201619", "Madison Keys", "225805", "Aryna Sabalenka", "6-3 2-6 7-5", "F", "3", "122", "14", "1"),
+    ("WTA", "2025-520", "Roland Garros", "Clay", "G", "20250526", "226", "214981", "Coco Gauff", "225805", "Aryna Sabalenka", "6-7(5) 6-2 6-4", "F", "3", "", "2", "1"),
+    ("WTA", "2025-540", "Wimbledon", "Grass", "G", "20250630", "226", "216347", "Iga Swiatek", "223341", "Amanda Anisimova", "6-0 6-0", "F", "3", "", "4", "13"),
+    ("WTA", "2025-560", "US Open", "Hard", "G", "20250825", "226", "225805", "Aryna Sabalenka", "223341", "Amanda Anisimova", "6-3 7-6(3)", "F", "3", "", "1", "8"),
+]
 
 
 def number(value):
@@ -31,12 +62,6 @@ def date(value):
         return datetime.strptime(value, "%Y%m%d").date() if value else None
     except ValueError:
         return None
-
-
-def csv_from_url(url):
-    response = requests.get(url, timeout=30, headers={"User-Agent": "Tennisd/0.1 (tennis diary)"})
-    response.raise_for_status()
-    return list(csv.DictReader(StringIO(response.content.decode("utf-8-sig"))))
 
 
 def player_from_row(tour, source_id, name, row, bio=None, cache=None):
@@ -111,7 +136,7 @@ def import_rows(tour, rows, bios=None):
         match = Match(
             id=match_id,
             tour=tour,
-            tournament="US Open" if row.get("tourney_name") == "Us Open" else row.get("tourney_name", "Unknown"),
+            tournament=row.get("tourney_name", "Unknown"),
             level=row.get("tourney_level") or "?",
             surface=row.get("surface") or "Unknown",
             week_start=week_start,
@@ -145,45 +170,59 @@ def import_rows(tour, rows, bios=None):
     return added
 
 
+def demo_row(item):
+    (
+        tour, event_id, event, surface, level, event_date, match_num,
+        winner_id, winner_name, loser_id, loser_name, score, round_name,
+        best_of, minutes, winner_rank, loser_rank,
+    ) = item
+    winner = DEMO_PLAYERS.get(tour, {}).get(winner_id, {})
+    loser = DEMO_PLAYERS.get(tour, {}).get(loser_id, {})
+    return {
+        "tour": tour,
+        "tourney_id": event_id,
+        "tourney_name": event,
+        "surface": surface,
+        "tourney_level": level,
+        "tourney_date": event_date,
+        "match_num": match_num,
+        "winner_id": winner_id,
+        "winner_name": winner_name,
+        "winner_ioc": winner.get("ioc"),
+        "winner_hand": winner.get("hand"),
+        "winner_ht": winner.get("height"),
+        "loser_id": loser_id,
+        "loser_name": loser_name,
+        "loser_ioc": loser.get("ioc"),
+        "loser_hand": loser.get("hand"),
+        "loser_ht": loser.get("height"),
+        "score": score,
+        "best_of": best_of,
+        "round": round_name,
+        "minutes": minutes,
+        "winner_rank": winner_rank,
+        "loser_rank": loser_rank,
+        "w_ace": "8",
+        "l_ace": "5",
+        "w_df": "3",
+        "l_df": "4",
+        "w_svpt": "96",
+        "l_svpt": "92",
+        "w_1stIn": "61",
+        "l_1stIn": "58",
+        "w_1stWon": "45",
+        "l_1stWon": "38",
+        "w_bpSaved": "5",
+        "l_bpSaved": "4",
+        "w_bpFaced": "7",
+        "l_bpFaced": "8",
+    }
+
+
 def seed_samples():
-    if db.session.scalar(select(Match.id).limit(1)) is not None or not SAMPLE_FILE.exists():
-        return
-    samples = json.loads(SAMPLE_FILE.read_text(encoding="utf-8"))
-    bios = json.loads(SAMPLE_PLAYERS_FILE.read_text(encoding="utf-8"))
-    for tour in ("ATP", "WTA"):
-        import_rows(tour, [row for row in samples if row["tour"] == tour], bios[tour])
-
-
-def seed_catalog():
-    """Load the attributed offline catalog once on a fresh production database."""
+    """Seed a compact handcrafted catalog for tests and local development."""
     if db.session.scalar(select(Match.id).limit(1)) is not None:
         return
-    if not CATALOG_FILE.exists():
-        raise RuntimeError("Bundled match catalog is missing.")
-    with gzip.open(CATALOG_FILE, "rt", encoding="utf-8") as source:
-        catalog = json.load(source)
-    for player in catalog["players"]:
-        if player.get("born_on"):
-            player["born_on"] = date_type.fromisoformat(player["born_on"])
-    for match in catalog["matches"]:
-        match["week_start"] = date_type.fromisoformat(match["week_start"])
-    db.session.execute(insert(Player), catalog["players"])
-    db.session.execute(insert(Match), catalog["matches"])
-    db.session.commit()
-
-
-def import_archive(from_year, to_year):
-    total = 0
+    rows = [demo_row(item) for item in DEMO_MATCHES]
     for tour in ("ATP", "WTA"):
-        slug = tour.lower()
-        players = csv_from_url(f"{ARCHIVE}/{slug}/{slug}_players.csv")
-        bios = {player["player_id"]: player for player in players}
-        for year in range(from_year, to_year + 1):
-            try:
-                rows = csv_from_url(f"{ARCHIVE}/{slug}/{slug}_matches_{year}.csv")
-            except requests.HTTPError as error:
-                if error.response.status_code == 404:
-                    continue
-                raise
-            total += import_rows(tour, rows, bios)
-    return total
+        import_rows(tour, [row for row in rows if row["tour"] == tour], DEMO_PLAYERS[tour])
