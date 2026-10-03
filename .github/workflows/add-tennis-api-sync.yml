@@ -1,0 +1,21 @@
+name: Add Tennis API sync state
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Add durable import cursor
+        env:
+          DATABASE_OWNER_URL: ${{ secrets.DATABASE_OWNER_URL }}
+        run: |
+          test -n "$DATABASE_OWNER_URL"
+          psql "$DATABASE_OWNER_URL" -v ON_ERROR_STOP=1 -f scripts/add_tennis_api_sync.sql

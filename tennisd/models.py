@@ -249,6 +249,15 @@ class IngestionRun(db.Model):
     error = db.Column(db.String(1000))
 
 
+class IngestionCursor(db.Model):
+    """Small durable checkpoint for quota-limited provider imports."""
+
+    provider = db.Column(db.String(32), primary_key=True)
+    feed = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.String(500), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
 class LiveMatch(db.Model):
     """Current Grand Slam, 1000 or 500 fixture mirrored from the live provider."""
 

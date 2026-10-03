@@ -13,7 +13,7 @@ pip install -r requirements.txt
 flask --app wsgi run --debug
 ```
 
-Open <http://127.0.0.1:5000>. Test runs receive a small fixed fixture catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled Live Tennis API feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary.
+Open <http://127.0.0.1:5000>. Test runs receive a small fixed fixture catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled Live Tennis API feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary. Historical ATP and WTA results can be backfilled gradually through Tennis API on RapidAPI.
 
 ## What is here
 
@@ -30,7 +30,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small fixed fixture catalog; p
 
 ## Data honesty
 
-- The dataset's `tourney_date` is the **start of the tournament week**, not an exact match date. The interface labels it accordingly.
+- Live Tennis API rows use the scheduled match start when available. Tennis API historical rows use the provider's recorded result date; for old lower-level rows, the provider can use the tournament start date when no exact match day is available. Development fixtures still use the tournament week.
 - Win rates, titles, head-to-head and rankings are calculated from **loaded matches only**. Rankings shown are from the player's latest imported match, not current rankings.
 - Prize money appears only when [Wikidata](https://www.wikidata.org/) lists a USD amount for that player's linked entity. The source and date are visible. Missing data is shown as unavailable. A displayed amount may be out of date.
 - The discontinued development fixture catalog in `data/` remains CC BY-NC-SA 4.0 and is never loaded into a new production database. See [DATA_LICENSE.md](DATA_LICENSE.md).
@@ -53,7 +53,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small fixed fixture catalog; p
 Tennisd can run as one Flask function on Vercel Hobby with automatic HTTPS and registration initially disabled. Use a separate [Neon PostgreSQL](https://neon.com/) database; serverless filesystems are ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
-2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, loads 19,903 ATP/WTA matches, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
+2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
 3. Build a pooled TLS URL using `rallylog_web` and the generated application password, then set it as Vercel's `DATABASE_URL`.
 4. Create a Resend account and verify a sending domain. Tennisd uses its HTTPS API. Set `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` and `CONTACT_EMAIL` in Vercel.
 5. Import the Git repository into a Vercel Hobby project. Set `APP_ENV=production`, `REGISTRATION_ENABLED=false`, a random 64-character `SECRET_KEY`, and `DATABASE_URL`. Vercel detects `wsgi.py` as the Flask entry point and supplies its hostname to the app.
@@ -68,6 +68,17 @@ Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and 
 Tennisd can show decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Add `THE_ODDS_API_KEY` to GitHub, run **Add live odds table** once, then enable **Sync live tennis odds**. The workflow runs every 90 minutes and rotates through one active tennis competition per run. That is 16 charged requests per day and at most 496 in a 31-day month, inside the current 500-credit free tier. With several simultaneous competitions, each individual competition updates less often than 90 minutes. The interface identifies the bookmaker, update time and that the values are informational market estimates.
 
 The Jeff Sackmann production importer has been disabled. `scripts/audit_legacy_matches.py` reports exactly how many old matches, reviews, comments and watchlist entries would be affected before removal. It refuses to delete linked community data unless the explicit destructive flag is supplied.
+
+### Free historical results
+
+Tennisd can extend the permanent match database through [Tennis API on RapidAPI](https://docs.tennis-api.com/getting-started). The free plan currently allows 50 requests per day; the workflow uses 48 by default so the account has a small safety buffer. It imports ATP and WTA singles results from newest to oldest, keeps a durable cursor in `ingestion_cursor`, and deduplicates against provider IDs plus already preserved live results.
+
+1. Subscribe to the free Tennis API plan in RapidAPI and add the key to GitHub Actions as `RAPIDAPI_TENNIS_KEY`.
+2. Keep `TENNISD_SYNC_DATABASE_URL` pointed at the limited `rallylog_web` pooled TLS database URL.
+3. Temporarily add the database owner URL as `DATABASE_OWNER_URL`, run **Add Tennis API sync state**, then remove the owner secret.
+4. Enable **Sync Tennis API history**. It refreshes the previous two days of finals and spends the remaining requests on 7-day historical chunks down to 2010.
+
+This provider is a replacement path for the old bundled historical catalog. Confirm RapidAPI/provider storage and commercial terms before using the imported data in a monetized public release.
 
 This is near-live on the free plan rather than point-by-point streaming. The API key is used only by GitHub Actions and must not be placed in Vercel or sent to the browser.
 
@@ -94,6 +105,7 @@ tennisd/
   tennisd/__init__.py     application setup and import command
   tennisd/models.py       database tables
   tennisd/importer.py     historical match import
+  tennisd/tennis_api.py   free Tennis API historical-result sync
   tennisd/stats.py        transparent statistics
   tennisd/prize_money.py  optional Wikidata figure
   tennisd/routes.py       pages and forms

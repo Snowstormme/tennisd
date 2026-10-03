@@ -1,0 +1,36 @@
+name: Sync Tennis API history
+
+on:
+  schedule:
+    - cron: '20 1 * * *'
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: Daily request budget (maximum 50)
+        required: true
+        default: '48'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennis-api-history-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Refresh recent finals and continue historical backfill
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          RAPIDAPI_TENNIS_KEY: ${{ secrets.RAPIDAPI_TENNIS_KEY }}
+          TENNIS_API_DAILY_REQUESTS: ${{ inputs.max_requests || '48' }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/sync_tennis_api.py
