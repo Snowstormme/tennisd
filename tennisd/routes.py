@@ -460,9 +460,9 @@ def sitemap_matches(page):
 @site.get("/")
 def home():
     recent_matches = db.session.scalars(
-        select(Match).where(Match.level.in_(("G", "M", "PM", "P", "A", "I")), Match.round == "F")
+        select(Match).where(Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")))
         .options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start.desc(), Match.tour).limit(8)
+        .order_by(Match.week_start.desc(), Match.completed_at.desc(), Match.tour).limit(8)
     ).all()
     recent_reviews = db.session.scalars(
         select(Review).where(Review.is_public.is_(True))

@@ -197,6 +197,39 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(fallback.mimetype, "image/svg+xml")
         self.assertIn(b"AU", fallback.data)
 
+    def test_home_shows_recent_non_final_archive_matches(self):
+        with self.app.app_context():
+            db.session.query(Review).delete()
+            db.session.query(Match).delete()
+            first = Player(id="home-first", tour="ATP", name="Home Winner")
+            second = Player(id="home-second", tour="ATP", name="Home Runner")
+            db.session.add_all((first, second))
+            db.session.flush()
+            db.session.add(Match(
+                id="home-r16-match",
+                provider="livetennisapi",
+                provider_id="livetennisapi:home-r16",
+                status="finished",
+                tour="ATP",
+                tournament="Paris Masters",
+                level="M",
+                surface="Hard",
+                week_start=datetime(2026, 10, 2, tzinfo=timezone.utc).date(),
+                scheduled_at=datetime(2026, 10, 2, 12, tzinfo=timezone.utc),
+                completed_at=datetime(2026, 10, 2, 14, tzinfo=timezone.utc),
+                round="R16",
+                winner=first,
+                loser=second,
+                score="6-4 6-4",
+                best_of=3,
+            ))
+            db.session.commit()
+
+        home = self.client.get("/")
+        self.assertIn(b"data-featured-carousel", home.data)
+        self.assertIn(b"Paris Masters", home.data)
+        self.assertIn(b"Home Winner", home.data)
+
     def test_rankings_render_loaded_rows(self):
         with self.app.app_context():
             player = db.session.scalar(select(Player).limit(1))
