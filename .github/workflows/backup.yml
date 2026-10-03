@@ -29,7 +29,7 @@ jobs:
           pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file=/tmp/rallylog.dump
           age -r "$BACKUP_RECIPIENT" -o rallylog.dump.age /tmp/rallylog.dump
           test -s rallylog.dump.age
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rallylog-backup-${{ github.run_id }}
           path: rallylog.dump.age
