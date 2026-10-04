@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 
 import requests
 from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload, selectinload
 
 from . import db
 from .models import (
@@ -100,24 +101,16 @@ def player_id(tour, external_id, name):
     return f"ta-{digest}"
 
 
-def ensure_player(tour, raw):
+def ensure_player(tour, raw, cache=None):
     external_id = str(raw.get("id") or "").strip()
     name = str(raw.get("name") or "").strip()
     if not name:
         return None
-    player = None
-    if external_id:
-        player = db.session.scalar(
-            select(Player).join(PlayerExternalId).where(
-                PlayerExternalId.provider == PROVIDER,
-                PlayerExternalId.external_id == external_id,
-            )
-        )
-    if player is None:
-        candidates = db.session.scalars(
-            select(Player).where(Player.tour == tour, func.lower(Player.name) == name.casefold())
-        ).all()
-        player = next((item for item in candidates if normalized_name(item.name) == normalized_name(name)), None)
+    if cache is None:
+        cache = {"external": {}, "names": {}, "mapped": set()}
+    name_key = normalized_name(name)
+    player = cache["external"].get(external_id) if external_id else None
+    player = player or cache["names"].get(name_key)
     if player is None:
         player = Player(id=player_id(tour, external_id, name), tour=tour, name=name)
         db.session.add(player)
@@ -125,20 +118,19 @@ def ensure_player(tour, raw):
     if country and not player.country:
         player.country = country[:3]
     if external_id:
-        mapping = db.session.scalar(select(PlayerExternalId).where(
-            PlayerExternalId.provider == PROVIDER,
-            PlayerExternalId.external_id == external_id,
-        ))
-        if mapping is None:
+        if external_id not in cache["mapped"]:
             db.session.add(PlayerExternalId(player=player, provider=PROVIDER, external_id=external_id))
+            cache["mapped"].add(external_id)
+        cache["external"][external_id] = player
+    cache["names"][name_key] = player
     return player
 
 
-def ensure_edition(tour, tournament_name, tournament_data, played_on, level, surface):
+def ensure_edition(tour, tournament_name, tournament_data, played_on, level, surface, cache=None):
     slug = tournament_slug(tournament_name)
-    tournament = db.session.scalar(select(Tournament).where(
-        Tournament.tour == tour, Tournament.slug == slug,
-    ))
+    if cache is None:
+        cache = {"tournaments": {}, "editions": {}}
+    tournament = cache["tournaments"].get(slug)
     if tournament is None:
         profile = tournament_profile(tournament_name)
         country = str(tournament_data.get("countryAcr") or "").upper()[:3] or None
@@ -148,10 +140,9 @@ def ensure_edition(tour, tournament_name, tournament_data, played_on, level, sur
         )
         db.session.add(tournament)
         db.session.flush()
-    edition = db.session.scalar(select(TournamentEdition).where(
-        TournamentEdition.tournament_id == tournament.id,
-        TournamentEdition.season == played_on.year,
-    ))
+        cache["tournaments"][slug] = tournament
+    edition_key = (tournament.id, played_on.year)
+    edition = cache["editions"].get(edition_key)
     if edition is None:
         starts = parse_datetime(tournament_data.get("date"))
         edition = TournamentEdition(
@@ -160,6 +151,7 @@ def ensure_edition(tour, tournament_name, tournament_data, played_on, level, sur
         )
         db.session.add(edition)
         db.session.flush()
+        cache["editions"][edition_key] = edition
     return edition
 
 
@@ -186,7 +178,9 @@ def provider_match_id(tour, value):
     return f"{PROVIDER}:{tour.lower()}:{digest}"
 
 
-def import_result(tour, row):
+def import_result(tour, row, cache=None):
+    if cache is None:
+        cache = page_cache(tour, [row])
     provider_value = str(row.get("matchId") or row.get("id") or "").strip()
     score = str(row.get("result") or "").strip()
     played_at = parse_datetime(row.get("date"))
@@ -199,20 +193,20 @@ def import_result(tour, row):
     if not winner_data.get("name") or not loser_data.get("name") or "/" in winner_data["name"] or "/" in loser_data["name"]:
         return False
     provider_id = provider_match_id(tour, provider_value)
-    if db.session.scalar(select(Match.id).where(Match.provider_id == provider_id)):
+    if provider_id in cache.get("provider_ids", set()):
         return False
 
-    winner = ensure_player(tour, winner_data)
-    loser = ensure_player(tour, loser_data)
+    winner = ensure_player(tour, winner_data, cache.get("players"))
+    loser = ensure_player(tour, loser_data, cache.get("players"))
     db.session.flush()
     played_on = played_at.date()
-    existing = equivalent_match(tour, played_on, tournament_name, winner, loser)
-    if existing:
+    equivalent_key = (played_on, tournament_name.casefold(), frozenset((normalized_name(winner.name), normalized_name(loser.name))))
+    if equivalent_key in cache.get("equivalent", set()):
         return False
 
     surface = surface_from(tournament_data)
     level = level_from(tour, tournament_data)
-    edition = ensure_edition(tour, tournament_name, tournament_data, played_on, level, surface)
+    edition = ensure_edition(tour, tournament_name, tournament_data, played_on, level, surface, cache.get("events"))
     match = Match(
         id=f"ta-{tour.lower()}-{provider_value}"[:100],
         provider=PROVIDER,
@@ -238,6 +232,8 @@ def import_result(tour, row):
         MatchParticipant(match_id=match.id, player_id=winner.id, side=1, is_winner=True),
         MatchParticipant(match_id=match.id, player_id=loser.id, side=2, is_winner=False),
     ))
+    cache.get("provider_ids", set()).add(provider_id)
+    cache.get("equivalent", set()).add(equivalent_key)
     return True
 
 
@@ -287,11 +283,85 @@ def cursor_for(tour, yesterday):
     return cursor, state
 
 
+def page_cache(tour, rows):
+    external_ids = {
+        str(player.get("id"))
+        for row in rows for player in (row.get("player1") or {}, row.get("player2") or {})
+        if player.get("id") not in (None, "")
+    }
+    names = {
+        str(player.get("name") or "").casefold()
+        for row in rows for player in (row.get("player1") or {}, row.get("player2") or {})
+        if player.get("name")
+    }
+    mappings = db.session.execute(
+        select(PlayerExternalId.external_id, Player)
+        .join(Player, Player.id == PlayerExternalId.player_id)
+        .where(PlayerExternalId.provider == PROVIDER, PlayerExternalId.external_id.in_(external_ids))
+    ).all() if external_ids else []
+    players = db.session.scalars(
+        select(Player).where(Player.tour == tour, func.lower(Player.name).in_(names))
+    ).all() if names else []
+    external = {external_id: player for external_id, player in mappings}
+    by_name = {normalized_name(player.name): player for player in players}
+    by_name.update({normalized_name(player.name): player for player in external.values()})
+
+    provider_ids = {
+        provider_match_id(tour, str(row.get("matchId") or row.get("id") or "").strip())
+        for row in rows if row.get("matchId") or row.get("id")
+    }
+    existing_provider_ids = set(db.session.scalars(
+        select(Match.provider_id).where(Match.provider_id.in_(provider_ids))
+    ).all()) if provider_ids else set()
+
+    played_dates = [parse_datetime(row.get("date")) for row in rows]
+    played_dates = [value.date() for value in played_dates if value]
+    existing_matches = []
+    if played_dates:
+        existing_matches = db.session.scalars(
+            select(Match).where(
+                Match.tour == tour,
+                Match.week_start.between(min(played_dates), max(played_dates)),
+            ).options(joinedload(Match.winner), joinedload(Match.loser))
+        ).unique().all()
+    equivalent = {
+        (item.week_start, item.tournament.casefold(), frozenset((normalized_name(item.winner.name), normalized_name(item.loser.name))))
+        for item in existing_matches if item.winner and item.loser
+    }
+
+    slugs = {
+        tournament_slug(str((row.get("tournament") or {}).get("name") or ""))
+        for row in rows if (row.get("tournament") or {}).get("name")
+    }
+    tournaments = db.session.scalars(
+        select(Tournament).where(Tournament.tour == tour, Tournament.slug.in_(slugs))
+        .options(selectinload(Tournament.editions))
+    ).all() if slugs else []
+    editions = {
+        (tournament.id, edition.season): edition
+        for tournament in tournaments for edition in tournament.editions
+    }
+    return {
+        "provider_ids": existing_provider_ids,
+        "equivalent": equivalent,
+        "players": {
+            "external": external,
+            "names": by_name,
+            "mapped": set(external),
+        },
+        "events": {
+            "tournaments": {tournament.slug: tournament for tournament in tournaments},
+            "editions": editions,
+        },
+    }
+
+
 def import_page(client, tour, start, end, page):
     rows, has_next = client.results(tour, start, end, page)
+    cache = page_cache(tour, rows)
     written = 0
     for row in rows:
-        written += int(import_result(tour, row))
+        written += int(import_result(tour, row, cache))
     return len(rows), written, has_next
 
 

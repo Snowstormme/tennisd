@@ -295,9 +295,9 @@ def fetch_matches(status, session=requests):
         raise RuntimeError("LIVETENNISAPI_KEY is not configured.")
     matches = []
     offset = 0
-    # Stay within the free 100 requests/day allowance at a 15-minute schedule:
-    # 92 live runs use one page and four midnight upcoming runs use two pages.
-    max_pages = 2 if status == "upcoming" else 1
+    # One page per refresh keeps the automatic schedule inside the free
+    # 100-request daily allowance: 96 live checks plus four fixture checks.
+    max_pages = 1
     pages = 0
     while pages < max_pages:
         response = session.get(

@@ -2,7 +2,9 @@ name: Sync live top-tier matches
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    # GitHub can delay or drop scheduled jobs. Five-minute attempts plus the
+    # database throttle below still call the provider at most every 15 minutes.
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       mode:
