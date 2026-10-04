@@ -2,9 +2,9 @@ name: Sync live top-tier matches
 
 on:
   schedule:
-    # GitHub can delay or drop scheduled jobs. Five-minute attempts plus the
-    # database throttle below still call the provider at most every 15 minutes.
-    - cron: '*/5 * * * *'
+    # GitHub frequently drops high-frequency cron events. Start one runner per
+    # hour and let it perform four refreshes at reliable 15-minute intervals.
+    - cron: '7 * * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -19,7 +19,7 @@ permissions:
 
 concurrency:
   group: live-tennis-sync
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   sync:
@@ -36,4 +36,17 @@ jobs:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
           AUTO_CREATE_DB: 'false'
-        run: python scripts/sync_live_tennis.py "${{ inputs.mode || 'auto' }}"
+        shell: bash
+        run: |
+          mode="${{ inputs.mode || 'auto' }}"
+          if [[ "${{ github.event_name }}" != "schedule" ]]; then
+            python scripts/sync_live_tennis.py "$mode"
+            exit 0
+          fi
+
+          for refresh in 1 2 3 4; do
+            python scripts/sync_live_tennis.py auto
+            if [[ "$refresh" -lt 4 ]]; then
+              sleep 900
+            fi
+          done

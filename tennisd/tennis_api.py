@@ -28,7 +28,7 @@ from .tournament_catalog import tournament_profile, tournament_slug
 API_HOST = "tennis-api-atp-wta-itf.p.rapidapi.com"
 API_ROOT = f"https://{API_HOST}/tennis/v2"
 PROVIDER = "tennis_api"
-BACKFILL_FLOOR = date(2010, 1, 1)
+BACKFILL_FLOOR = date(2020, 1, 1)
 BACKFILL_DAYS = 7
 PAGE_SIZE = 500
 ROUND_NAMES = {
@@ -377,7 +377,7 @@ def import_range(client, tour, start, end, page=1):
 
 
 def sync_recent_and_history(session=requests, today=None, max_requests=48):
-    """Refresh recent finals, then spend the remaining free quota on 2010+ history."""
+    """Refresh recent finals, then spend the remaining free quota on 2020+ history."""
     today = today or datetime.now(timezone.utc).date()
     yesterday = today - timedelta(days=1)
     client = TennisApiClient(session=session, max_requests=max(2, min(int(max_requests), 50)))
