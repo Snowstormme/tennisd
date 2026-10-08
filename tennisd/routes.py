@@ -581,6 +581,11 @@ def live_match_detail(provider_id):
     if not inspect(db.engine).has_table(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
+    archived = db.session.scalar(
+        select(Match.id).where(Match.provider_id == f"livetennisapi:{provider_id}")
+    )
+    if archived:
+        return redirect(url_for("site.match_detail", match_id=archived))
     players = current_match_players([match]).get(match.provider_id, (None, None))
     odds = current_match_odds([match]).get(match.provider_id)
     return render_template("live_match.html", match=match, players=players, odds=odds)

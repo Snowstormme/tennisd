@@ -353,7 +353,14 @@ def sync_matches(status, session=requests, now=None):
             # Keep the same provider record permanently. A later reconciliation
             # can enrich its final outcome without losing its identity or score.
             winner = winner_from_score(match.score) if status == "live" else None
-            score_aged = score_is_aged(match.provider_updated_at, now)
+            # Some completed rows leave the live endpoint without ever
+            # receiving a score timestamp. Disappearance from the live feed
+            # plus a complete final score is sufficient evidence to settle
+            # those matches; otherwise they remain "verifying" forever.
+            score_aged = (
+                match.provider_updated_at is None
+                or score_is_aged(match.provider_updated_at, now)
+            )
             verified = status == "live" and winner and score_is_final(match) and score_aged
             match.status = "finished" if verified else "verifying" if status == "live" else "cancelled"
             match.finished_at = now if verified else None

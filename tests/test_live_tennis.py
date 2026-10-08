@@ -166,7 +166,6 @@ class LiveTennisTests(unittest.TestCase):
                 provider_id="settled-1", status="live", tour="WTA", tournament="Wimbledon",
                 surface="Grass", round="F", starts_at=now - timedelta(hours=2),
                 player1_name="Iga Swiatek", player2_name="Aryna Sabalenka", score="6–4 6–3",
-                provider_updated_at=now - timedelta(minutes=31),
             ))
             db.session.commit()
             with patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
@@ -178,7 +177,11 @@ class LiveTennisTests(unittest.TestCase):
             self.assertIsNotNone(archived)
             self.assertEqual(archived.score, "6–4 6–3")
         page = self.client.get("/live-matches/settled-1")
-        self.assertEqual(page.status_code, 200)
+        self.assertEqual(page.status_code, 302)
+        self.assertTrue(page.headers["Location"].endswith("/matches/lt-settled-1"))
+        permanent = self.client.get(page.headers["Location"])
+        self.assertEqual(permanent.status_code, 200)
+        self.assertIn(b"Log this match", permanent.data)
         self.assertIn(b"PERMANENT", self.client.get("/matches?view=finished").data)
 
     def test_winner_from_final_score(self):
