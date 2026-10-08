@@ -13,7 +13,7 @@ import requests
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import case, delete, func, inspect, or_, select, union_all
+from sqlalchemy import and_, case, delete, func, inspect, or_, select, union_all
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
@@ -96,6 +96,49 @@ def current_match_players(matches):
     }
 
 
+def archived_match_id_for_live(match):
+    """Find the permanent result that represents a live-feed row."""
+    exact = db.session.scalar(
+        select(Match.id).where(Match.provider_id == f"livetennisapi:{match.provider_id}")
+    )
+    if exact or not match.starts_at or match.is_doubles:
+        return exact
+
+    player_pair = current_match_players([match]).get(match.provider_id, (None, None))
+    if all(player_pair):
+        participants = or_(
+            and_(Match.winner_id == player_pair[0].id, Match.loser_id == player_pair[1].id),
+            and_(Match.winner_id == player_pair[1].id, Match.loser_id == player_pair[0].id),
+        )
+        return db.session.scalar(
+            select(Match.id).where(
+                Match.tour == match.tour,
+                Match.week_start == match.starts_at.date(),
+                participants,
+            ).limit(1)
+        )
+
+    winner = aliased(Player)
+    loser = aliased(Player)
+    names = or_(
+        and_(
+            func.lower(winner.name) == match.player1_name.casefold(),
+            func.lower(loser.name) == match.player2_name.casefold(),
+        ),
+        and_(
+            func.lower(winner.name) == match.player2_name.casefold(),
+            func.lower(loser.name) == match.player1_name.casefold(),
+        ),
+    )
+    return db.session.scalar(
+        select(Match.id).join(winner, Match.winner).join(loser, Match.loser).where(
+            Match.tour == match.tour,
+            Match.week_start == match.starts_at.date(),
+            names,
+        ).limit(1)
+    )
+
+
 def current_match_odds(matches):
     """Return the newest display quote without requiring the migration during deploy."""
     if not matches or not inspect(db.engine).has_table(LiveOdds.__tablename__):
@@ -143,7 +186,7 @@ def player_live_matches(player, limit=12):
         .limit(limit)
     ).all()
     # SQLite and some feeds compare accented names differently; provider IDs remain authoritative.
-    return [
+    matched = [
         match for match in matches
         if any((
             match.player1_provider_id in external_ids,
@@ -151,6 +194,13 @@ def player_live_matches(player, limit=12):
             normalized_person_name(match.player1_name) == identity,
             normalized_person_name(match.player2_name) == identity,
         ))
+    ]
+    return [
+        match for match in matched
+        if not (
+            match.status in ("finished", "verifying")
+            and archived_match_id_for_live(match)
+        )
     ]
 
 
@@ -581,9 +631,7 @@ def live_match_detail(provider_id):
     if not inspect(db.engine).has_table(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
-    archived = db.session.scalar(
-        select(Match.id).where(Match.provider_id == f"livetennisapi:{provider_id}")
-    )
+    archived = archived_match_id_for_live(match)
     if archived:
         return redirect(url_for("site.match_detail", match_id=archived))
     players = current_match_players([match]).get(match.provider_id, (None, None))
