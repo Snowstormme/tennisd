@@ -359,6 +359,56 @@ class Report(db.Model):
     comment = db.relationship("Comment", back_populates="reports")
 
 
+class FeedbackSubmission(db.Model):
+    """Product feedback kept separate from community moderation reports."""
+
+    __table_args__ = (
+        CheckConstraint("category IN ('idea', 'bug', 'content', 'other')", name="valid_feedback_category"),
+        CheckConstraint("rating IS NULL OR (rating >= 1 AND rating <= 5)", name="valid_feedback_rating"),
+        CheckConstraint("status IN ('new', 'reviewed', 'planned', 'closed')", name="valid_feedback_status"),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), index=True)
+    category = db.Column(db.String(16), nullable=False, index=True)
+    rating = db.Column(db.Integer)
+    message = db.Column(db.String(2000), nullable=False)
+    page_path = db.Column(db.String(300))
+    status = db.Column(db.String(12), default="new", nullable=False, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    user = db.relationship("User")
+
+
+class Poll(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    question = db.Column(db.String(240), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    starts_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    ends_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    options = db.relationship("PollOption", back_populates="poll", cascade="all, delete-orphan", order_by="PollOption.position")
+
+
+class PollOption(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey("poll.id", ondelete="CASCADE"), nullable=False, index=True)
+    label = db.Column(db.String(120), nullable=False)
+    position = db.Column(db.Integer, default=0, nullable=False)
+    poll = db.relationship("Poll", back_populates="options")
+    votes = db.relationship("PollVote", back_populates="option", cascade="all, delete-orphan")
+
+
+class PollVote(db.Model):
+    __table_args__ = (UniqueConstraint("poll_id", "visitor_key", name="uq_poll_visitor_vote"),)
+    id = db.Column(db.Integer, primary_key=True)
+    poll_id = db.Column(db.Integer, db.ForeignKey("poll.id", ondelete="CASCADE"), nullable=False, index=True)
+    option_id = db.Column(db.Integer, db.ForeignKey("poll_option.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), index=True)
+    visitor_key = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    option = db.relationship("PollOption", back_populates="votes")
+    user = db.relationship("User")
+
+
 class FollowedPlayer(db.Model):
     __table_args__ = (UniqueConstraint("user_id", "player_id", name="uq_user_player_follow"),)
     id = db.Column(db.Integer, primary_key=True)

@@ -136,6 +136,7 @@ def create_app(test_config=None):
             "site.register", "site.login", "site.check_email",
             "site.resend_verification", "site.verify_email",
             "site.forgot_password", "site.reset_password",
+            "site.feedback", "site.vote_poll",
         }
         if (current_user.is_authenticated or request.endpoint in form_endpoints) and "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)

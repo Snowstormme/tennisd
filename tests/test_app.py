@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FollowedPlayer, LiveMatch, Match, Player, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_slug
@@ -49,7 +49,7 @@ class TennisdFlows(unittest.TestCase):
         }, follow_redirects=True)
 
     def test_core_pages_and_search(self):
-        for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", f"/matches/{self.match_id}"):
+        for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
         home = self.client.get("/")
         self.assertIn(b"<title>Tennisd \xc2\xb7 Tennis Match Diary</title>", home.data)
@@ -68,6 +68,7 @@ class TennisdFlows(unittest.TestCase):
             self.assertIn(item, home.data)
         self.assertNotIn(b"nav-rankings", home.data)
         self.assertIn(b"mobile-notifications", home.data)
+        self.assertIn(b'href="/feedback"', home.data)
         self.assertIn(b"<em></em><strong></strong><i></i><b></b>", home.data)
         register = self.client.get("/register")
         self.assertIn(b'data-password-toggle', register.data)
@@ -88,6 +89,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"match-portrait-left", matches.data)
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
+
         self.assertIn(b"/photo", players.data)
         self.assertIn(b">All</option>", players.data)
         self.assertNotIn(b"ATP + WTA", players.data)
@@ -143,6 +145,36 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"Tennis API on RapidAPI", about.data)
         self.assertNotIn(b"Jeff", about.data)
         self.assertNotIn(b"Sackmann", about.data)
+
+    def test_guest_feedback_and_poll_vote_are_stored_without_personal_details(self):
+        with self.app.app_context():
+            poll = Poll(question="What should improve next?")
+            poll.options = [PollOption(label="Live scores", position=1), PollOption(label="Profiles", position=2)]
+            db.session.add(poll)
+            db.session.commit()
+            poll_id = poll.id
+            option_id = poll.options[0].id
+
+        page = self.client.get("/feedback?from=/matches")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"What should improve next?", page.data)
+        response = self.client.post("/feedback", data={
+            "csrf_token": self.token(), "category": "idea", "rating": "4",
+            "message": "Please add clearer live score alerts.", "page_path": "/matches",
+        }, follow_redirects=True)
+        self.assertIn(b"your feedback is now", response.data)
+        vote = self.client.post(f"/feedback/polls/{poll_id}/vote", data={
+            "csrf_token": self.token(), "option": option_id,
+        }, follow_redirects=True)
+        self.assertIn(b"Vote saved", vote.data)
+        with self.app.app_context():
+            item = db.session.scalar(select(FeedbackSubmission))
+            self.assertIsNone(item.user_id)
+            self.assertEqual(item.rating, 4)
+            self.assertEqual(item.page_path, "/matches")
+            stored_vote = db.session.scalar(select(PollVote))
+            self.assertIsNone(stored_vote.user_id)
+            self.assertEqual(len(stored_vote.visitor_key), 64)
 
     def test_match_sections_keep_archive_default_and_show_live_player_photos(self):
         with self.app.app_context():

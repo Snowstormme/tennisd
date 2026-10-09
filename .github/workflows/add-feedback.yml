@@ -1,0 +1,22 @@
+name: Add feedback and polls
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install 'psycopg[binary]>=3.2,<4'
+      - name: Create feedback schema and first poll
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
+        run: python -c "import os, psycopg; sql=open('scripts/add_feedback.sql').read(); conn=psycopg.connect(os.environ['DATABASE_URL']); conn.execute(sql); conn.commit(); conn.close()"

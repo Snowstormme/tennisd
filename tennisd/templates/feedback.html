@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Feedback{% endblock %}
+{% block meta_description %}Share an idea, report a problem and help decide what Tennisd builds next.{% endblock %}
+{% block content %}
+<div class="page-banner feedback-banner"><div class="container"><p class="eyebrow">HELP SHAPE TENNISD</p><h1>Your view of<br><em>the next set.</em></h1><p>Tell us what works, what gets in your way, and what you want to see next. A short, specific note is the most useful.</p></div></div>
+<div class="container feedback-grid">
+  <section class="feedback-panel">
+    <p class="eyebrow">DIRECT FEEDBACK</p><h2>Send a note<span>.</span></h2>
+    {% if ready %}
+    <form method="post" class="stack-form feedback-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="page_path" value="{{ request.args.get('from', '') }}">
+      <label>What is this about?<select name="category" required><option value="idea">An idea</option><option value="bug">Something is broken</option><option value="content">Missing or incorrect tennis data</option><option value="other">Something else</option></select></label>
+      <fieldset class="feedback-rating"><legend>How is Tennisd feeling today? <small>Optional</small></legend><div>{% for score, label in [(1, 'Very poor'), (2, 'Poor'), (3, 'Okay'), (4, 'Good'), (5, 'Excellent')] %}<label><input type="radio" name="rating" value="{{ score }}"><span>{{ score }}</span><small>{{ label }}</small></label>{% endfor %}</div></fieldset>
+      <label>Your feedback<textarea name="message" minlength="10" maxlength="2000" rows="7" placeholder="What happened, or what would make Tennisd better?" required></textarea><small>10–2,000 characters. Do not include passwords or private information.</small></label>
+      <button class="button" type="submit">Send feedback</button>
+    </form>
+    {% else %}<div class="empty-state"><h3>Feedback is being prepared.</h3><p>Please check again after the next site update.</p></div>{% endif %}
+  </section>
+  <aside class="feedback-panel poll-panel">
+    <p class="eyebrow">COMMUNITY PULSE</p>
+    {% if poll %}<h2>{{ poll.question }}</h2><form method="post" action="{{ url_for('site.vote_poll', poll_id=poll.id) }}" class="poll-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% for option in poll.options %}<label class="poll-option"><input type="radio" name="option" value="{{ option.id }}"{% if selected_option_id == option.id %} checked{% endif %}><span><i></i>{{ option.label }}</span></label>{% endfor %}<button class="button button-outline" type="submit">{{ 'Update my vote' if selected_option_id else 'Vote' }}</button></form>{% if selected_option_id %}<p class="poll-thanks">Your answer is saved. You can change it while this poll is open.</p>{% endif %}
+    {% else %}<h2>No poll is open right now.</h2><p class="muted">The next quick question will appear here. You can still send a note at any time.</p>{% endif %}
+    <div class="feedback-privacy"><strong>Built for trust.</strong><p>Guest feedback does not ask for a name or email. Tennisd does not store your raw IP address with the response.</p><a href="{{ url_for('site.privacy') }}">Read the privacy page</a></div>
+  </aside>
+</div>
+{% endblock %}

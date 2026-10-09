@@ -37,7 +37,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261002-3') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='20261009-1') }}">
   <script src="{{ url_for('static', filename='app.js', v='20261002-1') }}" defer></script>
   <script defer src="/_vercel/insights/script.js"></script>
   <script defer src="/_vercel/speed-insights/script.js"></script>
@@ -58,7 +58,7 @@
       <div class="header-actions">
         <a class="mobile-notifications{% if request.endpoint == 'site.notifications' %} is-current{% endif %}" href="{{ url_for('site.notifications') if current_user.is_authenticated else url_for('site.login', next=url_for('site.notifications')) }}" aria-label="Notifications"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></a>
         {% if current_user.is_authenticated %}
-          {% if config.ADMIN_EMAIL and current_user.email == config.ADMIN_EMAIL %}<a class="header-login" href="{{ url_for('site.moderation') }}">Reports</a>{% endif %}<a class="header-profile" href="{{ url_for('site.my_profile') }}" aria-label="My profile">{{ user_avatar(current_user, 'mini-avatar') }}</a>
+          {% if config.ADMIN_EMAIL and current_user.email == config.ADMIN_EMAIL %}<a class="header-login" href="{{ url_for('site.moderation') }}">Insights</a>{% endif %}<a class="header-profile" href="{{ url_for('site.my_profile') }}" aria-label="My profile">{{ user_avatar(current_user, 'mini-avatar') }}</a>
         {% else %}
           <a class="header-login" href="{{ url_for('site.login') }}">Log in</a>
           {% if config.REGISTRATION_ENABLED %}<a class="button button-small" href="{{ url_for('site.register') }}">Join Tennisd</a>{% endif %}
@@ -73,7 +73,7 @@
   <footer class="site-footer">
     <div class="container footer-inner">
       <div><a class="footer-brand" href="{{ url_for('site.home') }}">TENNISD<span>.</span></a><p>A place for the matches that stayed with you.</p></div>
-      <div class="footer-links"><a href="{{ url_for('site.about') }}">About & data</a><a href="{{ url_for('site.privacy') }}">Privacy</a><a href="{{ url_for('site.matches') }}">Explore matches</a><a href="{{ url_for('site.players') }}">Explore players</a></div>
+      <div class="footer-links"><a href="{{ url_for('site.about') }}">About & data</a><a href="{{ url_for('site.feedback') }}">Feedback</a><a href="{{ url_for('site.privacy') }}">Privacy</a><a href="{{ url_for('site.matches') }}">Explore matches</a><a href="{{ url_for('site.players') }}">Explore players</a></div>
       <p class="data-credit">Tennis data sources, update schedules and coverage are explained on the <a href="{{ url_for('site.about') }}">About page</a>.</p>
     </div>
   </footer>
