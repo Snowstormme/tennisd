@@ -56,6 +56,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b'application/ld+json', home.data)
         self.assertIn(b'"name": "Tennisd"', home.data)
         self.assertIn(b"Tennisd is your tennis match diary", home.data)
+        self.assertNotIn(b"eyebrow-line", home.data)
         self.assertNotIn(b"hero-counts", home.data)
         self.assertNotIn(b"Start your diary", home.data)
         self.assertNotIn(b"Make every watch count", home.data)
@@ -159,6 +160,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"What should improve next?", page.data)
         self.assertNotIn(b"<i></i>Live scores", page.data)
+        self.assertIn(b"feedback-rating", page.data)
         response = self.client.post("/feedback", data={
             "csrf_token": self.token(), "category": "idea", "rating": "4",
             "message": "Please add clearer live score alerts.", "page_path": "/matches",
