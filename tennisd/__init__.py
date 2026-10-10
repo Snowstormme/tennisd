@@ -11,6 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine, make_url
+from sqlalchemy.pool import NullPool
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
@@ -46,7 +47,13 @@ def create_app(test_config=None):
         mode = parsed.query.get("sslmode", "require")
         if mode not in ("require", "verify-ca", "verify-full"):
             raise RuntimeError("Production PostgreSQL must require TLS.")
-        database_url = parsed.update_query_dict({"sslmode": mode}).render_as_string(
+        # Fail quickly when Neon is unavailable instead of letting Vercel kill a
+        # request after its execution deadline. A later edge-cache fallback can
+        # then keep serving the most recent successful public response.
+        database_url = parsed.update_query_dict({
+            "sslmode": mode,
+            "connect_timeout": parsed.query.get("connect_timeout", "8"),
+        }).render_as_string(
             hide_password=False
         )
 
@@ -88,7 +95,15 @@ def create_app(test_config=None):
         REMEMBER_COOKIE_SAMESITE="Lax",
         REMEMBER_COOKIE_DURATION=timedelta(days=30),
     )
-    if production:
+    if production and os.environ.get("VERCEL"):
+        # Every Vercel function instance can create its own SQLAlchemy pool.
+        # Closing connections at the end of each request prevents many warm
+        # instances from exhausting the small Neon connection allowance.
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+            "poolclass": NullPool,
+            "pool_pre_ping": True,
+        }
+    elif production:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             "pool_pre_ping": True, "pool_recycle": 1800,
             "pool_size": 2, "max_overflow": 1,
@@ -177,12 +192,13 @@ def create_app(test_config=None):
                 "site.tournament_edition_detail", "site.news_story",
             }
         ):
-            # Keep anonymous HTML briefly in the visitor's browser. This makes a
-            # prefetched section open immediately without sharing personalized
-            # pages through a CDN cache.
-            response.cache_control.private = True
-            response.cache_control.max_age = 60
-            response.cache_control.stale_while_revalidate = 300
+            # Public pages contain no visitor data or CSRF token. Keep the
+            # browser revalidating normally, while Vercel's edge serves the last
+            # successful page during a short Neon pause or background refresh.
+            response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
+            response.headers["Vercel-CDN-Cache-Control"] = (
+                "public, s-maxage=300, stale-while-revalidate=86400"
+            )
         return response
 
     from .routes import site

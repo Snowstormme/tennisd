@@ -8,6 +8,7 @@ from unittest.mock import patch
 from tennisd import create_app, db
 from tennisd.models import Match, User
 from sqlalchemy import func, select
+from sqlalchemy.pool import NullPool
 from werkzeug.security import generate_password_hash
 
 
@@ -51,11 +52,14 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(response.headers["Location"], "/login")
         return code
 
-    def test_public_catalog_does_not_create_session_and_uses_browser_cache(self):
+    def test_public_catalog_does_not_create_session_and_uses_edge_cache(self):
         response = self.client.get("/players")
         self.assertNotIn("Set-Cookie", response.headers)
-        self.assertIn("private", response.headers["Cache-Control"])
-        self.assertIn("max-age=60", response.headers["Cache-Control"])
+        self.assertIn("must-revalidate", response.headers["Cache-Control"])
+        self.assertEqual(
+            response.headers["Vercel-CDN-Cache-Control"],
+            "public, s-maxage=300, stale-while-revalidate=86400",
+        )
         with self.client.session_transaction() as session:
             self.assertNotIn("csrf_token", session)
 
@@ -246,6 +250,8 @@ class ProductionConfig(unittest.TestCase):
         self.assertEqual(app.config["PUBLIC_BASE_URL"], "https://tennisd.vercel.app")
         self.assertEqual(app.instance_path, "/tmp/tennisd-instance")
         self.assertIn("user:password@", app.config["SQLALCHEMY_DATABASE_URI"])
+        self.assertIn("connect_timeout=8", app.config["SQLALCHEMY_DATABASE_URI"])
+        self.assertIs(app.config["SQLALCHEMY_ENGINE_OPTIONS"]["poolclass"], NullPool)
         self.assertNotIn("***", app.config["SQLALCHEMY_DATABASE_URI"])
 
     def test_registration_can_open_without_email_verification(self):
