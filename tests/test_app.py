@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_slug
@@ -61,6 +61,10 @@ class TennisdFlows(unittest.TestCase):
         self.assertNotIn(b"Start your diary", home.data)
         self.assertNotIn(b"Make every watch count", home.data)
         self.assertIn(b"data-featured-carousel", home.data)
+        self.assertNotIn(b"THE FEATURED MATCH", home.data)
+        self.assertNotIn(b"FROM THE ARCHIVE", home.data)
+        self.assertIn(b"featured-set-score", home.data)
+        self.assertIn(b"featured-surface", home.data)
         self.assertIn(b"home-match-card", home.data)
         self.assertIn(b"court-badge", home.data)
         self.assertIn(b"/photo", home.data)
@@ -244,6 +248,10 @@ class TennisdFlows(unittest.TestCase):
             second = Player(id="home-second", tour="ATP", name="Home Runner")
             db.session.add_all((first, second))
             db.session.flush()
+            db.session.add_all((
+                PlayerPhoto(player_id=first.id, url="https://upload.wikimedia.org/home-winner.jpg", is_primary=True),
+                PlayerPhoto(player_id=second.id, url="https://upload.wikimedia.org/home-runner.jpg", is_primary=True),
+            ))
             db.session.add(Match(
                 id="home-r16-match",
                 provider="livetennisapi",

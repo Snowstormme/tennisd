@@ -517,13 +517,33 @@ def home():
         # complete growing archive for every home-page request.
         .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(8)
     ).all()
+    winner = aliased(Player)
+    loser = aliased(Player)
+    winner_has_stored_photo = select(PlayerPhoto.id).where(
+        PlayerPhoto.player_id == winner.id
+    ).exists()
+    loser_has_stored_photo = select(PlayerPhoto.id).where(
+        PlayerPhoto.player_id == loser.id
+    ).exists()
+    featured_matches = db.session.scalars(
+        select(Match)
+        .join(winner, Match.winner_id == winner.id)
+        .join(loser, Match.loser_id == loser.id)
+        .where(
+            Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
+            or_(winner.wikidata_id.is_not(None), winner_has_stored_photo),
+            or_(loser.wikidata_id.is_not(None), loser_has_stored_photo),
+        )
+        .options(joinedload(Match.winner), joinedload(Match.loser))
+        .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(5)
+    ).all()
     recent_reviews = db.session.scalars(
         select(Review).where(Review.is_public.is_(True))
         .options(joinedload(Review.user), joinedload(Review.match))
         .order_by(Review.created_at.desc()).limit(4)
     ).all()
     return render_template(
-        "home.html", featured_matches=recent_matches[:5], recent_matches=recent_matches,
+        "home.html", featured_matches=featured_matches, recent_matches=recent_matches,
         recent_reviews=recent_reviews, match_location=match_location,
     )
 

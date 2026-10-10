@@ -14,7 +14,6 @@
     </div>
     {% if featured_matches %}
     <div class="featured-carousel" data-featured-carousel>
-      <div class="board-header"><span>THE FEATURED MATCH</span><span class="board-live-dot" aria-hidden="true"></span><span>FROM THE ARCHIVE</span></div>
       {% for match in featured_matches %}{{ showcase_match_card(match, match_location, true, loop.first) }}{% endfor %}
       <div class="featured-controls" aria-label="Featured matches">{% for match in featured_matches %}<button type="button" data-featured-dot="{{ loop.index0 }}" aria-label="Show {{ match.winner.name }} versus {{ match.loser.name }}"{% if loop.first %} aria-current="true"{% endif %}></button>{% endfor %}</div>
     </div>
