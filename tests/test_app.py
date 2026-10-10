@@ -85,14 +85,12 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"match-portrait", search.data)
         self.assertEqual(self.client.get("/matches?tour=WTA").status_code, 200)
         matches = self.client.get("/matches")
-        self.assertIn(b"home-match-card", matches.data)
-        self.assertIn(b"court-markings", matches.data)
+        self.assertIn(b"archive-match-card", matches.data)
         self.assertIn(b"court-badge", matches.data)
         self.assertIn(b"match-portrait-left", matches.data)
-        with self.client.get("/static/style.css?v=20261010-4") as stylesheet:
+        with self.client.get("/static/style.css?v=20261010-3") as stylesheet:
             self.assertIn(b"grid-template-columns:27% 46% 27%", stylesheet.data)
             self.assertIn(b"Mobile match layouts keep the same three-part court composition", stylesheet.data)
-            self.assertIn(b"One regulation-court treatment for every match card", stylesheet.data)
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
 
@@ -205,8 +203,7 @@ class TennisdFlows(unittest.TestCase):
         live_page = self.client.get("/matches?view=live")
         self.assertIn(b'aria-current="page">Live</a>', live_page.data)
         self.assertIn(b"test-live-photo-card", live_page.data)
-        self.assertIn(b"home-match-card live-feed-match-card", live_page.data)
-        self.assertIn(b"court-markings", live_page.data)
+        self.assertIn(b"archive-match-card live-feed-match-card", live_page.data)
         self.assertIn(b"match-portrait-left", live_page.data)
         self.assertIn(b"match-portrait-right", live_page.data)
         for player_id in player_ids:

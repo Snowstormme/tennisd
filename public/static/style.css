@@ -275,24 +275,3 @@
   .live-detail-center{position:relative;top:auto;right:auto;left:auto;align-self:stretch;display:flex;min-width:0;flex-direction:column;justify-content:center;transform:none;padding:36px 7px 24px;border:0;border-inline:1px solid #ffffff38;border-radius:0;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 94%,#fff 6%),color-mix(in srgb,var(--court) 76%,var(--court-deep)));box-shadow:inset 0 0 30px color-mix(in srgb,var(--court-deep) 42%,transparent)}
   .live-detail-center:before{inset:5% 5%}.live-detail-center h1{margin:12px 0 6px;font-size:21px}.live-detail-center>p:not(.eyebrow){font-size:8px}.live-detail-score{margin-top:17px;font-size:16px}.live-detail-player>span,.live-detail-player>a>span{padding:70px 7px 15px}.live-detail-player small{font-size:6px}.live-detail-player strong{font-size:14px}.live-detail-center .court-badge{align-self:center;padding:4px 6px;font-size:6px}.live-detail-odds{padding:7px}.live-detail-odds>div{grid-template-columns:1fr}.live-detail-odds b{font-size:7px}
 }
-
-/* One regulation-court treatment for every match card. */
-.court-markings{position:absolute;z-index:0;inset:5% 6%;display:block;border:1.5px solid #f5f1df99;box-shadow:0 0 0 1px #08130d18,inset 0 0 22px #07140d12;pointer-events:none}
-.court-markings i{position:absolute;z-index:2;left:-4%;right:-4%;top:50%;height:3px;background:linear-gradient(180deg,#f8f5e6 0 35%,#6e776f 36% 64%,#f8f5e6 65%);box-shadow:0 3px 7px #06100b70;transform:translateY(-50%)}
-.court-markings b{position:absolute;left:0;right:0;top:24%;bottom:24%;border-top:1.5px solid #f5f1df99;border-bottom:1.5px solid #f5f1df99}
-.court-markings em{position:absolute;left:14%;right:14%;top:0;bottom:0;border-left:1.5px solid #f5f1df99;border-right:1.5px solid #f5f1df99}
-.court-markings strong{position:absolute;left:50%;top:24%;bottom:24%;width:1.5px;background:#f5f1df99;transform:translateX(-50%)}
-.court-markings strong:before,.court-markings strong:after{content:"";position:absolute;left:50%;width:1.5px;height:3.5%;background:#f5f1df99;transform:translateX(-50%)}
-.court-markings strong:before{top:-46%}.court-markings strong:after{bottom:-46%}
-.showcase-center>.court-markings,.archive-match-center>.court-markings{margin:0;padding:0}.showcase-center>*:not(.court-markings),.archive-match-center>*:not(.court-markings){position:relative;z-index:1}
-.showcase-center:before,.archive-match-center:before{content:none}
-.showcase-center>.search-showcase-players{display:flex;flex-direction:column;gap:2px;margin:0;font:600 clamp(21px,2.1vw,36px)/1 var(--display);text-transform:uppercase}
-.showcase-center>.search-showcase-players small{color:var(--lime);font:500 10px/1.4 var(--body);letter-spacing:.15em}
-.home-match-card:after{content:"";position:absolute;z-index:0;inset:0;pointer-events:none;opacity:.2}.home-match-card.surface-clay:after{background-image:radial-gradient(#f4c4a1 .6px,transparent .8px);background-size:5px 5px}.home-match-card.surface-grass:after{background:repeating-linear-gradient(90deg,#e4f5d20c 0 20px,#07150c12 20px 40px)}.home-match-card.surface-hard:after{background:linear-gradient(115deg,#ffffff10,transparent 38% 65%,#ffffff08)}.home-match-card.surface-carpet:after{background-image:radial-gradient(#ffffff10 .5px,transparent .7px);background-size:4px 4px}
-.current-match-grid .home-match-card{min-height:310px}.live-feed-match-card .showcase-center{align-self:stretch;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 94%,#fff 6%),color-mix(in srgb,var(--court) 78%,var(--court-deep)));box-shadow:inset 0 0 42px color-mix(in srgb,var(--court-deep) 45%,transparent)}
-
-@media(max-width:600px){
-  .court-markings{inset:5% 5%;border-width:1px}.court-markings b,.court-markings em{border-width:1px}.court-markings strong{width:1px}.court-markings i{height:2px}
-  .showcase-center>.search-showcase-players{font-size:15px}.showcase-center>.search-showcase-players small{font-size:7px}
-  .current-match-grid .home-match-card{min-height:340px}
-}
