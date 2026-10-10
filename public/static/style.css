@@ -260,18 +260,18 @@
 
 /* Mobile match layouts keep the same three-part court composition as desktop. */
 @media(max-width:600px){
-  .featured-slide,.home-match-card{grid-template-columns:27% 46% 27%}
+  .featured-slide,.home-match-card{grid-template-columns:30% 40% 30%}
   .featured-carousel,.featured-slide{min-height:430px}.home-match-card{min-height:310px}
   .showcase-center{position:relative;left:auto;right:auto;top:auto;align-self:stretch;display:flex;min-width:0;flex-direction:column;justify-content:center;transform:none;padding:48px 7px 28px;border-inline:1px solid #ffffff38;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 92%,#fff 8%),color-mix(in srgb,var(--court) 76%,var(--court-deep)));box-shadow:inset 0 0 28px color-mix(in srgb,var(--court-deep) 42%,transparent);text-shadow:0 2px 8px #000}
   .showcase-center:before{content:"";position:absolute;z-index:-1;inset:7% 6%;border:1px solid #ffffff45;background:linear-gradient(90deg,transparent 49.5%,#ffffff3d 49.8% 50.2%,transparent 50.5%),linear-gradient(0deg,transparent 49.5%,#ffffff3d 49.8% 50.2%,transparent 50.5%)}
   .showcase-kicker{gap:3px;font-size:5px}.showcase-event{margin-top:12px;font-size:7px}.showcase-center h3,.search-showcase-players{font-size:15px}.showcase-score{margin:9px 0 11px;font-size:8px}.showcase-facts{gap:3px;padding-top:8px;font-size:6px}.showcase-facts small{font-size:5px}.showcase-center>.court-badge{align-self:center;margin-top:8px;padding:4px 6px;font-size:6px}
   .match-portrait img{opacity:1}.match-portrait-left img{-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent)}.match-portrait-right img{-webkit-mask-image:linear-gradient(270deg,#000 78%,transparent);mask-image:linear-gradient(270deg,#000 78%,transparent)}
 
-  .archive-match-card{grid-template-columns:27% 46% 27%;min-height:320px}
+  .archive-match-card{grid-template-columns:30% 40% 30%;min-height:320px}
   .archive-match-center{position:relative;left:auto;right:auto;top:auto;align-self:stretch;display:flex;min-width:0;flex-direction:column;justify-content:center;transform:none;padding:28px 6px 20px;border:0;border-inline:1px solid #ffffff38;border-radius:0;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 94%,#fff 6%),color-mix(in srgb,var(--court) 76%,var(--court-deep)));box-shadow:inset 0 0 28px color-mix(in srgb,var(--court-deep) 42%,transparent)}
   .archive-match-center:before{inset:5% 5%}.archive-match-meta{gap:3px;font-size:5px}.archive-match-event{margin:9px 0 5px;font-size:7px}.archive-match-players{font-size:15px}.archive-match-score{margin:9px 0;font-size:8px}.archive-match-facts{gap:3px;padding-top:8px;font-size:6px}.archive-match-facts small{font-size:5px}.archive-match-center .court-badge{align-self:center;margin-top:8px;padding:4px 6px;border-width:1px;font-size:6px;box-shadow:none}
 
-  .live-detail-grid{grid-template-columns:27% 46% 27%;min-height:440px}
+  .live-detail-grid{grid-template-columns:30% 40% 30%;min-height:440px}
   .live-detail-center{position:relative;top:auto;right:auto;left:auto;align-self:stretch;display:flex;min-width:0;flex-direction:column;justify-content:center;transform:none;padding:36px 7px 24px;border:0;border-inline:1px solid #ffffff38;border-radius:0;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 94%,#fff 6%),color-mix(in srgb,var(--court) 76%,var(--court-deep)));box-shadow:inset 0 0 30px color-mix(in srgb,var(--court-deep) 42%,transparent)}
   .live-detail-center:before{inset:5% 5%}.live-detail-center h1{margin:12px 0 6px;font-size:21px}.live-detail-center>p:not(.eyebrow){font-size:8px}.live-detail-score{margin-top:17px;font-size:16px}.live-detail-player>span,.live-detail-player>a>span{padding:70px 7px 15px}.live-detail-player small{font-size:6px}.live-detail-player strong{font-size:14px}.live-detail-center .court-badge{align-self:center;padding:4px 6px;font-size:6px}.live-detail-odds{padding:7px}.live-detail-odds>div{grid-template-columns:1fr}.live-detail-odds b{font-size:7px}
 }
@@ -292,7 +292,15 @@
 .current-match-grid .home-match-card{min-height:310px}.live-feed-match-card .showcase-center{align-self:stretch;display:flex;flex-direction:column;justify-content:center;background:linear-gradient(180deg,color-mix(in srgb,var(--court) 94%,#fff 6%),color-mix(in srgb,var(--court) 78%,var(--court-deep)));box-shadow:inset 0 0 42px color-mix(in srgb,var(--court-deep) 45%,transparent)}
 
 @media(max-width:600px){
-  .court-markings{inset:5% 5%;border-width:1px}.court-markings b,.court-markings em{border-width:1px}.court-markings strong{width:1px}.court-markings i{height:2px}
+  .court-markings{inset:0 4%;border-width:1px}.court-markings b,.court-markings em{border-width:1px}.court-markings strong{width:1px}.court-markings i{height:2px}
   .showcase-center>.search-showcase-players{font-size:15px}.showcase-center>.search-showcase-players small{font-size:7px}
   .current-match-grid .home-match-card{min-height:340px}
+}
+
+/* Desktop match typography stays calm; mobile keeps its stronger compact type. */
+@media(min-width:601px){
+  .showcase-center>.search-showcase-players{font-weight:500}
+  .showcase-kicker,.showcase-event,.showcase-facts,.archive-match-meta,.archive-match-event,.archive-match-facts{font-weight:700}
+  .showcase-score,.archive-match-score{font-weight:600}
+  .match-portrait strong{font-weight:400}
 }
