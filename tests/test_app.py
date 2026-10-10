@@ -10,7 +10,7 @@ from tennisd import create_app, db
 from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
-from tennisd.tournament_catalog import tournament_slug
+from tennisd.tournament_catalog import tournament_profile, tournament_slug
 from sqlalchemy import select
 
 
@@ -47,6 +47,16 @@ class TennisdFlows(unittest.TestCase):
             "csrf_token": self.token(), "username": name,
             "email": f"{name}@example.com", "password": "long-test-password",
         }, follow_redirects=True)
+
+    def test_provider_tournament_names_resolve_real_locations(self):
+        expected = {
+            "Antofagasta Challenger": "Antofagasta, Chile",
+            "Braga Challenger": "Braga, Portugal",
+            "WTA China Open - Beijing": "Beijing, China",
+            "Samsun Open - Samsun": "Samsun, Türkiye",
+        }
+        for tournament, location in expected.items():
+            self.assertEqual(tournament_profile(tournament)["location"], location)
 
     def test_core_pages_and_search(self):
         for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):

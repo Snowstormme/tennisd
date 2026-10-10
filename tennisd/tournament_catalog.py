@@ -75,6 +75,30 @@ TOURNAMENT_PROFILES = {
 }
 
 
+# Provider tournament names often include tour prefixes, category suffixes or
+# a repeated host city. Slug aliases keep presentation metadata independent of
+# those spelling differences.
+TOURNAMENT_LOCATIONS = {
+    "antofagasta": "Antofagasta, Chile",
+    "braga": "Braga, Portugal",
+    "china-open": "Beijing, China",
+    "beijing": "Beijing, China",
+    "samsun": "Samsun, Türkiye",
+    "paris-masters": "Paris, France",
+    "indian-wells": "Indian Wells, United States",
+    "miami-open": "Miami, United States",
+    "monte-carlo": "Monte Carlo, Monaco",
+    "madrid-open": "Madrid, Spain",
+    "italian-open": "Rome, Italy",
+    "rome-masters": "Rome, Italy",
+    "canadian-open": "Toronto / Montreal, Canada",
+    "cincinnati-open": "Cincinnati, United States",
+    "shanghai-masters": "Shanghai, China",
+    "doha": "Doha, Qatar",
+    "dubai": "Dubai, United Arab Emirates",
+}
+
+
 LEVEL_DETAILS = {
     "G": (0, "Grand Slam", "Major"),
     "F": (1, "Tour Finals", "Season finale"),
@@ -94,8 +118,21 @@ def tournament_level(levels):
 
 
 def tournament_profile(name):
+    normalized_name = tournament_slug(name)
     profile = dict(GENERIC_TROPHY)
-    profile.update(TOURNAMENT_PROFILES.get(name.casefold(), {}))
+    known_profile = TOURNAMENT_PROFILES.get((name or "").casefold())
+    if known_profile is None:
+        for known_name, candidate in TOURNAMENT_PROFILES.items():
+            known_slug = tournament_slug(known_name)
+            if known_slug and known_slug in normalized_name:
+                known_profile = candidate
+                break
+    profile.update(known_profile or {})
+    if "location" not in profile:
+        for alias, location in TOURNAMENT_LOCATIONS.items():
+            if alias in normalized_name:
+                profile["location"] = location
+                break
     profile.setdefault("location", "International tour event")
     profile.setdefault("founded", None)
     profile.setdefault(
