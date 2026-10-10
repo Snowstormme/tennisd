@@ -48,8 +48,7 @@ def create_app(test_config=None):
         if mode not in ("require", "verify-ca", "verify-full"):
             raise RuntimeError("Production PostgreSQL must require TLS.")
         # Fail quickly when Neon is unavailable instead of letting Vercel kill a
-        # request after its execution deadline. A later edge-cache fallback can
-        # then keep serving the most recent successful public response.
+        # request after its execution deadline.
         database_url = parsed.update_query_dict({
             "sslmode": mode,
             "connect_timeout": parsed.query.get("connect_timeout", "8"),
@@ -192,13 +191,11 @@ def create_app(test_config=None):
                 "site.tournament_edition_detail", "site.news_story",
             }
         ):
-            # Public pages contain no visitor data or CSRF token. Keep the
-            # browser revalidating normally, while Vercel's edge serves the last
-            # successful page during a short Neon pause or background refresh.
-            response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
-            response.headers["Vercel-CDN-Cache-Control"] = (
-                "public, s-maxage=300, stale-while-revalidate=86400"
-            )
+            # Keep anonymous HTML briefly in the visitor's browser without
+            # sharing authentication-sensitive navigation through a CDN cache.
+            response.cache_control.private = True
+            response.cache_control.max_age = 60
+            response.cache_control.stale_while_revalidate = 300
         return response
 
     from .routes import site
