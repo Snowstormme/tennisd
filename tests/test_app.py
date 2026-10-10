@@ -88,6 +88,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"archive-match-card", matches.data)
         self.assertIn(b"court-badge", matches.data)
         self.assertIn(b"match-portrait-left", matches.data)
+        with self.client.get("/static/style.css?v=20261010-3") as stylesheet:
+            self.assertIn(b"grid-template-columns:27% 46% 27%", stylesheet.data)
+            self.assertIn(b"Mobile match layouts keep the same three-part court composition", stylesheet.data)
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
 
