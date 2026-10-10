@@ -96,6 +96,14 @@ To validate recovery, download an encrypted artifact, decrypt it locally with th
 
 No account data, database files, API keys or connection URLs belong in Git. Copy `.env.example` to `.env` for local variables; `.env`, dumps and encrypted dumps are ignored. GitHub Actions runs the test suite and dependency vulnerability audit on every push and pull request. Dependabot proposes weekly Python and GitHub Actions updates. Report security issues privately as described in [SECURITY.md](SECURITY.md). Production variables stay in the hosting provider and a tested Git commit can be rolled back to an earlier deployment.
 
+## License
+
+Tennisd's original source code is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may study, test, modify and redistribute it only for purposes permitted by that license, while keeping the required license and copyright notices.
+
+Commercial use requires a separate written license from the copyright holder. Without that permission, you may not sell Tennisd or copies of it, charge for access or hosting, monetize it with advertising or subscriptions, include it in a paid product or service, or use it for an anticipated commercial application. Commercial licensing requests can be sent to [notsnowstorm@proton.me](mailto:notsnowstorm@proton.me).
+
+The source code license does not grant rights to the Tennisd name, logo, third-party photographs, tennis data, news content, or API responses. Those materials and services remain subject to their respective owners' licenses and terms. Contributions are accepted only when the contributor has the right to submit them under the project's current license.
+
 ## Structure
 
 ```text
