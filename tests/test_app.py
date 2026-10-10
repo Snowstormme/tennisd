@@ -158,6 +158,7 @@ class TennisdFlows(unittest.TestCase):
         page = self.client.get("/feedback?from=/matches")
         self.assertEqual(page.status_code, 200)
         self.assertIn(b"What should improve next?", page.data)
+        self.assertNotIn(b"<i></i>Live scores", page.data)
         response = self.client.post("/feedback", data={
             "csrf_token": self.token(), "category": "idea", "rating": "4",
             "message": "Please add clearer live score alerts.", "page_path": "/matches",
