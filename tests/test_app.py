@@ -54,9 +54,16 @@ class TennisdFlows(unittest.TestCase):
             "Braga Challenger": "Braga, Portugal",
             "WTA China Open - Beijing": "Beijing, China",
             "Samsun Open - Samsun": "Samsun, Türkiye",
+            "ATP Barcelona": "Barcelona, Spain",
+            "WTA Charleston": "Charleston, United States",
+            "Rome Masters": "Rome, Italy",
+            "W35+H Palma del Río": "Palma del Río, Spain",
+            "Davis Cup QLS R1: AUS vs ECU": "Australia",
+            "BJK Cup QLS R1: USA vs AUT": "United States",
         }
         for tournament, location in expected.items():
             self.assertEqual(tournament_profile(tournament)["location"], location)
+            self.assertNotEqual(location, "International tour event")
 
     def test_core_pages_and_search(self):
         for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
