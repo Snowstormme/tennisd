@@ -101,7 +101,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(self.client.get("/matches?tour=WTA").status_code, 200)
         matches = self.client.get("/matches")
         self.assertIn(b"home-match-card", matches.data)
-        self.assertIn(b"court-badge", matches.data)
+        self.assertIn(b"scoreboard-match-card", matches.data)
+        self.assertIn(b"featured-set-score", matches.data)
+        self.assertIn(b"featured-location", matches.data)
         self.assertIn(b"match-portrait-left", matches.data)
         with self.client.get("/static/style.css?v=20261010-4") as stylesheet:
             self.assertIn(b"grid-template-columns:27% 46% 27%", stylesheet.data)
