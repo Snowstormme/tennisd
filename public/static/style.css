@@ -321,15 +321,3 @@
   .site-header .nav-scene{display:block;width:27px;height:23px;transform:scale(.82);transform-origin:center}
   .site-header .nav-animated:hover .nav-scene{transform:scale(.82)}
 }
-/* Search landing pages turn current tour data into useful, shareable entry points. */
-.discovery-link-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.discovery-link-grid a{display:flex;min-height:150px;flex-direction:column;justify-content:flex-end;padding:22px;border:1px solid rgba(207,244,109,.24);background:linear-gradient(145deg,rgba(28,69,57,.88),rgba(13,39,33,.96));color:var(--paper);text-decoration:none;transition:transform .2s ease,border-color .2s ease}
-.discovery-link-grid a:hover{transform:translateY(-3px);border-color:var(--lime)}
-.discovery-link-grid span,.rated-match-score span{font-size:.72rem;letter-spacing:.14em;color:var(--lime);text-transform:uppercase}
-.discovery-link-grid strong{margin:8px 0 4px;font-family:var(--display);font-size:1.45rem;text-transform:uppercase}
-.discovery-link-grid small{color:var(--muted)}
-.discovery-page .directory-tabs{margin-bottom:34px}
-.rated-match{position:relative}
-.rated-match-score{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;padding:10px 12px;background:var(--ink);color:var(--paper)}
-.rated-match-score strong{font-family:var(--display);font-size:1.45rem;color:var(--lime)}
-@media(max-width:720px){.discovery-link-grid{grid-template-columns:1fr}.discovery-link-grid a{min-height:110px}.discovery-page .directory-tabs{overflow-x:auto;white-space:nowrap}}

@@ -483,7 +483,6 @@ def sitemap_index():
 def sitemap_core():
     endpoints = (
         "site.home", "site.matches", "site.players", "site.tournaments",
-        "site.matches_today", "site.matches_this_week", "site.top_rated_matches",
         "site.news", "site.about", "site.privacy",
     )
     entries = "".join(
@@ -575,13 +574,6 @@ def sitemap_matches(page):
 
 @site.get("/")
 def home():
-    recent_matches = db.session.scalars(
-        select(Match).where(Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")))
-        .options(joinedload(Match.winner), joinedload(Match.loser))
-        # This order follows ix_match_archive_browse and avoids sorting the
-        # complete growing archive for every home-page request.
-        .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(8)
-    ).all()
     winner = aliased(Player)
     loser = aliased(Player)
     winner_has_stored_photo = select(PlayerPhoto.id).where(
@@ -590,6 +582,20 @@ def home():
     loser_has_stored_photo = select(PlayerPhoto.id).where(
         PlayerPhoto.player_id == loser.id
     ).exists()
+    recent_matches = db.session.scalars(
+        select(Match)
+        .join(winner, Match.winner_id == winner.id)
+        .join(loser, Match.loser_id == loser.id)
+        .where(
+            Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
+            winner_has_stored_photo,
+            loser_has_stored_photo,
+        )
+        .options(joinedload(Match.winner), joinedload(Match.loser))
+        # This order follows ix_match_archive_browse and avoids sorting the
+        # complete growing archive for every home-page request.
+        .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(6)
+    ).all()
     featured_matches = db.session.scalars(
         select(Match)
         .join(winner, Match.winner_id == winner.id)
@@ -714,64 +720,19 @@ def matches():
     )
 
 
-def discovery_live_matches(start, end):
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
-        return []
-    return db.session.scalars(
-        select(LiveMatch).where(
-            LiveMatch.starts_at >= start,
-            LiveMatch.starts_at < end,
-            LiveMatch.status.in_(("upcoming", "live", "finished")),
-        ).order_by(
-            case((LiveMatch.status == "live", 0), (LiveMatch.status == "upcoming", 1), else_=2),
-            LiveMatch.starts_at,
-            LiveMatch.tournament,
-        ).limit(60)
-    ).all()
-
-
 @site.get("/matches/today")
 def matches_today():
-    now = utcnow()
-    start = datetime.combine(now.date(), datetime.min.time(), tzinfo=timezone.utc)
-    rows = discovery_live_matches(start, start + timedelta(days=1))
-    return render_template(
-        "match_discovery.html", page="today", matches=rows,
-        live_players=current_match_players(rows), live_odds=current_match_odds(rows),
-        heading="Tennis matches today", eyebrow="TODAY ON COURT",
-        introduction="Live scores, scheduled starts and completed ATP and WTA matches for today. Finished matches remain in the permanent Tennisd archive.",
-    )
+    return redirect(url_for("site.matches"), code=301)
 
 
 @site.get("/matches/this-week")
 def matches_this_week():
-    now = utcnow()
-    start = datetime.combine(now.date(), datetime.min.time(), tzinfo=timezone.utc)
-    rows = discovery_live_matches(start, start + timedelta(days=7))
-    return render_template(
-        "match_discovery.html", page="week", matches=rows,
-        live_players=current_match_players(rows), live_odds=current_match_odds(rows),
-        heading="Tennis matches this week", eyebrow="THE NEXT SEVEN DAYS",
-        introduction="Upcoming, live and recently completed ATP and WTA matches across the next seven days, updated from the Tennisd live feed.",
-    )
+    return redirect(url_for("site.matches"), code=301)
 
 
 @site.get("/matches/top-rated")
 def top_rated_matches():
-    rating_count = func.count(Review.id).label("rating_count")
-    average_rating = func.avg(Review.rating_half).label("average_rating")
-    rows = db.session.execute(
-        select(Match, rating_count, average_rating)
-        .join(Review, Review.match_id == Match.id)
-        .where(Review.is_public.is_(True), Review.rating_half.is_not(None))
-        .options(joinedload(Match.winner), joinedload(Match.loser))
-        .group_by(Match.id)
-        .order_by(average_rating.desc(), rating_count.desc(), Match.week_start.desc())
-        .limit(36)
-    ).all()
-    return render_template(
-        "top_rated_matches.html", rows=rows, match_location=match_location,
-    )
+    return redirect(url_for("site.matches"), code=301)
 
 
 @site.get("/live-matches/<provider_id>")

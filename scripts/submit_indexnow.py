@@ -8,7 +8,7 @@ import requests
 
 HOST = os.environ.get("PUBLIC_HOST", "tennisd.vercel.app").strip().removeprefix("https://").rstrip("/")
 KEY = os.environ.get("INDEXNOW_KEY", "a4f23d7e946b4aa8b36740f15f67e2c1").strip()
-PATHS = ("/", "/matches", "/matches/today", "/matches/this-week", "/matches/top-rated", "/players", "/tournaments", "/news")
+PATHS = ("/", "/matches", "/players", "/tournaments", "/news")
 
 
 def main():

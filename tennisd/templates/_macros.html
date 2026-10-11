@@ -26,25 +26,7 @@
 {% endmacro %}
 
 {% macro archive_match_card(match, match_location) %}
-<a class="archive-match-card surface-{{ match.surface|lower }}" href="{{ url_for('site.match_detail', match_id=match.id) }}">
-  <span class="showcase-wash" aria-hidden="true"></span>
-  <span class="match-portrait match-portrait-left">
-    <img src="{{ url_for('site.player_photo', player_id=match.winner.id, v=2) }}" alt="{{ match.winner.name }}" loading="lazy" referrerpolicy="no-referrer">
-    <strong>{{ match.winner.name }}</strong>
-  </span>
-  <span class="archive-match-center">
-    <span class="archive-match-meta"><b>{{ match.tour }} · {{ 'GRAND SLAM' if match.level == 'G' else match.level }}</b><b>{{ match.week_start.year }}</b></span>
-    <span class="court-badge"><i aria-hidden="true"></i>{{ match.surface }} court</span>
-    <span class="archive-match-event">{{ match.tournament }}</span>
-    <span class="archive-match-players"><strong>{{ match.winner.name }}</strong><small>vs</small><strong>{{ match.loser.name }}</strong></span>
-    <span class="archive-match-score">{{ match.score }}</span>
-    <span class="archive-match-facts"><span><small>{{ 'MATCH DATE' if match.provider == 'livetennisapi' else ('RECORDED DATE' if match.provider == 'tennis_api' else 'TOURNAMENT WEEK') }}</small>{{ match.week_start.strftime('%d %b %Y') }}</span><span><small>LOCATION</small>{{ match_location(match) }}</span><span><small>ROUND</small>{{ match.round }}</span></span>
-  </span>
-  <span class="match-portrait match-portrait-right">
-    <img src="{{ url_for('site.player_photo', player_id=match.loser.id, v=2) }}" alt="{{ match.loser.name }}" loading="lazy" referrerpolicy="no-referrer">
-    <strong>{{ match.loser.name }}</strong>
-  </span>
-</a>
+{{ showcase_match_card(match, match_location, scoreboard=true) }}
 {% endmacro %}
 
 {% macro current_match_card(match, player_pair=none, odds=none) %}

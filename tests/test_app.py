@@ -66,17 +66,21 @@ class TennisdFlows(unittest.TestCase):
             self.assertNotEqual(location, "International tour event")
 
     def test_core_pages_and_search(self):
-        for path in ("/", "/matches", "/matches/today", "/matches/this-week", "/matches/top-rated", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
+        for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
+        for retired_path in ("/matches/today", "/matches/this-week", "/matches/top-rated"):
+            response = self.client.get(retired_path)
+            self.assertEqual(response.status_code, 301)
+            self.assertEqual(response.headers["Location"], "/matches")
         home = self.client.get("/")
         self.assertIn(b"<title>Tennisd \xc2\xb7 Tennis Match Diary</title>", home.data)
         self.assertIn(b'application/ld+json', home.data)
         self.assertIn(b'"name": "Tennisd"', home.data)
         self.assertIn(b'"@type": "Organization"', home.data)
         self.assertIn(b'name="twitter:card" content="summary_large_image"', home.data)
-        self.assertIn(b'href="/matches/today"', home.data)
-        self.assertIn(b'href="/matches/this-week"', home.data)
-        self.assertIn(b'href="/matches/top-rated"', home.data)
+        self.assertNotIn(b'href="/matches/today"', home.data)
+        self.assertNotIn(b'href="/matches/this-week"', home.data)
+        self.assertNotIn(b'href="/matches/top-rated"', home.data)
         self.assertIn(b"Tennisd is your tennis match diary", home.data)
         self.assertNotIn(b"eyebrow-line", home.data)
         self.assertNotIn(b"hero-counts", home.data)
@@ -91,8 +95,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"featured-set-score", home.data)
         self.assertIn(b"featured-meta-row", home.data)
         self.assertIn(b"featured-facts", home.data)
-        self.assertIn(b"home-match-card", home.data)
-        self.assertIn(b"court-badge", home.data)
+        self.assertLessEqual(home.data.count(b"scoreboard-match-card"), 6)
         self.assertIn(b"/photo", home.data)
         self.assertNotIn(b"nav-discover", home.data)
         for item in (b"nav-matches", b"nav-players", b"nav-tournaments", b"nav-notifications", b"nav-news", b"nav-search"):
@@ -129,11 +132,6 @@ class TennisdFlows(unittest.TestCase):
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
 
-        today = self.client.get("/matches/today")
-        self.assertIn(b"Tennis matches today", today.data)
-        self.assertIn(b'"@type": "CollectionPage"', today.data)
-        top_rated = self.client.get("/matches/top-rated")
-        self.assertIn(b"Top-rated tennis matches", top_rated.data)
 
         self.assertIn(b"/photo", players.data)
         self.assertIn(b">All</option>", players.data)
@@ -378,9 +376,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"sitemap-tournament-editions.xml", sitemap.data)
         self.assertIn(b"sitemap-matches-1.xml", sitemap.data)
         core_sitemap = self.client.get("/sitemap-core.xml")
-        self.assertIn(b"/matches/today", core_sitemap.data)
-        self.assertIn(b"/matches/this-week", core_sitemap.data)
-        self.assertIn(b"/matches/top-rated", core_sitemap.data)
+        self.assertNotIn(b"/matches/today", core_sitemap.data)
+        self.assertNotIn(b"/matches/this-week", core_sitemap.data)
+        self.assertNotIn(b"/matches/top-rated", core_sitemap.data)
 
         self.assertIn(b"/matches/", self.client.get("/sitemap-matches-1.xml").data)
         self.assertIn(b"/players/", self.client.get("/sitemap-players.xml").data)
