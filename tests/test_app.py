@@ -186,7 +186,12 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"runs on Vercel", privacy.data)
 
     def test_adsense_stays_off_until_enabled_and_serves_valid_ads_txt(self):
-        self.assertEqual(self.client.get("/ads.txt").status_code, 404)
+        ads = self.client.get("/ads.txt")
+        self.assertEqual(ads.status_code, 200)
+        self.assertEqual(
+            ads.get_data(as_text=True),
+            "google.com, pub-9135813423535698, DIRECT, f08c47fec0942fa0\n",
+        )
         self.app.config.update(
             ADSENSE_CLIENT_ID="ca-pub-1234567890123456",
             ADSENSE_ENABLED=True,

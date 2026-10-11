@@ -88,7 +88,10 @@ def create_app(test_config=None):
         MAIL_DELIVERY=None,
         ADMIN_EMAIL=os.environ.get("ADMIN_EMAIL", "").strip().lower(),
         CONTACT_EMAIL=os.environ.get("CONTACT_EMAIL", "").strip().lower(),
-        ADSENSE_CLIENT_ID=os.environ.get("ADSENSE_CLIENT_ID", "").strip(),
+        # AdSense publisher IDs are intentionally public in the required ads.txt file.
+        ADSENSE_CLIENT_ID=(
+            os.environ.get("ADSENSE_CLIENT_ID", "ca-pub-9135813423535698").strip()
+        ),
         ADSENSE_ENABLED=os.environ.get("ADSENSE_ENABLED", "false").lower() == "true",
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
