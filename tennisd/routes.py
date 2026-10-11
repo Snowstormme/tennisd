@@ -417,6 +417,20 @@ def google_search_console_verification():
     )
 
 
+@site.get("/ads.txt")
+def ads_txt():
+    client_id = current_app.config.get("ADSENSE_CLIENT_ID", "")
+    if not re.fullmatch(r"ca-pub-\d{16}", client_id):
+        abort(404)
+    response = Response(
+        f"google.com, {client_id.removeprefix('ca-')}, DIRECT, f08c47fec0942fa0\n",
+        content_type="text/plain; charset=utf-8",
+    )
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    response.headers["Vercel-CDN-Cache-Control"] = "max-age=3600"
+    return response
+
+
 @site.get("/robots.txt")
 def robots_txt():
     body = "\n".join((

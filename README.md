@@ -47,6 +47,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 - Player portraits use a linked Wikidata image first, then an exact-name English Wikipedia tennis result. A designed portrait placeholder remains when neither project has a freely hosted image.
 - The web database role receives data access but no schema creation rights. The owner connection is reserved for initialization and recovery.
 - Users can export or delete their data. The privacy page explains stored fields and third-party processing.
+- AdSense support is opt-in. Set `ADSENSE_CLIENT_ID` after account creation; keep `ADSENSE_ENABLED=false` until Google approves the site and a certified consent message is published. The app then serves the matching root `ads.txt` automatically.
 
 ## Public deployment
 

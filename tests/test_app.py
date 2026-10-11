@@ -77,6 +77,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertNotIn(b"hero-counts", home.data)
         self.assertNotIn(b"Start your diary", home.data)
         self.assertNotIn(b"Make every watch count", home.data)
+        self.assertNotIn(b"still in development", home.data)
+        self.assertIn(b"TENNISD IS GROWING", home.data)
+        self.assertNotIn(b"pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", home.data)
         self.assertIn(b"data-featured-carousel", home.data)
         self.assertNotIn(b"THE FEATURED MATCH", home.data)
         self.assertNotIn(b"FROM THE ARCHIVE", home.data)
@@ -178,6 +181,27 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"Tennis API on RapidAPI", about.data)
         self.assertNotIn(b"Jeff", about.data)
         self.assertNotIn(b"Sackmann", about.data)
+        privacy = self.client.get("/privacy")
+        self.assertIn(b"Google AdSense", privacy.data)
+        self.assertIn(b"runs on Vercel", privacy.data)
+
+    def test_adsense_stays_off_until_enabled_and_serves_valid_ads_txt(self):
+        self.assertEqual(self.client.get("/ads.txt").status_code, 404)
+        self.app.config.update(
+            ADSENSE_CLIENT_ID="ca-pub-1234567890123456",
+            ADSENSE_ENABLED=True,
+        )
+        home = self.client.get("/")
+        self.assertIn(
+            b"pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1234567890123456",
+            home.data,
+        )
+        ads = self.client.get("/ads.txt")
+        self.assertEqual(ads.status_code, 200)
+        self.assertEqual(
+            ads.get_data(as_text=True),
+            "google.com, pub-1234567890123456, DIRECT, f08c47fec0942fa0\n",
+        )
 
     def test_guest_feedback_and_poll_vote_are_stored_without_personal_details(self):
         with self.app.app_context():

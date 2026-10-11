@@ -1,4 +1,5 @@
 import os
+import re
 import secrets
 from datetime import timedelta
 from pathlib import Path
@@ -87,6 +88,8 @@ def create_app(test_config=None):
         MAIL_DELIVERY=None,
         ADMIN_EMAIL=os.environ.get("ADMIN_EMAIL", "").strip().lower(),
         CONTACT_EMAIL=os.environ.get("CONTACT_EMAIL", "").strip().lower(),
+        ADSENSE_CLIENT_ID=os.environ.get("ADSENSE_CLIENT_ID", "").strip(),
+        ADSENSE_ENABLED=os.environ.get("ADSENSE_ENABLED", "false").lower() == "true",
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
         REMEMBER_COOKIE_SECURE=production,
@@ -126,6 +129,12 @@ def create_app(test_config=None):
             )
         ):
             raise RuntimeError("Email delivery must be configured before opening registration.")
+        if app.config["ADSENSE_ENABLED"] and not re.fullmatch(
+            r"ca-pub-\d{16}", app.config["ADSENSE_CLIENT_ID"]
+        ):
+            raise RuntimeError(
+                "ADSENSE_ENABLED requires a valid ADSENSE_CLIENT_ID such as ca-pub-1234567890123456."
+            )
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     db.init_app(app)
@@ -162,14 +171,19 @@ def create_app(test_config=None):
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; "
+            "default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com "
+            "https://fundingchoicesmessages.google.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org "
             "https://www.atptour.com https://photoresources.wtatennis.com https://content.wimbledon.com "
             "https://ichef.bbci.co.uk https://a3.espncdn.com https://e0.365dm.com "
-            "https://d2me2qg8dfiw8u.cloudfront.net; "
-            "connect-src 'self'; form-action 'self'; base-uri 'self'; "
+            "https://d2me2qg8dfiw8u.cloudfront.net https://pagead2.googlesyndication.com "
+            "https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; "
+            "connect-src 'self' https://pagead2.googlesyndication.com "
+            "https://googleads.g.doubleclick.net https://fundingchoicesmessages.google.com; "
+            "frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com "
+            "https://fundingchoicesmessages.google.com; form-action 'self'; base-uri 'self'; "
             "frame-ancestors 'none'; object-src 'none'"
         )
         if production:
