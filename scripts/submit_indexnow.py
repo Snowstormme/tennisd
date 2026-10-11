@@ -1,9 +1,9 @@
 """Notify IndexNow search engines about Tennisd's frequently updated entry pages."""
 
-import json
 import os
 import sys
-from urllib.request import Request, urlopen
+
+import requests
 
 
 HOST = os.environ.get("PUBLIC_HOST", "tennisd.vercel.app").strip().removeprefix("https://").rstrip("/")
@@ -12,18 +12,15 @@ PATHS = ("/", "/matches", "/matches/today", "/matches/this-week", "/matches/top-
 
 
 def main():
-    payload = json.dumps({
+    payload = {
         "host": HOST,
         "key": KEY,
         "keyLocation": f"https://{HOST}/{KEY}.txt",
         "urlList": [f"https://{HOST}{path}" for path in PATHS],
-    }).encode()
-    request = Request(
-        "https://api.indexnow.org/indexnow", data=payload,
-        headers={"Content-Type": "application/json; charset=utf-8"}, method="POST",
-    )
-    with urlopen(request, timeout=20) as response:
-        print(f"IndexNow accepted {len(PATHS)} URLs (HTTP {response.status}).")
+    }
+    response = requests.post("https://api.indexnow.org/indexnow", json=payload, timeout=20)
+    response.raise_for_status()
+    print(f"IndexNow accepted {len(PATHS)} URLs (HTTP {response.status_code}).")
     return 0
 
 
