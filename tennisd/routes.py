@@ -15,6 +15,7 @@ from flask import Blueprint, Response, abort, current_app, flash, jsonify, redir
 from flask_login import current_user, login_required, login_user, logout_user
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import and_, case, delete, func, inspect, or_, select, union_all
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
@@ -27,6 +28,17 @@ from .tournament_catalog import tournament_level, tournament_profile, tournament
 
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
+
+
+def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
+    """Cache public, user-independent responses without making them feel stale."""
+    response.headers["Cache-Control"] = (
+        f"public, max-age={browser_seconds}, stale-while-revalidate={stale_seconds}"
+    )
+    response.headers["Vercel-CDN-Cache-Control"] = (
+        f"max-age={cdn_seconds}, stale-while-revalidate={stale_seconds}"
+    )
+    return response
 
 def match_location(match):
     return tournament_profile(match.tournament).get("location", "Location unavailable")
@@ -294,7 +306,34 @@ def public_player_photo(player):
         select(PlayerPhoto.url).where(PlayerPhoto.player_id == player.id)
         .order_by(PlayerPhoto.is_primary.desc(), PlayerPhoto.id)
     )
-    return stored or wikimedia_player_photo(player.wikidata_id) or wikipedia_player_photo(player.name) or wikidata_search_player_photo(player.name)
+    if stored:
+        return stored
+    discovered = (
+        wikimedia_player_photo(player.wikidata_id)
+        or wikipedia_player_photo(player.name)
+        or wikidata_search_player_photo(player.name)
+    )
+    if not discovered:
+        return None
+    # Serverless instances do not share their in-memory lookup cache. Persisting a
+    # successful public portrait makes every later request a cheap database read.
+    try:
+        existing = db.session.scalar(
+            select(PlayerPhoto.id).where(
+                PlayerPhoto.player_id == player.id,
+                PlayerPhoto.url == discovered,
+            )
+        )
+        if existing is None:
+            db.session.add(PlayerPhoto(
+                player_id=player.id,
+                url=discovered,
+                is_primary=True,
+            ))
+            db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+    return discovered
 
 
 def player_placeholder(name, max_age=86400):
@@ -554,10 +593,10 @@ def player_photo(player_id):
     photo_url = public_player_photo(player)
     if photo_url:
         response = redirect(photo_url)
-        response.cache_control.public = True
-        response.cache_control.max_age = 604800
-        response.headers["Vercel-CDN-Cache-Control"] = "max-age=604800"
-        return response
+        return shared_cache(
+            response, browser_seconds=604800, cdn_seconds=2592000,
+            stale_seconds=604800,
+        )
     return player_placeholder(player.name)
 
 
@@ -572,10 +611,10 @@ def live_player_photo(provider_id, side):
         photo_url = wikipedia_player_photo(name) or wikidata_search_player_photo(name)
     if photo_url:
         response = redirect(photo_url)
-        response.cache_control.public = True
-        response.cache_control.max_age = 604800
-        response.headers["Vercel-CDN-Cache-Control"] = "max-age=604800"
-        return response
+        return shared_cache(
+            response, browser_seconds=604800, cdn_seconds=2592000,
+            stale_seconds=604800,
+        )
     return player_placeholder(name)
 
 
@@ -679,8 +718,9 @@ def live_matches_api():
             } if match.provider_id in odds else None),
         } for match in matches]
     })
-    response.cache_control.no_store = True
-    return response
+    return shared_cache(
+        response, browser_seconds=15, cdn_seconds=30, stale_seconds=30,
+    )
 
 
 @site.get("/matches/<path:match_id>")
@@ -1101,8 +1141,9 @@ def news_status():
         "total": len(stories),
         "checked_at": datetime.now(timezone.utc).isoformat(),
     })
-    response.headers["Cache-Control"] = "no-store"
-    return response
+    return shared_cache(
+        response, browser_seconds=60, cdn_seconds=300, stale_seconds=600,
+    )
 
 
 @site.get("/news/<source_key>/<story_id>")
@@ -1144,9 +1185,10 @@ def news_image(source_key, story_id):
     if content_type not in {"image/avif", "image/jpeg", "image/png", "image/webp"} or len(upstream.content) > 5_000_000:
         abort(404)
     response = Response(upstream.content, mimetype=content_type)
-    response.headers["Cache-Control"] = "public, max-age=86400, stale-while-revalidate=604800"
-    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400, stale-while-revalidate=604800"
-    return response
+    return shared_cache(
+        response, browser_seconds=86400, cdn_seconds=604800,
+        stale_seconds=604800,
+    )
 
 
 @site.get("/notifications")

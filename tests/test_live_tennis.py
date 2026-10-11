@@ -119,8 +119,11 @@ class LiveTennisTests(unittest.TestCase):
         self.assertIn(b"Live on court", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)
-        payload = self.client.get("/api/live-matches").get_json()
+        api_response = self.client.get("/api/live-matches")
+        payload = api_response.get_json()
         self.assertEqual(payload["matches"][0]["score"], "6\u20134 2\u20133")
+        self.assertIn("max-age=15", api_response.headers["Cache-Control"])
+        self.assertIn("max-age=30", api_response.headers["Vercel-CDN-Cache-Control"])
 
     def test_sync_creates_permanent_profiles_for_new_live_players(self):
         now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)

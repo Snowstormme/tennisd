@@ -171,7 +171,8 @@ class TennisdFlows(unittest.TestCase):
             self.assertIn(b"/api/news-status", script.data)
         news_status = self.client.get("/api/news-status?source=wta")
         self.assertEqual(news_status.json["total"], 0)
-        self.assertEqual(news_status.headers["Cache-Control"], "no-store")
+        self.assertIn("max-age=60", news_status.headers["Cache-Control"])
+        self.assertIn("max-age=300", news_status.headers["Vercel-CDN-Cache-Control"])
         about = self.client.get("/about")
         self.assertIn(b"Tennis API on RapidAPI", about.data)
         self.assertNotIn(b"Jeff", about.data)
@@ -399,6 +400,26 @@ class TennisdFlows(unittest.TestCase):
                 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Player%20portrait.jpg?width=420",
             )
         self.assertEqual(normalized_person_name("Iga Świątek"), "iga swiatek")
+
+    def test_discovered_player_photo_is_persisted_for_future_requests(self):
+        with self.app.app_context():
+            player = Player(id="cached-photo-player", tour="WTA", name="Cached Portrait Player")
+            db.session.add(player)
+            db.session.commit()
+
+        photo_url = "https://upload.wikimedia.org/cached-player.jpg"
+        with patch("tennisd.routes.wikipedia_player_photo", return_value=photo_url) as lookup:
+            first = self.client.get("/players/cached-photo-player/photo")
+            second = self.client.get("/players/cached-photo-player/photo")
+
+        self.assertEqual(first.headers["Location"], photo_url)
+        self.assertEqual(second.headers["Location"], photo_url)
+        lookup.assert_called_once_with("Cached Portrait Player")
+        with self.app.app_context():
+            stored = db.session.scalar(
+                select(PlayerPhoto).where(PlayerPhoto.player_id == "cached-photo-player")
+            )
+            self.assertEqual(stored.url, photo_url)
 
     def test_news_story_opens_in_tennisd_reader(self):
         story_id = "A" * 40

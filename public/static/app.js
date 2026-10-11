@@ -15,10 +15,35 @@ document.addEventListener("DOMContentLoaded", () => {
         document.head.appendChild(hint);
       };
       anchor.addEventListener("pointerenter", prefetch, { once: true, passive: true });
-      anchor.addEventListener("touchstart", prefetch, { once: true, passive: true });
       anchor.addEventListener("focus", prefetch, { once: true, passive: true });
     });
   }
+
+  const startVisiblePolling = (callback, intervalMs) => {
+    let timer = null;
+    let lastRun = Date.now();
+    const run = async () => {
+      if (document.hidden) return;
+      lastRun = Date.now();
+      await callback();
+    };
+    const start = () => {
+      if (timer === null) timer = window.setInterval(run, intervalMs);
+    };
+    const stop = () => {
+      if (timer !== null) window.clearInterval(timer);
+      timer = null;
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stop();
+        return;
+      }
+      if (Date.now() - lastRun >= intervalMs) run();
+      start();
+    });
+    start();
+  };
 
   document.querySelectorAll("[data-news-card-image]").forEach((image) => {
     image.addEventListener("error", () => image.remove());
@@ -102,7 +127,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (liveMatches.length) {
     const refreshScores = async () => {
       try {
-        const response = await fetch("/api/live-matches", { cache: "no-store" });
+        const response = await fetch("/api/live-matches");
         if (!response.ok) return;
         const payload = await response.json();
         payload.matches.forEach((match) => {
@@ -126,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Keep the most recently stored score when a refresh is unavailable.
       }
     };
-    window.setInterval(refreshScores, 60000);
+    startVisiblePolling(refreshScores, 60000);
   }
 
   const liveNews = document.querySelector("[data-news-live]");
@@ -137,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const checked = liveNews.querySelector("[data-news-checked]");
     const refreshNews = async () => {
       try {
-        const response = await fetch(`/api/news-status?source=${encodeURIComponent(source)}`, { cache: "no-store" });
+        const response = await fetch(`/api/news-status?source=${encodeURIComponent(source)}`);
         if (!response.ok) return;
         const payload = await response.json();
         if (count) count.textContent = `${payload.total} stories`;
@@ -151,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (checked) checked.textContent = "Live update paused";
       }
     };
-    window.setInterval(refreshNews, 60000);
+    startVisiblePolling(refreshNews, 300000);
   }
 
 });
