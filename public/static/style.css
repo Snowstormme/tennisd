@@ -289,6 +289,26 @@
 /* The archive uses the same full scoreboard composition as the hero carousel. */
 .archive-match-grid>.scoreboard-match-card{min-height:430px}.scoreboard-match-card .showcase-center{padding-inline:8px}.scoreboard-match-card .showcase-event{margin:25px 0 0;font-size:13px}
 @media(max-width:600px){.archive-match-grid>.scoreboard-match-card{min-height:410px}.scoreboard-match-card .showcase-event{margin-top:15px;font-size:9px}.scoreboard-match-card .match-portrait strong{display:block;padding:58px 7px 12px;font-size:11px;line-height:1.05;text-shadow:0 2px 8px #000}.scoreboard-match-card .match-portrait-right strong{text-align:right}}
+
+/* Two calm header rows on phones and small tablets: navigation stays beside
+   the wordmark, while account actions sit directly beneath it. */
+@media(max-width:900px){
+  .site-header .header-inner{display:grid;grid-template-columns:max-content minmax(0,1fr);grid-template-areas:"brand navigation" "actions actions";align-items:center;width:100%;padding:8px 12px 9px;gap:3px 8px}
+  .site-header .brand{grid-area:brand;margin:0;font-size:21px;gap:7px}
+  .site-header .brand-mark{width:22px;height:22px}
+  .site-header .main-nav{grid-area:navigation;order:initial;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;height:40px;margin:0;overflow:hidden;gap:0}
+  .site-header .main-nav a.nav-animated{min-width:0;height:40px;padding:0 2px;overflow:hidden;font-size:9px;text-overflow:clip;white-space:nowrap}
+  .site-header .main-nav a[aria-current="page"]:after{left:5px;right:5px}
+  .site-header .header-actions{grid-area:actions;justify-self:start;margin:0;gap:4px}
+  .site-header .header-search,.site-header .mobile-notifications{width:34px;height:34px;flex-basis:34px}
+  .site-header .header-login{padding-inline:6px;font-size:12px}
+}
+@media(max-width:370px){
+  .site-header .header-inner{padding-inline:9px;gap-inline:5px}
+  .site-header .brand{font-size:19px;gap:5px}
+  .site-header .brand-mark{width:20px;height:20px}
+  .site-header .main-nav a.nav-animated{font-size:8px;padding-inline:1px}
+}
 /* Search moved next to profile as a small icon; remaining nav links stretch to fill the row */
 .site-header .main-nav{flex:1}.site-header .main-nav a.nav-animated{flex:1 1 0;min-width:0}
 .header-search{display:grid;place-items:center;width:38px;height:38px;border-radius:4px;color:#bdcbbf;text-decoration:none}.header-search svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.header-search:hover,.header-search[aria-current]{color:var(--cream);background:#ffffff08}
