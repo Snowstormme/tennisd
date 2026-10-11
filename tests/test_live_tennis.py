@@ -124,6 +124,7 @@ class LiveTennisTests(unittest.TestCase):
         self.assertEqual(payload["matches"][0]["score"], "6\u20134 2\u20133")
         self.assertIn("max-age=15", api_response.headers["Cache-Control"])
         self.assertIn("max-age=30", api_response.headers["Vercel-CDN-Cache-Control"])
+        self.assertNotIn("Cookie", api_response.headers.get("Vary", ""))
 
     def test_sync_creates_permanent_profiles_for_new_live_players(self):
         now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)

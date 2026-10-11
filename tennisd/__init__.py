@@ -129,7 +129,6 @@ def create_app(test_config=None):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     db.init_app(app)
-    login_manager.init_app(app)
 
     from .models import User
 
@@ -175,9 +174,18 @@ def create_app(test_config=None):
         )
         if production:
             response.headers["Strict-Transport-Security"] = "max-age=31536000"
+        shared_public_endpoints = {
+            "site.live_matches_api", "site.news_status", "site.player_photo",
+            "site.live_player_photo", "site.news_image",
+        }
         if request.endpoint == "static" and request.args.get("v"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             response.headers["Vercel-CDN-Cache-Control"] = "max-age=31536000"
+        elif request.endpoint in shared_public_endpoints:
+            # These responses never depend on the logged-in user. Avoid touching
+            # current_user here: Flask would add `Vary: Cookie`, preventing Vercel
+            # from sharing one cached response between visitors.
+            session.accessed = False
         elif current_user.is_authenticated:
             response.cache_control.no_store = True
             response.cache_control.private = True
@@ -197,6 +205,10 @@ def create_app(test_config=None):
             response.cache_control.max_age = 60
             response.cache_control.stale_while_revalidate = 300
         return response
+
+    # Register Flask-Login after our response handler so security_headers runs
+    # last and can mark public API responses as independent of session cookies.
+    login_manager.init_app(app)
 
     from .routes import site
 
