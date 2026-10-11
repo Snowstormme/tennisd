@@ -289,3 +289,7 @@
 /* The archive uses the same full scoreboard composition as the hero carousel. */
 .archive-match-grid>.scoreboard-match-card{min-height:430px}.scoreboard-match-card .showcase-center{padding-inline:8px}.scoreboard-match-card .showcase-event{margin:25px 0 0;font-size:13px}
 @media(max-width:600px){.archive-match-grid>.scoreboard-match-card{min-height:410px}.scoreboard-match-card .showcase-event{margin-top:15px;font-size:9px}.scoreboard-match-card .match-portrait strong{display:block;padding:58px 7px 12px;font-size:11px;line-height:1.05;text-shadow:0 2px 8px #000}.scoreboard-match-card .match-portrait-right strong{text-align:right}}
+/* Search moved next to profile; remaining nav links stretch to fill the row */
+.site-header .main-nav{flex:1}.site-header .main-nav a.nav-animated{flex:1 1 0;min-width:0}
+.header-search{position:relative;display:grid;grid-template-rows:27px auto;place-items:center;align-content:center;align-self:stretch;min-width:68px;padding:5px 4px 0;color:#bdcbbf;text-decoration:none;font-size:11px;font-weight:700;letter-spacing:.015em;line-height:1.1}.header-search:hover,.header-search[aria-current]{color:var(--cream)}.header-search[aria-current]:after{content:"";position:absolute;bottom:0;left:7px;right:7px;height:3px;border-radius:3px 3px 0 0;background:var(--lime)}
+@media(max-width:900px){.site-header .main-nav{grid-template-columns:repeat(4,minmax(0,1fr))}.header-search{min-width:0;padding:0 6px;grid-template-rows:1fr;font-size:10px}.header-search[aria-current]:after{left:6px;right:6px}}
