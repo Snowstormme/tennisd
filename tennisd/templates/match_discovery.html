@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import current_match_card %}
+{% block title %}{{ heading }}{% endblock %}
+{% block meta_description %}{{ introduction }}{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": heading,
+  "description": introduction,
+  "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path,
+  "mainEntity": {
+    "@type": "ItemList",
+    "numberOfItems": matches|length
+  }
+}|tojson }}</script>{% endblock %}
+{% block content %}
+<section class="page-banner discovery-banner"><div class="container"><p class="eyebrow">{{ eyebrow }}</p><h1>{{ heading }}<span>.</span></h1><p>{{ introduction }}</p></div></section>
+<main class="container page-section discovery-page">
+  <nav class="directory-tabs" aria-label="Current match discovery">
+    <a href="{{ url_for('site.matches_today') }}"{% if page == 'today' %} aria-current="page"{% endif %}>Today</a>
+    <a href="{{ url_for('site.matches_this_week') }}"{% if page == 'week' %} aria-current="page"{% endif %}>This week</a>
+    <a href="{{ url_for('site.top_rated_matches') }}">Top rated</a>
+    <a href="{{ url_for('site.matches') }}">All matches</a>
+  </nav>
+  <div class="section-head"><div><p class="eyebrow">ATP &amp; WTA</p><h2>{{ matches|length }} {{ 'match' if matches|length == 1 else 'matches' }}<span>.</span></h2></div><span class="section-subtle">Live scores refresh automatically</span></div>
+  {% if matches %}<div class="current-match-grid">{% for match in matches %}{{ current_match_card(match, live_players.get(match.provider_id), live_odds.get(match.provider_id)) }}{% endfor %}</div>{% else %}<div class="empty-state"><h3>No matches are listed for this period yet.</h3><p>The live feed refreshes every 15 minutes. Explore the permanent archive while the next schedule arrives.</p><a class="text-link" href="{{ url_for('site.matches') }}">Browse all matches</a></div>{% endif %}
+</main>
+{% endblock %}

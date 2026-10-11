@@ -10,27 +10,44 @@
   <meta name="robots" content="{% block robots %}index, follow, max-image-preview:large{% endblock %}">
   {% set canonical_url = config.PUBLIC_BASE_URL.rstrip('/') ~ request.path %}
   <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="en" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="x-default" href="{{ canonical_url }}">
   <meta property="og:site_name" content="Tennisd">
   <meta property="og:type" content="{% block social_type %}website{% endblock %}">
   <meta property="og:title" content="{% block social_title %}Tennisd · {{ self.title()|striptags|trim }}{% endblock %}">
   <meta property="og:description" content="{{ self.meta_description()|striptags|trim }}">
   <meta property="og:url" content="{{ canonical_url }}">
-  <meta name="twitter:card" content="summary">
+  {% set social_image_url = config.PUBLIC_BASE_URL.rstrip('/') ~ url_for('static', filename='images/news-court-fallback.webp') %}
+  <meta property="og:image" content="{% block social_image %}{{ social_image_url }}{% endblock %}">
+  <meta property="og:image:alt" content="Tennisd tennis court">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Tennisd · {{ self.title()|striptags|trim }}">
   <meta name="twitter:description" content="{{ self.meta_description()|striptags|trim }}">
+  <meta name="twitter:image" content="{{ self.social_image()|striptags|trim }}">
   <title>Tennisd · {% block title %}Tennis Match Diary{% endblock %}</title>
   <script type="application/ld+json">{{ {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Tennisd",
-    "alternateName": ["Tennisd Tennis", "Tennisd Match Diary"],
-    "url": config.PUBLIC_BASE_URL.rstrip('/') ~ '/',
-    "description": "A tennis match diary for discovering ATP and WTA matches, ratings, reviews, players and tournaments.",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": config.PUBLIC_BASE_URL.rstrip('/') ~ '/search?q={search_term_string}',
-      "query-input": "required name=search_term_string"
-    }
+    "@graph": [{
+      "@type": "Organization",
+      "@id": config.PUBLIC_BASE_URL.rstrip('/') ~ '/#organization',
+      "name": "Tennisd",
+      "url": config.PUBLIC_BASE_URL.rstrip('/') ~ '/',
+      "logo": config.PUBLIC_BASE_URL.rstrip('/') ~ url_for('static', filename='favicon.svg'),
+      "description": "An independent tennis match diary and community archive."
+    }, {
+      "@type": "WebSite",
+      "@id": config.PUBLIC_BASE_URL.rstrip('/') ~ '/#website',
+      "name": "Tennisd",
+      "alternateName": ["Tennisd Tennis", "Tennisd Match Diary"],
+      "url": config.PUBLIC_BASE_URL.rstrip('/') ~ '/',
+      "publisher": {"@id": config.PUBLIC_BASE_URL.rstrip('/') ~ '/#organization'},
+      "description": "A tennis match diary for discovering ATP and WTA matches, ratings, reviews, players and tournaments.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": config.PUBLIC_BASE_URL.rstrip('/') ~ '/search?q={search_term_string}',
+        "query-input": "required name=search_term_string"
+      }
+    }]
   }|tojson }}</script>
   {% block structured_data %}{% endblock %}
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg', v='20260930-4') }}" type="image/svg+xml">

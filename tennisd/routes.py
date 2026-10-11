@@ -431,6 +431,17 @@ def ads_txt():
     return response
 
 
+@site.get("/<key>.txt")
+def indexnow_key(key):
+    configured = current_app.config.get("INDEXNOW_KEY", "")
+    if not configured or not hmac.compare_digest(key, configured):
+        abort(404)
+    response = Response(f"{configured}\n", content_type="text/plain; charset=utf-8")
+    response.headers["Cache-Control"] = "public, max-age=86400"
+    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400"
+    return response
+
+
 @site.get("/robots.txt")
 def robots_txt():
     body = "\n".join((
@@ -472,6 +483,7 @@ def sitemap_index():
 def sitemap_core():
     endpoints = (
         "site.home", "site.matches", "site.players", "site.tournaments",
+        "site.matches_today", "site.matches_this_week", "site.top_rated_matches",
         "site.news", "site.about", "site.privacy",
     )
     entries = "".join(
@@ -699,6 +711,66 @@ def matches():
         "matches.html", view=view, pagination=pagination, current_matches=current_matches,
         live_players=live_players, query=query, tour=tour,
         surface=surface, year=year, level=level, order=order, match_location=match_location,
+    )
+
+
+def discovery_live_matches(start, end):
+    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+        return []
+    return db.session.scalars(
+        select(LiveMatch).where(
+            LiveMatch.starts_at >= start,
+            LiveMatch.starts_at < end,
+            LiveMatch.status.in_(("upcoming", "live", "finished")),
+        ).order_by(
+            case((LiveMatch.status == "live", 0), (LiveMatch.status == "upcoming", 1), else_=2),
+            LiveMatch.starts_at,
+            LiveMatch.tournament,
+        ).limit(60)
+    ).all()
+
+
+@site.get("/matches/today")
+def matches_today():
+    now = utcnow()
+    start = datetime.combine(now.date(), datetime.min.time(), tzinfo=timezone.utc)
+    rows = discovery_live_matches(start, start + timedelta(days=1))
+    return render_template(
+        "match_discovery.html", page="today", matches=rows,
+        live_players=current_match_players(rows), live_odds=current_match_odds(rows),
+        heading="Tennis matches today", eyebrow="TODAY ON COURT",
+        introduction="Live scores, scheduled starts and completed ATP and WTA matches for today. Finished matches remain in the permanent Tennisd archive.",
+    )
+
+
+@site.get("/matches/this-week")
+def matches_this_week():
+    now = utcnow()
+    start = datetime.combine(now.date(), datetime.min.time(), tzinfo=timezone.utc)
+    rows = discovery_live_matches(start, start + timedelta(days=7))
+    return render_template(
+        "match_discovery.html", page="week", matches=rows,
+        live_players=current_match_players(rows), live_odds=current_match_odds(rows),
+        heading="Tennis matches this week", eyebrow="THE NEXT SEVEN DAYS",
+        introduction="Upcoming, live and recently completed ATP and WTA matches across the next seven days, updated from the Tennisd live feed.",
+    )
+
+
+@site.get("/matches/top-rated")
+def top_rated_matches():
+    rating_count = func.count(Review.id).label("rating_count")
+    average_rating = func.avg(Review.rating_half).label("average_rating")
+    rows = db.session.execute(
+        select(Match, rating_count, average_rating)
+        .join(Review, Review.match_id == Match.id)
+        .where(Review.is_public.is_(True), Review.rating_half.is_not(None))
+        .options(joinedload(Match.winner), joinedload(Match.loser))
+        .group_by(Match.id)
+        .order_by(average_rating.desc(), rating_count.desc(), Match.week_start.desc())
+        .limit(36)
+    ).all()
+    return render_template(
+        "top_rated_matches.html", rows=rows, match_location=match_location,
     )
 
 

@@ -93,6 +93,11 @@ def create_app(test_config=None):
             os.environ.get("ADSENSE_CLIENT_ID", "ca-pub-9135813423535698").strip()
         ),
         ADSENSE_ENABLED=os.environ.get("ADSENSE_ENABLED", "false").lower() == "true",
+        # IndexNow keys are public ownership proofs and are intentionally served
+        # from the site root. Keep this stable so search engines can verify it.
+        INDEXNOW_KEY=os.environ.get(
+            "INDEXNOW_KEY", "a4f23d7e946b4aa8b36740f15f67e2c1"
+        ).strip(),
         AUTO_CREATE_DB=os.environ.get("AUTO_CREATE_DB", "false" if production else "true") == "true",
         MAX_CONTENT_LENGTH=2 * 1024 * 1024,
         REMEMBER_COOKIE_SECURE=production,

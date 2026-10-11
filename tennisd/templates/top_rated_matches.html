@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import showcase_match_card %}
+{% block title %}Top-rated tennis matches{% endblock %}
+{% block meta_description %}Discover the highest-rated tennis matches in the Tennisd community, with ATP and WTA scores, reviews and match details.{% endblock %}
+{% block structured_data %}<script type="application/ld+json">{{ {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "Top-rated tennis matches",
+  "description": "The highest-rated ATP and WTA matches in the Tennisd community.",
+  "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path
+}|tojson }}</script>{% endblock %}
+{% block content %}
+<section class="page-banner discovery-banner"><div class="container"><p class="eyebrow">COMMUNITY PICKS</p><h1>Top-rated tennis matches<span>.</span></h1><p>Memorable ATP and WTA matches, ordered by the ratings shared by Tennisd members.</p></div></section>
+<main class="container page-section discovery-page">
+  <nav class="directory-tabs" aria-label="Current match discovery"><a href="{{ url_for('site.matches_today') }}">Today</a><a href="{{ url_for('site.matches_this_week') }}">This week</a><a href="{{ url_for('site.top_rated_matches') }}" aria-current="page">Top rated</a><a href="{{ url_for('site.matches') }}">All matches</a></nav>
+  {% if rows %}<div class="archive-match-grid rated-match-grid">{% for match, rating_count, average_rating in rows %}<article class="rated-match"><div class="rated-match-score"><strong>{{ '%.1f'|format(average_rating) }}</strong><span>/ 10 · {{ rating_count }} {{ 'rating' if rating_count == 1 else 'ratings' }}</span></div>{{ showcase_match_card(match, match_location, scoreboard=true) }}</article>{% endfor %}</div>{% else %}<div class="empty-state"><h3>The first community ranking is still being written.</h3><p>Rate a match and it will become eligible for this list.</p><a class="text-link" href="{{ url_for('site.matches') }}">Find a match to rate</a></div>{% endif %}
+</main>
+{% endblock %}

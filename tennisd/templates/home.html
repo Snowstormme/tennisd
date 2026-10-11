@@ -21,6 +21,15 @@
   </div>
 </section>
 
+<section class="container home-section discover-now">
+  <div class="section-head"><div><p class="eyebrow">FOLLOW THE TOUR</p><h2>Find the match that matters now<span>.</span></h2></div></div>
+  <div class="discovery-link-grid">
+    <a href="{{ url_for('site.matches_today') }}"><span>TODAY</span><strong>Tennis matches today</strong><small>Live, upcoming and completed</small></a>
+    <a href="{{ url_for('site.matches_this_week') }}"><span>NEXT</span><strong>This week on tour</strong><small>The coming seven days</small></a>
+    <a href="{{ url_for('site.top_rated_matches') }}"><span>COMMUNITY</span><strong>Top-rated matches</strong><small>Selected by Tennisd members</small></a>
+  </div>
+</section>
+
 <section class="container home-section archive-showcase">
   <div class="section-head"><div><p class="eyebrow">THE ARCHIVE</p><h2>Matches worth remembering<span>.</span></h2></div><a class="section-link" href="{{ url_for('site.matches') }}">Browse all matches</a></div>
   <div class="home-match-grid">{% for match in recent_matches %}{{ showcase_match_card(match, match_location) }}{% endfor %}</div>

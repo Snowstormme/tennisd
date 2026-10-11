@@ -66,12 +66,17 @@ class TennisdFlows(unittest.TestCase):
             self.assertNotEqual(location, "International tour event")
 
     def test_core_pages_and_search(self):
-        for path in ("/", "/matches", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
+        for path in ("/", "/matches", "/matches/today", "/matches/this-week", "/matches/top-rated", "/players", "/players?view=rankings", "/tournaments", "/search", "/news", "/about", "/privacy", "/feedback", f"/matches/{self.match_id}"):
             self.assertEqual(self.client.get(path).status_code, 200, path)
         home = self.client.get("/")
         self.assertIn(b"<title>Tennisd \xc2\xb7 Tennis Match Diary</title>", home.data)
         self.assertIn(b'application/ld+json', home.data)
         self.assertIn(b'"name": "Tennisd"', home.data)
+        self.assertIn(b'"@type": "Organization"', home.data)
+        self.assertIn(b'name="twitter:card" content="summary_large_image"', home.data)
+        self.assertIn(b'href="/matches/today"', home.data)
+        self.assertIn(b'href="/matches/this-week"', home.data)
+        self.assertIn(b'href="/matches/top-rated"', home.data)
         self.assertIn(b"Tennisd is your tennis match diary", home.data)
         self.assertNotIn(b"eyebrow-line", home.data)
         self.assertNotIn(b"hero-counts", home.data)
@@ -123,6 +128,12 @@ class TennisdFlows(unittest.TestCase):
             self.assertIn(b"Matches archive and every live-state view reuse the home match card", stylesheet.data)
         players = self.client.get("/players")
         self.assertIn(b"player-photo-card", players.data)
+
+        today = self.client.get("/matches/today")
+        self.assertIn(b"Tennis matches today", today.data)
+        self.assertIn(b'"@type": "CollectionPage"', today.data)
+        top_rated = self.client.get("/matches/top-rated")
+        self.assertIn(b"Top-rated tennis matches", top_rated.data)
 
         self.assertIn(b"/photo", players.data)
         self.assertIn(b">All</option>", players.data)
@@ -366,6 +377,10 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"sitemap-tournaments.xml", sitemap.data)
         self.assertIn(b"sitemap-tournament-editions.xml", sitemap.data)
         self.assertIn(b"sitemap-matches-1.xml", sitemap.data)
+        core_sitemap = self.client.get("/sitemap-core.xml")
+        self.assertIn(b"/matches/today", core_sitemap.data)
+        self.assertIn(b"/matches/this-week", core_sitemap.data)
+        self.assertIn(b"/matches/top-rated", core_sitemap.data)
 
         self.assertIn(b"/matches/", self.client.get("/sitemap-matches-1.xml").data)
         self.assertIn(b"/players/", self.client.get("/sitemap-players.xml").data)
@@ -379,6 +394,13 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b'property="og:title" content="Tennisd', home.data)
         self.assertIn(b'name="twitter:description"', home.data)
         self.assertIn(b'name="robots" content="noindex, follow"', self.client.get("/login").data)
+
+    def test_indexnow_ownership_key(self):
+        key = self.app.config["INDEXNOW_KEY"]
+        response = self.client.get(f"/{key}.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_data(as_text=True), f"{key}\n")
+        self.assertEqual(self.client.get("/wrong-indexnow-key.txt").status_code, 404)
         with self.app.app_context():
             player_id = db.session.scalar(select(Player.id).limit(1))
         profile = self.client.get(f"/players/{player_id}")
