@@ -125,6 +125,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const liveMatches = document.querySelectorAll("[data-live-match]");
   if (liveMatches.length) {
+    const renderSetScore = (scoreNode, rawScore, winnerSide) => {
+      if (!scoreNode.classList.contains("featured-set-score")) {
+        scoreNode.textContent = rawScore;
+        return;
+      }
+      const sets = String(rawScore).trim().split(/\s+/).filter((token) => token.includes("-"));
+      if (!sets.length) {
+        const status = document.createElement("span");
+        status.className = "match-score-status";
+        status.textContent = rawScore;
+        scoreNode.replaceChildren(status);
+        return;
+      }
+      const rows = sets.map((setScore, index) => {
+        const separator = setScore.indexOf("-");
+        const row = document.createElement("span");
+        row.className = "featured-set";
+        const first = document.createElement("b");
+        const label = document.createElement("small");
+        const second = document.createElement("b");
+        first.textContent = setScore.slice(0, separator);
+        second.textContent = setScore.slice(separator + 1);
+        label.textContent = `SET ${index + 1}`;
+        if (Number(winnerSide) === 1) first.className = "set-winner";
+        if (Number(winnerSide) === 2) second.className = "set-winner";
+        row.append(first, label, second);
+        return row;
+      });
+      scoreNode.replaceChildren(...rows);
+      scoreNode.setAttribute("aria-label", `Score ${rawScore}`);
+    };
     const refreshScores = async () => {
       try {
         const response = await fetch("/api/live-matches");
@@ -133,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
         payload.matches.forEach((match) => {
           document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
             const score = card.querySelector("[data-live-score]");
-            if (score && match.score) score.textContent = match.score;
+            if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
             if (!match.odds) return;
             [1, 2].forEach((number) => {
               const price = Number(match.odds[`player${number}_price`]);

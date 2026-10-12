@@ -794,7 +794,10 @@ def live_match_detail(provider_id):
         return redirect(url_for("site.match_detail", match_id=archived))
     players = current_match_players([match]).get(match.provider_id, (None, None))
     odds = current_match_odds([match]).get(match.provider_id)
-    return render_template("live_match.html", match=match, players=players, odds=odds)
+    return render_template(
+        "live_match.html", match=match, players=players, odds=odds,
+        match_location=match_location,
+    )
 
 
 @site.get("/api/live-matches")
@@ -803,7 +806,7 @@ def live_matches_api():
     odds = current_match_odds(matches)
     response = jsonify({
         "matches": [{
-            "id": match.provider_id, "score": match.score,
+            "id": match.provider_id, "score": match.score, "winner_side": match.winner_side,
             "server": match.server, "synced_at": match.synced_at.isoformat(),
             "odds": ({
                 "player1_price": odds[match.provider_id].player1_price,
@@ -1618,6 +1621,7 @@ def profile(username):
         stats=diary_statistics(reviews), own=own, followed=followed, watchlist=watchlist,
         favorites=favorites, active_tab=active_tab, friends=friends, friend_state=friend_state,
         tournament_subscriptions=tournament_subscriptions, tournament_slug=tournament_slug,
+        match_location=match_location,
     )
 
 
