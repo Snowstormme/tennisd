@@ -322,8 +322,16 @@
   .site-header .nav-scene{display:block;width:27px;height:23px;transform:scale(.82);transform-origin:center}
   .site-header .nav-animated:hover .nav-scene{transform:scale(.82)}
 }
-/* Header polish: ring around search and profile, highlight for the current tab */
+/* Header polish */
 .site-header .header-search{box-sizing:border-box;border:1px solid #466256;border-radius:50%}
 .site-header .header-search:hover,.site-header .header-search[aria-current]{border-color:var(--lime);color:var(--lime);background:#d6ed8014}
 .site-header .header-profile .mini-avatar{box-shadow:0 0 0 2px var(--lime)}
-.site-header .main-nav a[aria-current="page"]{border-radius:8px;background:#d6ed8014;box-shadow:inset 0 0 0 1px #d6ed8066;color:var(--lime)}
+/* Desktop only: icon and label on one line, oval highlight for the current page, slimmer header */
+@media(min-width:901px){
+.site-header .header-inner{height:60px;padding-block:0}
+.site-header .main-nav{align-items:center;justify-content:flex-start;gap:10px}
+.site-header .main-nav a.nav-animated{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;flex:0 0 auto;gap:8px;height:40px;min-width:0;padding:0 16px 0 10px;border-radius:999px}
+.site-header .main-nav a.nav-animated:hover{background:#ffffff0a}
+.site-header .main-nav a[aria-current="page"]{background:#d6ed8024;box-shadow:inset 0 0 0 1px #d6ed8059;color:var(--lime)}
+.site-header .main-nav a[aria-current="page"]:after{display:none}
+}
