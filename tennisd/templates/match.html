@@ -3,6 +3,7 @@
 {% from '_macros.html' import report_form with context %}
 {% block title %}{{ match.winner.name }} vs {{ match.loser.name }}{% endblock %}
 {% block meta_description %}{{ match.winner.name }} vs {{ match.loser.name }} at {{ match.tournament }} {{ match.week_start.year }}. Final score {{ match.score }}. Match details, statistics, ratings and reviews.{% endblock %}
+{% block robots %}{% if match.week_start.year >= 2020 and match.level in ('G', 'M', 'PM', 'P', 'A', 'F') %}index, follow, max-image-preview:large{% else %}noindex, follow{% endif %}{% endblock %}
 {% block social_type %}article{% endblock %}
 {% block structured_data %}<script type="application/ld+json">{{ {
   "@context": "https://schema.org",

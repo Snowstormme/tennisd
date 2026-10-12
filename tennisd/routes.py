@@ -28,6 +28,10 @@ from .tournament_catalog import tournament_level, tournament_profile, tournament
 
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
+SITEMAP_START_DATE = date(2020, 1, 1)
+# Keep search-engine discovery focused on the tour levels people are most
+# likely to search for. Lower-level results remain available inside Tennisd.
+SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
 
 
 def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
@@ -398,23 +402,33 @@ def public_url(path):
 
 
 def xml_response(body):
-    return Response(body, content_type="application/xml; charset=utf-8")
+    return shared_cache(
+        Response(body, content_type="application/xml; charset=utf-8"),
+        browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
+    )
+
+
+def sitemap_match_conditions():
+    return (
+        Match.week_start >= SITEMAP_START_DATE,
+        Match.level.in_(SITEMAP_LEVELS),
+    )
 
 
 @site.get("/google872d566cb03fdad0.html")
 def google_site_verification():
-    return Response(
+    return shared_cache(Response(
         "google-site-verification: google872d566cb03fdad0.html\n",
         content_type="text/html; charset=utf-8",
-    )
+    ), browser_seconds=86400, cdn_seconds=604800, stale_seconds=604800)
 
 
 @site.get("/google4394fddbd7a3b94e.html")
 def google_search_console_verification():
-    return Response(
+    return shared_cache(Response(
         "google-site-verification: google4394fddbd7a3b94e.html\n",
         content_type="text/html; charset=utf-8",
-    )
+    ), browser_seconds=86400, cdn_seconds=604800, stale_seconds=604800)
 
 
 @site.get("/ads.txt")
@@ -426,9 +440,9 @@ def ads_txt():
         f"google.com, {client_id.removeprefix('ca-')}, DIRECT, f08c47fec0942fa0\n",
         content_type="text/plain; charset=utf-8",
     )
-    response.headers["Cache-Control"] = "public, max-age=3600"
-    response.headers["Vercel-CDN-Cache-Control"] = "max-age=3600"
-    return response
+    return shared_cache(
+        response, browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
+    )
 
 
 @site.get("/<key>.txt")
@@ -437,16 +451,35 @@ def indexnow_key(key):
     if not configured or not hmac.compare_digest(key, configured):
         abort(404)
     response = Response(f"{configured}\n", content_type="text/plain; charset=utf-8")
-    response.headers["Cache-Control"] = "public, max-age=86400"
-    response.headers["Vercel-CDN-Cache-Control"] = "max-age=86400"
-    return response
+    return shared_cache(
+        response, browser_seconds=86400, cdn_seconds=604800,
+        stale_seconds=604800,
+    )
 
 
 @site.get("/robots.txt")
 def robots_txt():
     body = "\n".join((
+        "User-agent: GPTBot",
+        "Disallow: /",
+        "User-agent: ClaudeBot",
+        "Disallow: /",
+        "User-agent: CCBot",
+        "Disallow: /",
+        "User-agent: Bytespider",
+        "Disallow: /",
+        "User-agent: AhrefsBot",
+        "Disallow: /",
+        "User-agent: SemrushBot",
+        "Disallow: /",
+        "User-agent: MJ12bot",
+        "Disallow: /",
         "User-agent: *",
         "Allow: /",
+        "Disallow: /api/",
+        "Disallow: /players/*/photo",
+        "Disallow: /live-matches/*/players/",
+        "Disallow: /*?",
         "Disallow: /settings",
         "Disallow: /notifications",
         "Disallow: /moderation",
@@ -455,12 +488,17 @@ def robots_txt():
         f"Sitemap: {public_url('/sitemap.xml')}",
         "",
     ))
-    return Response(body, content_type="text/plain; charset=utf-8")
+    return shared_cache(
+        Response(body, content_type="text/plain; charset=utf-8"),
+        browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
+    )
 
 
 @site.get("/sitemap.xml")
 def sitemap_index():
-    match_count = db.session.scalar(select(func.count(Match.id))) or 0
+    match_count = db.session.scalar(
+        select(func.count(Match.id)).where(*sitemap_match_conditions())
+    ) or 0
     locations = [
         public_url("/sitemap-core.xml"),
         public_url("/sitemap-players.xml"),
@@ -498,7 +536,13 @@ def sitemap_core():
 
 @site.get("/sitemap-players.xml")
 def sitemap_players():
-    player_ids = db.session.scalars(select(Player.id).order_by(Player.id)).all()
+    eligible_players = union_all(
+        select(Match.winner_id.label("player_id")).where(*sitemap_match_conditions()),
+        select(Match.loser_id.label("player_id")).where(*sitemap_match_conditions()),
+    ).subquery()
+    player_ids = db.session.scalars(
+        select(eligible_players.c.player_id).distinct().order_by(eligible_players.c.player_id)
+    ).all()
     entries = "".join(
         f"<url><loc>{xml_escape(public_url(url_for('site.player_detail', player_id=player_id)))}</loc></url>"
         for player_id in player_ids
@@ -513,7 +557,9 @@ def sitemap_players():
 @site.get("/sitemap-tournaments.xml")
 def sitemap_tournaments():
     tournaments = db.session.execute(
-        select(Match.tour, Match.tournament).distinct().order_by(Match.tour, Match.tournament)
+        select(Match.tour, Match.tournament)
+        .where(*sitemap_match_conditions())
+        .distinct().order_by(Match.tour, Match.tournament)
     ).all()
     entries = "".join(
         f"<url><loc>{xml_escape(public_url(url_for('site.tournament_detail', tour=tour.lower(), slug=tournament_slug(name))))}</loc></url>"
@@ -535,6 +581,7 @@ def sitemap_tournament_editions():
             func.extract("year", Match.week_start).label("season"),
             func.max(Match.week_start).label("last_match_week"),
         )
+        .where(*sitemap_match_conditions())
         .group_by(Match.tour, Match.tournament, func.extract("year", Match.week_start))
         .order_by(Match.tour, Match.tournament, func.extract("year", Match.week_start))
     ).all()
@@ -555,7 +602,9 @@ def sitemap_matches(page):
     if page < 1:
         abort(404)
     rows = db.session.execute(
-        select(Match.id, Match.week_start).order_by(Match.id)
+        select(Match.id, Match.week_start)
+        .where(*sitemap_match_conditions())
+        .order_by(Match.id)
         .offset((page - 1) * SITEMAP_PAGE_SIZE).limit(SITEMAP_PAGE_SIZE)
     ).all()
     if not rows:

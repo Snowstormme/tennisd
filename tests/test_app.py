@@ -367,6 +367,10 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(robots.status_code, 200)
         self.assertIn(b"Sitemap: http://127.0.0.1:5000/sitemap.xml", robots.data)
         self.assertIn(b"Disallow: /settings", robots.data)
+        self.assertIn(b"User-agent: GPTBot\nDisallow: /", robots.data)
+        self.assertIn(b"Disallow: /players/*/photo", robots.data)
+        self.assertIn(b"Disallow: /*?", robots.data)
+        self.assertIn("max-age=86400", robots.headers["Vercel-CDN-Cache-Control"])
 
         sitemap = self.client.get("/sitemap.xml")
         self.assertEqual(sitemap.status_code, 200)
@@ -375,6 +379,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"sitemap-tournaments.xml", sitemap.data)
         self.assertIn(b"sitemap-tournament-editions.xml", sitemap.data)
         self.assertIn(b"sitemap-matches-1.xml", sitemap.data)
+        self.assertIn("max-age=86400", sitemap.headers["Vercel-CDN-Cache-Control"])
         core_sitemap = self.client.get("/sitemap-core.xml")
         self.assertNotIn(b"/matches/today", core_sitemap.data)
         self.assertNotIn(b"/matches/this-week", core_sitemap.data)
