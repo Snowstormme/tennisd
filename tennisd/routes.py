@@ -306,10 +306,7 @@ def wikidata_search_player_photo(name):
 
 
 def public_player_photo(player):
-    stored = db.session.scalar(
-        select(PlayerPhoto.url).where(PlayerPhoto.player_id == player.id)
-        .order_by(PlayerPhoto.is_primary.desc(), PlayerPhoto.id)
-    )
+    stored = player.primary_photo_url
     if stored:
         return stored
     discovered = (

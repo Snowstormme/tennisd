@@ -31,7 +31,7 @@
       <div class="profile-panel-head"><div><p class="eyebrow">THE FOUR</p><h2>Favorite matches<span>.</span></h2></div><a href="{{ url_for('site.profile', username=user.username, tab='likes') }}">All likes</a></div>
       {% if favorites %}<div class="favorite-four">{% for review in favorites[:4] %}
         <a class="favorite-match surface-{{ review.match.surface|lower }}" href="{{ url_for('site.match_detail', match_id=review.match_id) }}">
-          <span class="favorite-players" aria-hidden="true"><img src="{{ url_for('site.player_photo', player_id=review.match.winner.id, v=2) }}" alt="" loading="lazy"><img src="{{ url_for('site.player_photo', player_id=review.match.loser.id, v=2) }}" alt="" loading="lazy"></span>
+          <span class="favorite-players" aria-hidden="true"><img src="{{ review.match.winner.primary_photo_url or url_for('site.player_photo', player_id=review.match.winner.id, v=6) }}" alt="" loading="lazy"><img src="{{ review.match.loser.primary_photo_url or url_for('site.player_photo', player_id=review.match.loser.id, v=6) }}" alt="" loading="lazy"></span>
           <span class="favorite-shade"></span><span class="favorite-meta">{{ review.match.tournament }} · {{ review.match.week_start.year }}</span><strong>{{ review.match.winner.name }}<small>vs</small>{{ review.match.loser.name }}</strong><span class="favorite-rating">{{ review.rating_half if review.rating_half else '♥' }}{% if review.rating_half %}<small>/10</small>{% endif %}</span>
         </a>
       {% endfor %}</div>{% else %}<div class="profile-empty"><strong>No favorites yet.</strong><span>Like a diary entry to place it in your four.</span></div>{% endif %}

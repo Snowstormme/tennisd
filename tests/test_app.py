@@ -338,6 +338,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"data-featured-carousel", home.data)
         self.assertIn(b"Paris Masters", home.data)
         self.assertIn(b"Home Winner", home.data)
+        self.assertIn(b"https://upload.wikimedia.org/home-winner.jpg", home.data)
+        self.assertIn(b"https://upload.wikimedia.org/home-runner.jpg", home.data)
+        self.assertNotIn(b"/players/home-first/photo", home.data)
 
     def test_rankings_render_loaded_rows(self):
         with self.app.app_context():

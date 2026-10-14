@@ -1,9 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const canPrefetch = !connection?.saveData && !/2g/.test(connection?.effectiveType || "");
+  const canPrefetch = !connection?.saveData
+    && !/2g/.test(connection?.effectiveType || "")
+    && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   const prefetched = new Set();
   if (canPrefetch) {
     document.querySelectorAll(".main-nav a, .brand").forEach((anchor) => {
+      let intentTimer = null;
       const prefetch = () => {
         const url = new URL(anchor.href, window.location.href);
         if (url.origin !== window.location.origin || url.href === window.location.href || prefetched.has(url.href)) return;
@@ -14,7 +17,13 @@ document.addEventListener("DOMContentLoaded", () => {
         hint.as = "document";
         document.head.appendChild(hint);
       };
-      anchor.addEventListener("pointerenter", prefetch, { once: true, passive: true });
+      anchor.addEventListener("pointerenter", () => {
+        intentTimer = window.setTimeout(prefetch, 250);
+      }, { passive: true });
+      anchor.addEventListener("pointerleave", () => {
+        if (intentTimer !== null) window.clearTimeout(intentTimer);
+        intentTimer = null;
+      }, { passive: true });
       anchor.addEventListener("focus", prefetch, { once: true, passive: true });
     });
   }
@@ -182,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Keep the most recently stored score when a refresh is unavailable.
       }
     };
-    startVisiblePolling(refreshScores, 60000);
+    startVisiblePolling(refreshScores, 180000);
   }
 
   const liveNews = document.querySelector("[data-news-live]");

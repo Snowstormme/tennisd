@@ -7,7 +7,7 @@
   <span class="showcase-wash" aria-hidden="true"></span>
   <div class="container live-detail-grid">
     <div class="live-detail-player live-detail-player-left">
-      {% if players[0] %}<a href="{{ url_for('site.player_detail', player_id=players[0].id) }}">{% endif %}<img src="{{ url_for('site.player_photo', player_id=players[0].id, v=6) if players[0] else url_for('site.live_player_photo', provider_id=match.provider_id, side=1, v=2) }}" alt="{{ match.player1_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 1 else 'PLAYER 1' }}</small><strong>{{ match.player1_name }}</strong>{% if players[0] %}<b>View player profile</b>{% endif %}</span>{% if players[0] %}</a>{% endif %}
+      {% if players[0] %}<a href="{{ url_for('site.player_detail', player_id=players[0].id) }}">{% endif %}<img src="{{ (players[0].primary_photo_url or url_for('site.player_photo', player_id=players[0].id, v=6)) if players[0] else url_for('site.live_player_photo', provider_id=match.provider_id, side=1, v=2) }}" alt="{{ match.player1_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 1 else 'PLAYER 1' }}</small><strong>{{ match.player1_name }}</strong>{% if players[0] %}<b>View player profile</b>{% endif %}</span>{% if players[0] %}</a>{% endif %}
     </div>
     <div class="live-detail-center">
       {{ match_center_header(match.tour, match.surface, match.tournament) }}
@@ -16,7 +16,7 @@
       <span class="featured-facts"><b>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'DATE TBC' }}</b><i>·</i><b>{{ match_round_name(match.round) if match.round else match.status|upper }}</b><i>·</i><b class="featured-location">{{ match_location(match) }}</b></span>
     </div>
     <div class="live-detail-player live-detail-player-right">
-      {% if players[1] %}<a href="{{ url_for('site.player_detail', player_id=players[1].id) }}">{% endif %}<img src="{{ url_for('site.player_photo', player_id=players[1].id, v=6) if players[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=2) }}" alt="{{ match.player2_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</small><strong>{{ match.player2_name }}</strong>{% if players[1] %}<b>View player profile</b>{% endif %}</span>{% if players[1] %}</a>{% endif %}
+      {% if players[1] %}<a href="{{ url_for('site.player_detail', player_id=players[1].id) }}">{% endif %}<img src="{{ (players[1].primary_photo_url or url_for('site.player_photo', player_id=players[1].id, v=6)) if players[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=2) }}" alt="{{ match.player2_name }}" referrerpolicy="no-referrer"><span><small>{{ 'WINNER' if match.winner_side == 2 else 'PLAYER 2' }}</small><strong>{{ match.player2_name }}</strong>{% if players[1] %}<b>View player profile</b>{% endif %}</span>{% if players[1] %}</a>{% endif %}
     </div>
   </div>
 </section>

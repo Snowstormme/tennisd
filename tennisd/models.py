@@ -89,6 +89,18 @@ class Player(db.Model):
     prize_checked_at = db.Column(db.DateTime(timezone=True))
     won_matches = db.relationship("Match", foreign_keys="Match.winner_id", back_populates="winner")
     lost_matches = db.relationship("Match", foreign_keys="Match.loser_id", back_populates="loser")
+    photos = db.relationship(
+        "PlayerPhoto", back_populates="player", lazy="selectin",
+        order_by="PlayerPhoto.id", cascade="all, delete-orphan",
+    )
+
+    @property
+    def primary_photo_url(self):
+        """Use a stored portrait directly so page images do not invoke Flask."""
+        if not self.photos:
+            return None
+        primary = next((photo for photo in self.photos if photo.is_primary), None)
+        return (primary or self.photos[0]).url
 
 
 class PlayerExternalId(db.Model):
@@ -108,7 +120,7 @@ class PlayerPhoto(db.Model):
     license_name = db.Column(db.String(80))
     attribution = db.Column(db.String(300))
     is_primary = db.Column(db.Boolean, default=False, nullable=False)
-    player = db.relationship("Player")
+    player = db.relationship("Player", back_populates="photos")
 
 
 class Tournament(db.Model):
