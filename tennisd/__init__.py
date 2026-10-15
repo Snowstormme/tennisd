@@ -252,6 +252,10 @@ def create_app(test_config=None):
 
     @app.get("/healthz")
     def healthz():
+        return "ok", 200, {"Cache-Control": "no-store"}
+
+    @app.get("/readyz")
+    def readyz():
         db.session.execute(text("SELECT 1"))
         return "ok", 200, {"Cache-Control": "no-store"}
 
