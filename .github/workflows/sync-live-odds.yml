@@ -1,9 +1,8 @@
 name: Sync live tennis odds
 
 on:
-  schedule:
-    - cron: '0 */3 * * *'
-    - cron: '30 1-23/3 * * *'
+  # Odds refreshes are intentionally manual. The automatic job is disabled so
+  # Live Tennis API is the only automatic tennis-data sync.
   workflow_dispatch:
 
 permissions:

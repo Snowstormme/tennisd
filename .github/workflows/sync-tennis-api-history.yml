@@ -1,8 +1,8 @@
 name: Sync Tennis API history
 
 on:
-  schedule:
-    - cron: '20 1 * * *'
+  # Historical RapidAPI imports are intentionally manual. The automatic job
+  # is disabled so Live Tennis API is the only automatic tennis-data sync.
   workflow_dispatch:
     inputs:
       max_requests:

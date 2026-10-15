@@ -2,9 +2,9 @@ name: Sync live top-tier matches
 
 on:
   schedule:
-    # GitHub frequently drops high-frequency cron events. Start one runner per
-    # hour and let it perform four refreshes at reliable 15-minute intervals.
-    - cron: '7 * * * *'
+    # One daily refresh keeps Neon mostly idle while preserving a current and
+    # seven-day upcoming slate without requiring the owner's laptop.
+    - cron: '7 2 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -31,22 +31,9 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Refresh ATP, WTA, Challenger and ITF slate
+      - name: Refresh ATP, WTA, Challenger and ITF slate once
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
           AUTO_CREATE_DB: 'false'
-        shell: bash
-        run: |
-          mode="${{ inputs.mode || 'auto' }}"
-          if [[ "${{ github.event_name }}" != "schedule" ]]; then
-            python scripts/sync_live_tennis.py "$mode"
-            exit 0
-          fi
-
-          for refresh in 1 2 3 4; do
-            python scripts/sync_live_tennis.py auto
-            if [[ "$refresh" -lt 4 ]]; then
-              sleep 900
-            fi
-          done
+        run: python scripts/sync_live_tennis.py "${{ inputs.mode || 'auto' }}"

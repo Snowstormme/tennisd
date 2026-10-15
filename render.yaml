@@ -11,8 +11,12 @@ services:
     envVars:
       - key: APP_ENV
         value: production
+      - key: AUTO_CREATE_DB
+        value: "false"
       - key: REGISTRATION_ENABLED
         value: "false"
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL

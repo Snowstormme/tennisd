@@ -51,22 +51,34 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 
 ## Public deployment
 
-Tennisd can run as one Flask function on Vercel Hobby with automatic HTTPS and registration initially disabled. Use a separate [Neon PostgreSQL](https://neon.com/) database; serverless filesystems are ephemeral, so production must not use SQLite.
+Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
 2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
-3. Build a pooled TLS URL using `rallylog_web` and the generated application password, then set it as Vercel's `DATABASE_URL`.
-4. Create a Resend account and verify a sending domain. Tennisd uses its HTTPS API. Set `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` and `CONTACT_EMAIL` in Vercel.
-5. Import the Git repository into a Vercel Hobby project. Set `APP_ENV=production`, `REGISTRATION_ENABLED=false`, a random 64-character `SECRET_KEY`, and `DATABASE_URL`. Vercel detects `wsgi.py` as the Flask entry point and supplies its hostname to the app.
+3. Build a pooled TLS URL using `rallylog_web` and the generated application password, then set it as Render's `DATABASE_URL`.
+4. Create a Resend account and verify a sending domain. Tennisd uses its HTTPS API. Set `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` and `CONTACT_EMAIL` in Render before opening registration.
+5. Create the service from `render.yaml`, or configure it manually with build command `pip install -r requirements.txt` and start command `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --access-logfile /dev/null wsgi:app`. Python is pinned by `.python-version`. Set `APP_ENV=production`, `AUTO_CREATE_DB=false`, `REGISTRATION_ENABLED=false`, a stable random 64-character `SECRET_KEY`, and the pooled `DATABASE_URL`. Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`.
 6. Verify `/healthz`, the catalog, account email, login, password reset, reports, export and account deletion. Then change `REGISTRATION_ENABLED` to `true` and redeploy.
+
+### Render environment variables
+
+Set these on the Render web service without committing their values:
+
+- Required: `APP_ENV=production`, `AUTO_CREATE_DB=false`, `SECRET_KEY`, and the pooled TLS `DATABASE_URL`.
+- Registration: `REGISTRATION_ENABLED`, `REQUIRE_EMAIL_VERIFICATION`, `RESEND_API_KEY`, and `MAIL_FROM`. Keep registration disabled until both email secrets are configured.
+- Administration: `ADMIN_EMAIL` and `CONTACT_EMAIL`.
+- Optional public integrations: `ADSENSE_CLIENT_ID`, `ADSENSE_ENABLED`, and `INDEXNOW_KEY`.
+- Optional canonical hostname: `PUBLIC_HOST`. Omit it to use Render's automatic `RENDER_EXTERNAL_HOSTNAME`.
+
+Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`; do not create them manually. Keep `LIVETENNISAPI_KEY` and `TENNISD_SYNC_DATABASE_URL` in GitHub Actions rather than the web service. The dormant manual workflows additionally use `RAPIDAPI_TENNIS_KEY`, `TENNIS_API_DAILY_REQUESTS`, and `THE_ODDS_API_KEY` only when deliberately dispatched.
 
 ### Live top-tier feed
 
-Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It refreshes the stored live slate every 15 minutes and replaces those cards' score text in open browsers once a minute. One midnight UTC hour refreshes fixtures for the next seven days instead, keeping the scheduled use inside the free plan's 100 request daily allowance. Finished singles matches are promoted into Tennisd's permanent `match` table and remain available after they leave the live feed.
+Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It runs once every 24 hours at 02:07 UTC and refreshes both the live slate and fixtures for the next seven days. Existing finished singles remain in Tennisd's permanent `match` table. The daily schedule favors Neon free-tier usage over point-by-point freshness.
 
 ### Current odds
 
-Tennisd can show decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Add `THE_ODDS_API_KEY` to GitHub, run **Add live odds table** once, then enable **Sync live tennis odds**. The workflow runs every 90 minutes and rotates through one active tennis competition per run. That is 16 charged requests per day and at most 496 in a 31-day month, inside the current 500-credit free tier. With several simultaneous competitions, each individual competition updates less often than 90 minutes. The interface identifies the bookmaker, update time and that the values are informational market estimates.
+Tennisd can show previously stored decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Automatic odds refreshes are disabled so they do not wake Neon. The **Sync live tennis odds** workflow remains available for an intentional manual refresh when `THE_ODDS_API_KEY` is configured.
 
 ### Free historical results
 
@@ -75,13 +87,13 @@ Tennisd can extend the permanent match database through [Tennis API on RapidAPI]
 1. Subscribe to the free Tennis API plan in RapidAPI and add the key to GitHub Actions as `RAPIDAPI_TENNIS_KEY`.
 2. Keep `TENNISD_SYNC_DATABASE_URL` pointed at the limited `rallylog_web` pooled TLS database URL.
 3. Temporarily add the database owner URL as `DATABASE_OWNER_URL`, run **Add Tennis API sync state**, then remove the owner secret.
-4. Enable **Sync Tennis API history**. It refreshes the previous two days of finals and spends the remaining requests on 7-day historical chunks down to 2010.
+4. Run **Sync Tennis API history** manually only if another historical import is intentionally required. Its automatic schedule is disabled, and existing imported matches remain unchanged.
 
 Confirm RapidAPI/provider storage and commercial terms before using the imported data in a monetized public release.
 
-This is near-live on the free plan rather than point-by-point streaming. The API key is used only by GitHub Actions and must not be placed in Vercel or sent to the browser.
+The daily Live Tennis API refresh is a low-cost snapshot rather than point-by-point streaming. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
 
-The checked-in [Render Blueprint](render.yaml) remains an alternative host configuration. Neon free compute sleeps while idle, so the first request after inactivity can be slower. Free plans suit an early public preview and are not an uptime guarantee.
+The checked-in [Render Blueprint](render.yaml) is the production web-service configuration. Neon free compute sleeps while idle, so the first request after inactivity can be slower. Free plans suit an early public preview and are not an uptime guarantee.
 
 ## Backups and recovery
 
