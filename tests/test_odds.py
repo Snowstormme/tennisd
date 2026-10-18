@@ -56,7 +56,7 @@ class OddsTests(unittest.TestCase):
         self.assertEqual(selected_sport_key(["a", "b", "c"], now), selected_sport_key(["a", "b", "c"], now))
 
     def test_sync_matches_names_and_renders_quote(self):
-        now = datetime(2026, 10, 2, 12, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         with self.app.app_context():
             db.session.add(LiveMatch(
                 provider_id="live-odds-1", status="live", tour="ATP", tournament="Shanghai Masters",
@@ -88,3 +88,26 @@ class OddsTests(unittest.TestCase):
         page = self.app.test_client().get("/matches?view=live")
         self.assertIn(b"FULL MATCH", page.data)
         self.assertIn(b"1.72", page.data)
+        self.assertIn(b"Updated just now", page.data)
+
+        with self.app.app_context():
+            quote = db.session.scalar(select(LiveOdds))
+            quote.fetched_at = now - timedelta(hours=5)
+            db.session.commit()
+        stale_page = self.app.test_client().get("/matches?view=live")
+        self.assertNotIn(b"FULL MATCH", stale_page.data)
+
+    def test_sync_skips_provider_when_no_match_is_live_or_starting_soon(self):
+        now = datetime.now(timezone.utc)
+        with self.app.app_context():
+            db.session.add(LiveMatch(
+                provider_id="later-match", status="upcoming", tour="WTA", tournament="Tokyo",
+                surface="Hard", round="R32", starts_at=now + timedelta(hours=5),
+                player1_name="Player One", player2_name="Player Two", score="",
+            ))
+            db.session.commit()
+            session = Session([])
+            with patch.dict(os.environ, {"THE_ODDS_API_KEY": "test-key"}):
+                result = sync_odds(session=session, now=now)
+            self.assertEqual(result["skipped"], "no relevant matches")
+            self.assertEqual(session.calls, [])

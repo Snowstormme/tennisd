@@ -1,7 +1,7 @@
 import os
 import re
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
@@ -20,6 +20,26 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = "site.login"
+
+
+def freshness(value, now=None):
+    """Describe a provider timestamp without implying greater precision."""
+    if value is None:
+        return "Update time unavailable"
+    now = now or datetime.now(timezone.utc)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    seconds = max(0, int((now - value).total_seconds()))
+    if seconds < 60:
+        return "Updated just now"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"Updated {minutes} minute{'s' if minutes != 1 else ''} ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"Updated {hours} hour{'s' if hours != 1 else ''} ago"
+    days = hours // 24
+    return f"Updated {days} day{'s' if days != 1 else ''} ago"
 
 
 @event.listens_for(Engine, "connect")
@@ -146,6 +166,7 @@ def create_app(test_config=None):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     db.init_app(app)
+    app.jinja_env.filters["freshness"] = freshness
 
     from .models import User
 

@@ -192,7 +192,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertNotIn(b"Sackmann", about.data)
         privacy = self.client.get("/privacy")
         self.assertIn(b"Google AdSense", privacy.data)
-        self.assertIn(b"runs on Vercel", privacy.data)
+        self.assertIn(b"runs on Render", privacy.data)
 
     def test_adsense_stays_off_until_enabled_and_serves_valid_ads_txt(self):
         ads = self.client.get("/ads.txt")

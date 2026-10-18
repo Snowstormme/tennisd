@@ -32,6 +32,8 @@ SITEMAP_START_DATE = date(2020, 1, 1)
 # Keep search-engine discovery focused on the tour levels people are most
 # likely to search for. Lower-level results remain available inside Tennisd.
 SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
+ODDS_DISPLAY_MAX_AGE = timedelta(hours=4)
+ODDS_UPCOMING_WINDOW = timedelta(hours=4)
 
 
 def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
@@ -160,9 +162,24 @@ def current_match_odds(matches):
     """Return the newest display quote without requiring the migration during deploy."""
     if not matches or not inspect(db.engine).has_table(LiveOdds.__tablename__):
         return {}
-    ids = [match.provider_id for match in matches]
+    now = utcnow()
+    ids = []
+    for match in matches:
+        starts_at = match.starts_at
+        if starts_at is not None and starts_at.tzinfo is None:
+            starts_at = starts_at.replace(tzinfo=timezone.utc)
+        if match.status == "live" or (
+            match.status == "upcoming" and starts_at is not None
+            and now <= starts_at <= now + ODDS_UPCOMING_WINDOW
+        ):
+            ids.append(match.provider_id)
+    if not ids:
+        return {}
     rows = db.session.scalars(
-        select(LiveOdds).where(LiveOdds.live_match_id.in_(ids)).order_by(LiveOdds.fetched_at.desc())
+        select(LiveOdds).where(
+            LiveOdds.live_match_id.in_(ids),
+            LiveOdds.fetched_at >= now - ODDS_DISPLAY_MAX_AGE,
+        ).order_by(LiveOdds.fetched_at.desc())
     ).all()
     return {row.live_match_id: row for row in rows}
 

@@ -74,11 +74,11 @@ Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`; do not create them manual
 
 ### Live top-tier feed
 
-Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It runs once every 24 hours at 02:07 UTC and refreshes both the live slate and fixtures for the next seven days. Existing finished singles remain in Tennisd's permanent `match` table. The daily schedule favors Neon free-tier usage over point-by-point freshness.
+Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It runs once every 24 hours at 02:07 UTC and refreshes the live slate plus fixtures for the next seven days. Existing finished singles remain in Tennisd's permanent `match` table. This is a daily snapshot rather than real-time scoring, and GitHub scheduled workflows can start several minutes late.
 
 ### Current odds
 
-Tennisd can show previously stored decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Automatic odds refreshes are disabled so they do not wake Neon. The **Sync live tennis odds** workflow remains available for an intentional manual refresh when `THE_ODDS_API_KEY` is configured.
+Tennisd can show previously stored decimal full-match prices and margin-normalized chances from Pinnacle via [The Odds API](https://the-odds-api.com/). Automatic odds refreshes are disabled to protect Neon. The separate **Sync live tennis odds** workflow remains available for an intentional manual refresh when `THE_ODDS_API_KEY` is configured; quotes older than four hours are hidden.
 
 ### Free historical results
 
@@ -87,11 +87,11 @@ Tennisd can extend the permanent match database through [Tennis API on RapidAPI]
 1. Subscribe to the free Tennis API plan in RapidAPI and add the key to GitHub Actions as `RAPIDAPI_TENNIS_KEY`.
 2. Keep `TENNISD_SYNC_DATABASE_URL` pointed at the limited `rallylog_web` pooled TLS database URL.
 3. Temporarily add the database owner URL as `DATABASE_OWNER_URL`, run **Add Tennis API sync state**, then remove the owner secret.
-4. Run **Sync Tennis API history** manually only if another historical import is intentionally required. Its automatic schedule is disabled, and existing imported matches remain unchanged.
+4. Run **Sync Tennis API history** manually once a week if continued historical coverage is wanted. Its automatic schedule is disabled, and existing imported matches remain unchanged. Record the run in the project calendar so a missed week is visible rather than silently stopping the archive.
 
 Confirm RapidAPI/provider storage and commercial terms before using the imported data in a monetized public release.
 
-The daily Live Tennis API refresh is a low-cost snapshot rather than point-by-point streaming. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
+The Live Tennis API refresh is a daily snapshot rather than point-by-point streaming. Every live card shows how long ago its stored score was updated. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
 
 The checked-in [Render Blueprint](render.yaml) is the production web-service configuration. Neon free compute sleeps while idle, so the first request after inactivity can be slower. Free plans suit an early public preview and are not an uptime guarantee.
 

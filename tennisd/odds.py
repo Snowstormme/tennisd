@@ -6,13 +6,16 @@ import unicodedata
 from datetime import datetime, timedelta, timezone
 
 import requests
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from . import db
-from .models import LiveMatch, LiveOdds
+from .models import IngestionCursor, LiveMatch, LiveOdds
 
 API_ROOT = "https://api.the-odds-api.com/v4"
 BOOKMAKER = "pinnacle"
+PROVIDER = "the_odds_api"
+STARTING_SOON = timedelta(hours=4)
+MIN_REFRESH_INTERVAL = timedelta(minutes=90)
 
 
 def normalized_name(value):
@@ -59,9 +62,14 @@ def selected_sport_key(keys, now):
 def _live_match_index(now):
     rows = db.session.scalars(
         select(LiveMatch).where(
-            LiveMatch.status.in_(("live", "upcoming")),
-            LiveMatch.starts_at >= now - timedelta(hours=12),
-            LiveMatch.starts_at <= now + timedelta(days=7),
+            or_(
+                LiveMatch.status == "live",
+                and_(
+                    LiveMatch.status == "upcoming",
+                    LiveMatch.starts_at >= now,
+                    LiveMatch.starts_at <= now + STARTING_SOON,
+                ),
+            ),
         )
     ).all()
     return {
@@ -89,7 +97,7 @@ def _extract_quote(event, match, now):
             continue
         return {
             "provider_event_id": str(event.get("id") or ""),
-            "provider": "the_odds_api",
+            "provider": PROVIDER,
             "bookmaker": BOOKMAKER,
             "market": "h2h",
             "player1_price": price1,
@@ -108,6 +116,19 @@ def sync_odds(session=requests, now=None):
     key = os.environ.get("THE_ODDS_API_KEY", "").strip()
     if not key:
         raise RuntimeError("THE_ODDS_API_KEY is not configured.")
+    match_index = _live_match_index(now)
+    if not match_index:
+        return {"sport": None, "events": 0, "written": 0, "skipped": "no relevant matches"}
+    cursor = db.session.get(IngestionCursor, (PROVIDER, "h2h"))
+    if cursor is not None:
+        try:
+            previous = datetime.fromisoformat(cursor.value)
+            if previous.tzinfo is None:
+                previous = previous.replace(tzinfo=timezone.utc)
+            if now - previous < MIN_REFRESH_INTERVAL:
+                return {"sport": None, "events": 0, "written": 0, "skipped": "quota interval"}
+        except (TypeError, ValueError):
+            pass
     sport_key = selected_sport_key(active_tennis_keys(session, key), now)
     if not sport_key:
         return {"sport": None, "events": 0, "written": 0}
@@ -121,7 +142,6 @@ def sync_odds(session=requests, now=None):
     )
     response.raise_for_status()
     events = response.json()
-    match_index = _live_match_index(now)
     written = 0
     for event in events if isinstance(events, list) else []:
         pair = frozenset((normalized_name(event.get("home_team")), normalized_name(event.get("away_team"))))
@@ -142,5 +162,10 @@ def sync_odds(session=requests, now=None):
         for field, value in values.items():
             setattr(quote, field, value)
         written += 1
+    if cursor is None:
+        cursor = IngestionCursor(provider=PROVIDER, feed="h2h", value=now.isoformat())
+        db.session.add(cursor)
+    else:
+        cursor.value = now.isoformat()
     db.session.commit()
     return {"sport": sport_key, "events": len(events) if isinstance(events, list) else 0, "written": written}

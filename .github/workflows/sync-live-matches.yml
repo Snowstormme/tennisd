@@ -2,8 +2,8 @@ name: Sync live top-tier matches
 
 on:
   schedule:
-    # One daily refresh keeps Neon mostly idle while preserving a current and
-    # seven-day upcoming slate without requiring the owner's laptop.
+    # One daily snapshot keeps Neon mostly idle. GitHub schedules use UTC and
+    # can start several minutes late.
     - cron: '7 2 * * *'
   workflow_dispatch:
     inputs:
