@@ -51,7 +51,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 
 ## Public deployment
 
-Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
+Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. The connected production branch deploys automatically on Render; the old Vercel hostname is retained only as a redirect to Render. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
 2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
