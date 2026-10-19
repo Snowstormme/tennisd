@@ -133,6 +133,25 @@ def send_account_email(user, purpose):
     if delivery:
         delivery(user.email, subject, body)
         return
+    # Brevo's free SMTP API can send from a verified individual address, so a
+    # custom domain is not required for the first version of Tennisd. Prefer it
+    # when configured; keep Resend as a backwards-compatible fallback.
+    brevo_key = current_app.config.get("BREVO_API_KEY", "")
+    if brevo_key:
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": brevo_key, "accept": "application/json"},
+            json={
+                "sender": {"email": current_app.config["MAIL_FROM_EMAIL"], "name": "Tennisd"},
+                "to": [{"email": user.email}],
+                "subject": subject,
+                "textContent": body,
+                "htmlContent": html_body,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        return
     response = requests.post(
         "https://api.resend.com/emails",
         headers={"Authorization": f"Bearer {current_app.config['RESEND_API_KEY']}"},
