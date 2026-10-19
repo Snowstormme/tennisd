@@ -172,6 +172,16 @@
   text-align: center;
 }
 
+/* Give the verification step a small courtside identity without changing its flow. */
+.verification-card{position:relative;overflow:hidden}
+.verification-card:before{content:"";position:absolute;right:-80px;top:16%;width:220px;height:150px;border:1px solid #d4f36e1c;transform:rotate(-18deg);pointer-events:none}
+.verification-card:after{content:"";position:absolute;right:28px;top:calc(16% + 75px);height:150px;border-left:1px solid #d4f36e1c;transform:rotate(-18deg);pointer-events:none}
+.verification-kicker{display:flex;align-items:center;gap:9px;margin-bottom:14px;color:var(--lime);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.verification-ball{display:inline-block;width:15px;height:15px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px #d4f36e20;position:relative}
+.verification-ball:after{content:"";position:absolute;inset:2px 5px;border-right:1px solid #173329;border-radius:50%;transform:rotate(28deg)}
+.verification-code-label{position:relative}
+.verification-code-label:after{content:"4 DIGITS · 10 MINUTES";display:block;margin-top:7px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.13em;text-align:right}
+
 /* Tournament archive and individual event pages */
 .tournament-index-banner{background:linear-gradient(115deg,#17382e 0 62%,#3f5734)}
 .tournament-index{padding-top:38px}.tournament-jump{margin-bottom:34px;padding:24px;border:1px solid #77917166;border-radius:5px;background:#1a332a}.tournament-jump>label{display:block;margin-bottom:10px;color:var(--lime);font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.tournament-jump>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}.tournament-jump select{min-height:48px;padding:10px 14px;border:1px solid #617c69;border-radius:3px;background:#10231d;color:var(--cream)}.tournament-browser{display:grid;grid-template-columns:252px minmax(0,1fr);align-items:start;gap:33px}.tournament-browser .filter-panel{top:92px}.tournament-card{position:relative;overflow:hidden;min-height:218px;background:linear-gradient(145deg,#1b332a,#12251f)}.tournament-card:after{content:"";position:absolute;right:-28px;bottom:-35px;width:115px;height:115px;border:20px double #ffffff08;border-radius:50%}.tournament-card.surface-clay{box-shadow:inset 0 3px 0 #b46c4d}.tournament-card.surface-grass{box-shadow:inset 0 3px 0 #6b985d}.tournament-card.surface-hard{box-shadow:inset 0 3px 0 #5686a1}.tournament-card .trophy-mark{position:relative;border-color:#e4c875}.tournament-card .trophy-mark:after{content:"";position:absolute;left:8px;top:18px;width:5px;height:9px;background:#e4c875;box-shadow:-5px 8px 0 2px #e4c875}
