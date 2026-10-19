@@ -44,7 +44,7 @@ class AccountSecurityFlows(unittest.TestCase):
         })
 
     def verify(self):
-        code = re.search(r"\b\d{6}\b", self.sent[-1][2]).group()
+        code = re.search(r"\b\d{4}\b", self.sent[-1][2]).group()
         self.assertEqual(self.client.get("/check-email").status_code, 200)
         response = self.client.post("/check-email", data={
             "csrf_token": self.token(), "email": "alice@example.com", "code": code,
@@ -144,12 +144,12 @@ class AccountSecurityFlows(unittest.TestCase):
 
     def test_resend_replaces_the_previous_verification_code(self):
         self.register()
-        first_code = re.search(r"\b\d{6}\b", self.sent[-1][2]).group()
+        first_code = re.search(r"\b\d{4}\b", self.sent[-1][2]).group()
         self.client.get("/resend-verification")
         self.client.post("/resend-verification", data={
             "csrf_token": self.token(), "email": "alice@example.com",
         })
-        second_code = re.search(r"\b\d{6}\b", self.sent[-1][2]).group()
+        second_code = re.search(r"\b\d{4}\b", self.sent[-1][2]).group()
         self.assertNotEqual(first_code, second_code)
 
         rejected = self.client.post("/check-email", data={

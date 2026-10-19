@@ -1423,7 +1423,7 @@ def register():
                 try:
                     send_account_email(user, "verify")
                     session["verification_email"] = user.email
-                    flash("We sent a six-digit verification code to your email.", "success")
+                    flash("We sent a four-digit verification code to your email.", "success")
                 except requests.RequestException:
                     current_app.logger.exception("Verification email delivery failed")
                     flash("We could not send your email. Use the resend link shortly.", "error")

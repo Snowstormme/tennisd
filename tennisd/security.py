@@ -69,7 +69,7 @@ def _verification_digest(user_id, code):
 
 
 def issue_verification_code(user):
-    code = f"{secrets.randbelow(1_000_000):06d}"
+    code = f"{secrets.randbelow(10_000):04d}"
     db.session.execute(
         delete(AuthToken).where(AuthToken.user_id == user.id, AuthToken.purpose == "verify")
     )
@@ -84,7 +84,7 @@ def issue_verification_code(user):
 
 
 def valid_verification_code(user, code):
-    if user is None or not re.fullmatch(r"\d{6}", code or ""):
+    if user is None or not re.fullmatch(r"\d{4}", code or ""):
         return None
     token = db.session.get(AuthToken, _verification_digest(user.id, code))
     if token and token.purpose == "verify" and token.expires_at > int(time.time()):
