@@ -29,7 +29,7 @@
   </section>
   <div class="container tournament-detail">
     <section class="tournament-facts" aria-label="Tournament archive overview"><article><strong>{{ '{:,}'.format(total_matches) }}</strong><span>matches</span></article><article><strong>{{ years[-1] if years else '—' }}—{{ years[0] if years else '—' }}</strong><span>catalog span</span></article><article><strong>{{ surfaces|join(' / ') }}</strong><span>surfaces</span></article><article><strong>{{ value_group }}</strong><span>tournament value</span></article></section>
-    {% if live_matches %}<section class="page-section compact"><div class="section-head"><div><p class="eyebrow">ON TOUR NOW</p><h2>Live & upcoming<span>.</span></h2></div></div><div class="current-match-grid">{% for match in live_matches %}{{ current_match_card(match, none, none, match_location) }}{% endfor %}</div></section>{% endif %}
+    {% if live_matches %}<section class="page-section compact"><div class="section-head"><div><p class="eyebrow">ON TOUR NOW</p><h2>Live & upcoming<span>.</span></h2></div></div><div class="current-match-grid">{% for match in live_matches %}{{ current_match_card(match, none, match_location) }}{% endfor %}</div></section>{% endif %}
     <div class="tournament-detail-grid">
       <main><section class="page-section compact"><div class="section-head"><div><p class="eyebrow">LATEST IN THE ARCHIVE</p><h2>Recent matches<span>.</span></h2></div><a class="section-link" href="{{ url_for('site.matches', q=tournament, tour=tour) }}">View all matches</a></div><div class="archive-match-grid">{% for match in matches %}{{ archive_match_card(match, match_location) }}{% endfor %}</div></section></main>
       <aside class="tournament-sidebar">

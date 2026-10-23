@@ -103,7 +103,6 @@ def create_app(test_config=None):
             "REQUIRE_EMAIL_VERIFICATION", "true" if production else "false"
         ).lower() == "true",
         REGISTRATION_ENABLED=os.environ.get("REGISTRATION_ENABLED", "true") == "true",
-        RESEND_API_KEY=os.environ.get("RESEND_API_KEY", ""),
         BREVO_API_KEY=os.environ.get("BREVO_API_KEY", ""),
         MAIL_FROM=os.environ.get("MAIL_FROM", ""),
         MAIL_FROM_EMAIL=os.environ.get(
@@ -158,7 +157,7 @@ def create_app(test_config=None):
             app.config["REGISTRATION_ENABLED"]
             and app.config["REQUIRE_EMAIL_VERIFICATION"]
             and (
-                not (app.config["BREVO_API_KEY"] or app.config["RESEND_API_KEY"])
+                not app.config["BREVO_API_KEY"]
                 or not app.config["MAIL_FROM"]
                 or (app.config["BREVO_API_KEY"] and not app.config["MAIL_FROM_EMAIL"])
             )

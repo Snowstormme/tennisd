@@ -50,11 +50,11 @@ The intended long-term product is a global tennis database and community platfor
 | Images | Pillow; profile images converted to WebP and stored in PostgreSQL |
 | Local database | SQLite at `instance/tennisd.db` |
 | Production database | Neon PostgreSQL over TLS |
-| Production web host | Vercel at `https://tennisd.vercel.app` |
+| Production web host | Render at `https://tennisd.onrender.com` (old Vercel hostname redirects) |
 | Live feed | Live Tennis API, fetched only by GitHub Actions |
-| Historical data | Tennis API on RapidAPI, fetched only by GitHub Actions |
+| Historical data | Existing rows retained in Neon; no secondary historical API sync |
 | News discovery | Google News RSS pointing to ATP, WTA, ITF, Wimbledon, BBC, ESPN, Sky and Tennis365 |
-| Transactional email | Resend HTTPS API |
+| Transactional email | Brevo HTTPS API |
 | CI/operations | GitHub Actions |
 | Tests | `unittest` test cases, runnable through pytest; 31 passing at handoff |
 
@@ -77,7 +77,6 @@ tennisd/routes.py               pages, APIs and state-changing form handlers
 tennisd/security.py             email, tokens, abuse limits and auth helpers
 tennisd/importer.py             local demo seed for tests and development
 tennisd/live_tennis.py          live/upcoming API normalization and persistence
-tennisd/tennis_api.py           free Tennis API historical-result sync
 tennisd/stats.py                player/profile/community statistics
 tennisd/tournament_catalog.py   tournament profiles, tier mapping, slugs
 tennisd/news_feed.py            RSS aggregation and article preview extraction
@@ -180,20 +179,6 @@ Important invariants:
 
 ## 6. Data flows
 
-### Historical results
-
-Historical ATP and WTA results are imported through Tennis API on RapidAPI.
-
-- Workflow: `.github/workflows/sync-tennis-api-history.yml`.
-- Script: `scripts/sync_tennis_api.py`.
-- Importer: `tennisd/tennis_api.py`.
-- Cursor table: `ingestion_cursor`.
-- GitHub secret: `RAPIDAPI_TENNIS_KEY`.
-- The free plan is budgeted at 48 requests per run.
-- The importer refreshes recent finals, then backfills 7-day historical chunks down to 2010.
-- It writes tournaments, editions, matches, participants and provider IDs as part of the import.
-- Live-feed finished matches are deduplicated by provider ID and by same tour/date/tournament/player pair.
-
 ### Live/upcoming matches
 
 - Provider: Live Tennis API (`https://api.livetennisapi.com/api/public/v1`).
@@ -241,7 +226,8 @@ Never copy actual values into this document, Git, prompts, logs or screenshots.
 - `PUBLIC_HOST` — optional explicit production hostname; Vercel variables can supply it
 - `REGISTRATION_ENABLED`
 - `REQUIRE_EMAIL_VERIFICATION`
-- `RESEND_API_KEY`
+- `BREVO_API_KEY`
+- `MAIL_FROM_EMAIL`
 - `MAIL_FROM`
 - `ADMIN_EMAIL`
 - `CONTACT_EMAIL`
@@ -345,8 +331,6 @@ Rollback: use Vercel's prior successful deployment or revert the faulty Git comm
 
 - `tests.yml` — tests and dependency audit on push/PR.
 - `init-database.yml` — creates initial schema and restricted role.
-- `add-tennis-api-sync.yml` — adds the durable historical import cursor table.
-- `sync-tennis-api-history.yml` — daily historical-result sync through Tennis API.
 - `add-live-matches-table.yml` — live-match migration.
 - `add-tournament-subscriptions.yml` — subscription migration.
 - `sync-live-matches.yml` — live/upcoming sync every 15 minutes.

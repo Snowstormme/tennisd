@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, LiveMatch, LiveOdds, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
@@ -32,8 +32,6 @@ SITEMAP_START_DATE = date(2020, 1, 1)
 # Keep search-engine discovery focused on the tour levels people are most
 # likely to search for. Lower-level results remain available inside Tennisd.
 SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
-ODDS_DISPLAY_MAX_AGE = timedelta(hours=4)
-ODDS_UPCOMING_WINDOW = timedelta(hours=4)
 
 
 def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
@@ -156,32 +154,6 @@ def archived_match_id_for_live(match):
             names,
         ).limit(1)
     )
-
-
-def current_match_odds(matches):
-    """Return the newest display quote without requiring the migration during deploy."""
-    if not matches or not inspect(db.engine).has_table(LiveOdds.__tablename__):
-        return {}
-    now = utcnow()
-    ids = []
-    for match in matches:
-        starts_at = match.starts_at
-        if starts_at is not None and starts_at.tzinfo is None:
-            starts_at = starts_at.replace(tzinfo=timezone.utc)
-        if match.status == "live" or (
-            match.status == "upcoming" and starts_at is not None
-            and now <= starts_at <= now + ODDS_UPCOMING_WINDOW
-        ):
-            ids.append(match.provider_id)
-    if not ids:
-        return {}
-    rows = db.session.scalars(
-        select(LiveOdds).where(
-            LiveOdds.live_match_id.in_(ids),
-            LiveOdds.fetched_at >= now - ODDS_DISPLAY_MAX_AGE,
-        ).order_by(LiveOdds.fetched_at.desc())
-    ).all()
-    return {row.live_match_id: row for row in rows}
 
 
 def player_live_matches(player, limit=12):
@@ -744,10 +716,9 @@ def matches():
     if view != "archive":
         current_matches = current_match_rows(view)
         live_players = current_match_players(current_matches)
-        live_odds = current_match_odds(current_matches)
         return render_template(
             "matches.html", view=view, pagination=pagination, current_matches=current_matches,
-            live_players=live_players, live_odds=live_odds, query=query, tour=tour, surface=surface,
+            live_players=live_players, query=query, tour=tour, surface=surface,
             year=year, level=level, order=order, match_location=match_location,
         )
 
@@ -807,9 +778,8 @@ def live_match_detail(provider_id):
     if archived:
         return redirect(url_for("site.match_detail", match_id=archived))
     players = current_match_players([match]).get(match.provider_id, (None, None))
-    odds = current_match_odds([match]).get(match.provider_id)
     return render_template(
-        "live_match.html", match=match, players=players, odds=odds,
+        "live_match.html", match=match, players=players,
         match_location=match_location,
     )
 
@@ -817,18 +787,10 @@ def live_match_detail(provider_id):
 @site.get("/api/live-matches")
 def live_matches_api():
     matches = current_match_rows("live")
-    odds = current_match_odds(matches)
     response = jsonify({
         "matches": [{
             "id": match.provider_id, "score": match.score, "winner_side": match.winner_side,
             "server": match.server, "synced_at": match.synced_at.isoformat(),
-            "odds": ({
-                "player1_price": odds[match.provider_id].player1_price,
-                "player2_price": odds[match.provider_id].player2_price,
-                "player1_probability": odds[match.provider_id].player1_probability,
-                "player2_probability": odds[match.provider_id].player2_probability,
-                "updated_at": odds[match.provider_id].fetched_at.isoformat(),
-            } if match.provider_id in odds else None),
         } for match in matches]
     })
     return shared_cache(
@@ -1486,7 +1448,7 @@ def check_email():
 
 @site.route("/resend-verification", methods=["GET", "POST"])
 def resend_verification():
-    if not (current_app.config["RESEND_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
+    if not (current_app.config["BREVO_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
         abort(503)
     if request.method == "POST":
         limit_action("resend-ip", client_ip(), 5, 3600)
@@ -1524,7 +1486,7 @@ def verify_email(token):
 
 @site.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
-    if not (current_app.config["RESEND_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
+    if not (current_app.config["BREVO_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
         abort(503)
     if request.method == "POST":
         limit_action("reset-ip", client_ip(), 5, 3600)

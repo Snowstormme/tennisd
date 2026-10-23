@@ -187,7 +187,6 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn("max-age=300", news_status.headers["Vercel-CDN-Cache-Control"])
         self.assertNotIn("Cookie", news_status.headers.get("Vary", ""))
         about = self.client.get("/about")
-        self.assertIn(b"Tennis API on RapidAPI", about.data)
         self.assertNotIn(b"Jeff", about.data)
         self.assertNotIn(b"Sackmann", about.data)
         privacy = self.client.get("/privacy")
