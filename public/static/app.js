@@ -84,7 +84,10 @@ document.addEventListener("DOMContentLoaded", () => {
         slide.classList.toggle("is-active", current);
         slide.setAttribute("aria-hidden", String(!current));
         slide.tabIndex = current ? 0 : -1;
-        dots[index]?.toggleAttribute("aria-current", current);
+        if (dots[index]) {
+          if (current) dots[index].setAttribute("aria-current", "true");
+          else dots[index].removeAttribute("aria-current");
+        }
       });
     };
     const stop = () => window.clearInterval(timer);
