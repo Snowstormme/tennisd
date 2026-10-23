@@ -1,7 +1,7 @@
 # Tennisd — complete handoff for Antigravity AI
 
 Updated: 2026-09-30  
-Production: https://tennisd.vercel.app  
+Production: https://tennisd.onrender.com
 Repository: https://github.com/Snowstormme/tennisd  
 Default branch: `main`  
 Verified handoff commit: `4e5206d` (`Compact search results and showcase matches`)

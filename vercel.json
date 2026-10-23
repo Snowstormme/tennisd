@@ -4,7 +4,7 @@
     {
       "source": "/:path*",
       "destination": "https://tennisd.onrender.com/:path*",
-      "permanent": false
+      "permanent": true
     }
   ]
 }
