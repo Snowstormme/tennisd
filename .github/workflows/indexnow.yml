@@ -17,4 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python scripts/submit_indexnow.py
+      - name: Submit current Render URLs to IndexNow
+        env:
+          PUBLIC_HOST: tennisd.onrender.com
+        run: python scripts/submit_indexnow.py

@@ -6,4 +6,4 @@ requests>=2.32,<3
 psycopg[binary]>=3.2,<4
 gunicorn>=23,<25
 argon2-cffi>=25.1,<26
-Pillow>=11.3,<13
+Pillow>=13.0,<14
