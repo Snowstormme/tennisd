@@ -369,3 +369,42 @@
 /* The live detail hero uses the same information hierarchy without changing its court. */
 .live-detail-center .featured-meta-row{justify-content:center;color:#eff4e7;font-size:9px;letter-spacing:.13em}.live-detail-center .featured-meta-row span{padding:0}.live-detail-center .showcase-event{display:block;margin:15px 0 0;color:#f2f3eb;font:500 clamp(24px,2.8vw,43px)/.94 var(--display);letter-spacing:.025em;text-align:left;text-transform:uppercase;overflow-wrap:anywhere}.live-detail-center .featured-set-score{width:min(100%,180px);margin:25px auto;gap:6px}.live-detail-center .featured-set{grid-template-columns:1fr 48px 1fr;border:0;border-radius:0;background:transparent;box-shadow:none}.live-detail-center .featured-set small{min-width:0;padding:4px 5px;border-inline:1px solid #ffffff35;font-size:6px}.live-detail-center .featured-set b,.live-detail-center .featured-set b:first-of-type,.live-detail-center .featured-set b:last-of-type{min-height:30px;padding:1px 4px;color:#f2f5ed;font:700 24px/1 var(--display)}.live-detail-center .featured-set b.set-winner{color:var(--lime)}.live-detail-center .featured-facts{display:flex;align-items:center;justify-content:center;gap:5px;padding-top:13px;border-top:1px solid #ffffff35;color:#eef2ea;font-size:8px}.live-detail-center .featured-facts i{font-style:normal}
 @media(max-width:600px){.live-detail-center .featured-meta-row{font-size:6px}.live-detail-center .showcase-event{margin-top:10px;font-size:16px}.live-detail-center .featured-set-score{width:min(100%,115px);gap:2px;margin:16px auto}.live-detail-center .featured-set{grid-template-columns:1fr 34px 1fr}.live-detail-center .featured-set small{padding:2px;font-size:5px}.live-detail-center .featured-set b,.live-detail-center .featured-set b:first-of-type,.live-detail-center .featured-set b:last-of-type{min-height:20px;font-size:14px}.live-detail-center .featured-facts{gap:3px;padding-top:8px;font-size:5.5px}.live-detail-center .featured-facts b:last-child{max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+
+/* Keep header links on the Tennisd palette in every browser link state. */
+.site-header .main-nav a:link,
+.site-header .main-nav a:visited{color:#bdcbbf}
+.site-header .main-nav a:hover,
+.site-header .main-nav a:active{color:var(--cream)}
+.site-header .main-nav a:focus-visible{color:var(--lime);outline-color:var(--lime)}
+.site-header .main-nav a[aria-current="page"]:link,
+.site-header .main-nav a[aria-current="page"]:visited,
+.site-header .main-nav a[aria-current="page"]:hover,
+.site-header .main-nav a[aria-current="page"]:active,
+.site-header .main-nav a[aria-current="page"]:focus-visible{color:var(--lime)}
+.site-header .brand:link,
+.site-header .brand:visited,
+.site-header .brand:hover,
+.site-header .brand:active{color:var(--cream)}
+.site-header .brand:focus-visible{color:var(--lime);outline-color:var(--lime)}
+.site-header .header-login:link,
+.site-header .header-login:visited,
+.site-header .header-login:hover,
+.site-header .header-login:active,
+.site-header .header-profile:link,
+.site-header .header-profile:visited,
+.site-header .header-profile:hover,
+.site-header .header-profile:active{color:var(--cream)}
+.site-header .header-login:focus-visible,
+.site-header .header-profile:focus-visible{color:var(--lime);outline-color:var(--lime)}
+.site-header .header-search:link,
+.site-header .header-search:visited{color:#bdcbbf}
+.site-header .header-search:hover,
+.site-header .header-search:active{color:var(--cream)}
+.site-header .header-search:focus-visible{color:var(--lime);outline-color:var(--lime)}
+.site-header .mobile-notifications:link,
+.site-header .mobile-notifications:visited{color:#d1ddd3}
+.site-header .mobile-notifications:hover,
+.site-header .mobile-notifications:active,
+.site-header .mobile-notifications:focus-visible{color:var(--lime)}
+.site-header a.button:link,
+.site-header a.button:visited{color:var(--ink);background:var(--lime);border-color:var(--lime)}
