@@ -21,7 +21,7 @@ Before changing anything:
 Implementation rules:
 - Extend the current Flask/Jinja/SQLAlchemy application. Do not rebuild it in another framework unless the owner explicitly requests that.
 - Keep SQLite usable for clean local development and PostgreSQL/Neon for production.
-- Production schema changes must be explicit, rerunnable migrations/scripts. The Vercel web process must never create schema.
+- Production schema changes must be explicit, rerunnable migrations/scripts. The Render web process must never create schema.
 - Preserve CSRF, rate limits, password hashing, email verification, host validation, CSP/security headers, privacy boundaries, and the restricted `rallylog_web` database role.
 - Preserve provider provenance for imported match data and keep API keys server-side.
 - Live matches must transition upcoming → live → finished/cancelled without deleting their provider record.
@@ -29,7 +29,7 @@ Implementation rules:
 - News may show publisher metadata, images where permitted, and extracted previews. Do not republish copyrighted full articles without a license.
 - Reuse the current dark green, cream and lime visual system. Reuse existing match/player components and responsive breakpoints.
 - Add or update meaningful tests for behavior changes. Run all tests and `git diff --check` before committing.
-- After pushing, wait for Vercel, verify the affected production URLs plus `/healthz`, and report the commit hash.
+- After pushing, wait for Render, verify the affected production URLs plus `/healthz`, and report the commit hash.
 
 Current task from the owner follows below. First inspect the relevant current implementation, then implement it completely.
 ```
@@ -58,7 +58,7 @@ The intended long-term product is a global tennis database and community platfor
 | CI/operations | GitHub Actions |
 | Tests | `unittest` test cases, runnable through pytest; 31 passing at handoff |
 
-Render configuration is retained as an alternative, but production currently uses Vercel + Neon.
+Production uses Render + Neon. The old Vercel hostname is retained only as a compatibility redirect.
 
 ## 3. Repository layout
 
@@ -218,12 +218,12 @@ Do not hotlink random copyrighted photos. Store source URL, license and attribut
 
 Never copy actual values into this document, Git, prompts, logs or screenshots.
 
-### Vercel production variables
+### Render production variables
 
 - `APP_ENV=production`
 - `SECRET_KEY` — stable random value, at least 32 characters
 - `DATABASE_URL` — pooled TLS Neon URL using the restricted `rallylog_web` role
-- `PUBLIC_HOST` — optional explicit production hostname; Vercel variables can supply it
+- `PUBLIC_HOST` — optional explicit production hostname; Render supplies it automatically when omitted
 - `REGISTRATION_ENABLED`
 - `REQUIRE_EMAIL_VERIFICATION`
 - `BREVO_API_KEY`
@@ -313,19 +313,19 @@ Release normally means:
 ```bash
 git add <specific files>
 git commit -m "Clear description"
-git push origin main
+git push origin render-cpu-optimization-audit
 ```
 
-Then wait for Vercel and verify:
+Then wait for Render and verify:
 
 ```bash
-curl -fsSL https://tennisd.vercel.app/healthz
-curl -I https://tennisd.vercel.app/<affected-page>
+curl -fsSL https://tennisd.onrender.com/healthz
+curl -I https://tennisd.onrender.com/<affected-page>
 ```
 
 Also inspect the affected page visually at desktop and mobile widths. Do not declare completion just because a push succeeded.
 
-Rollback: use Vercel's prior successful deployment or revert the faulty Git commit. Avoid rewriting shared history unless there is a concrete reason and use `--force-with-lease` only when unavoidable.
+Rollback: use Render's prior successful deployment or revert the faulty Git commit. Avoid rewriting shared history unless there is a concrete reason and use `--force-with-lease` only when unavoidable.
 
 ## 11. GitHub workflows
 
@@ -381,7 +381,7 @@ Current UI expectations:
 7. News extraction is fragile because publisher pages and Google News resolution can change. Full copyrighted republication is not permitted by default.
 8. The project has explicit SQL migrations but no versioned migration framework. Consider Alembic only through a planned, tested transition.
 9. CSS is a large accumulated stylesheet. Refactor only in small verified stages because many later rules intentionally override earlier responsive rules.
-10. Free Vercel/Neon/GitHub/API plans are suitable for early traffic, not guaranteed global scale or uptime.
+10. Free Render/Neon/GitHub/API plans are suitable for early traffic, not guaranteed global scale or uptime.
 11. Search currently has fixed result limits, not paginated result groups.
 12. Accessibility has not yet had a full WCAG 2.1 AA audit.
 
@@ -430,6 +430,6 @@ A task is complete only when:
 - `git diff --check` is clean;
 - desktop/mobile behavior is visually inspected;
 - the change is committed and pushed when deployment was requested or is part of the established workflow;
-- Vercel has deployed successfully;
+- Render has deployed successfully;
 - `/healthz` and affected production pages are verified;
 - the owner receives a concise report with the commit hash and any honest limitation.
