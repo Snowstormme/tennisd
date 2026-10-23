@@ -182,10 +182,11 @@ Important invariants:
 ### Live/upcoming matches
 
 - Provider: Live Tennis API (`https://api.livetennisapi.com/api/public/v1`).
-- GitHub workflow: `sync-live-matches.yml` every 15 minutes.
+- GitHub workflow: `sync-live-matches.yml` once every 24 hours. The workflow
+  refreshes both the current and seven-day upcoming feeds in one run.
 - API key stays only in GitHub Actions.
 - Live sync normally fetches one page to stay near the free 100 requests/day allowance.
-- Upcoming fetch may read two pages and is limited to seven days.
+- Each daily refresh uses one page per feed and is limited to the next seven days.
 - Supported tier tuple currently includes Grand Slams, ATP/WTA 1000/500/250, WTA 125, Challenger and ITF tiers.
 - When a live record disappears from the provider response it becomes `finished`, keeps the same provider ID and stored score, and is not deleted.
 - This is near-live polling, not point-by-point streaming.
@@ -333,7 +334,7 @@ Rollback: use Render's prior successful deployment or revert the faulty Git comm
 - `init-database.yml` — creates initial schema and restricted role.
 - `add-live-matches-table.yml` — live-match migration.
 - `add-tournament-subscriptions.yml` — subscription migration.
-- `sync-live-matches.yml` — live/upcoming sync every 15 minutes.
+- `sync-live-matches.yml` — live/upcoming sync once every 24 hours.
 - `backup.yml` — encrypted daily PostgreSQL dump when enabled.
 
 Database changes are currently managed by explicit SQL/Python scripts rather than Alembic. New migrations must be idempotent and checked into `scripts/` with a manually dispatchable workflow when production execution is needed.

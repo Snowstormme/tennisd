@@ -296,7 +296,7 @@ def fetch_matches(status, session=requests):
     matches = []
     offset = 0
     # One page per refresh keeps the automatic schedule inside the free
-    # 100-request daily allowance: 96 live checks plus four fixture checks.
+    # The daily workflow makes one live request and one upcoming request.
     max_pages = 1
     pages = 0
     while pages < max_pages:

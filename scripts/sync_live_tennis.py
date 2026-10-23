@@ -12,6 +12,7 @@ from tennisd.models import IngestionCursor
 
 
 PROVIDER = "livetennisapi"
+SYNC_INTERVAL = timedelta(hours=24)
 
 
 def feed_due(feed, now, interval):
@@ -45,9 +46,9 @@ def main():
         modes = [mode]
         if mode == "auto":
             modes = []
-            if feed_due("live", now, timedelta(minutes=14)):
+            if feed_due("live", now, SYNC_INTERVAL):
                 modes.append("live")
-            if feed_due("upcoming", now, timedelta(hours=6)):
+            if feed_due("upcoming", now, SYNC_INTERVAL):
                 modes.append("upcoming")
         if not modes:
             print("Live Tennis API refresh is not due yet.")

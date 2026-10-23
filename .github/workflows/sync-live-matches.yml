@@ -31,7 +31,7 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Refresh ATP, WTA, Challenger and ITF slate once
+      - name: Refresh ATP, WTA, Challenger and ITF slate once per day
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
