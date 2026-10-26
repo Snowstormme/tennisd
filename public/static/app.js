@@ -197,20 +197,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const score = card.querySelector("[data-live-score]");
             if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
             card.querySelectorAll("[data-live-freshness]").forEach((node) => renderFreshness(node, match.synced_at));
-            if (!match.odds) {
-              card.querySelector("[data-live-odds]")?.remove();
-              return;
-            }
-            [1, 2].forEach((number) => {
-              const price = Number(match.odds[`player${number}_price`]);
-              const probability = Number(match.odds[`player${number}_probability`]);
-              const side = card.querySelector(`[data-odds-side="${number}"]`);
-              const priceNode = card.querySelector(`[data-odds-price="${number}"]`);
-              const probabilityNode = card.querySelector(`[data-odds-probability="${number}"]`);
-              if (side && Number.isFinite(price) && Number.isFinite(probability)) side.textContent = `${price.toFixed(2)} · ${probability.toFixed(0)}%`;
-              if (priceNode && Number.isFinite(price)) priceNode.textContent = price.toFixed(2);
-              if (probabilityNode && Number.isFinite(probability)) probabilityNode.textContent = `${probability.toFixed(1)}%`;
-            });
           });
         });
       } catch (_) {
