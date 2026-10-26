@@ -135,6 +135,29 @@ def display_score(score):
     return " ".join(sets)
 
 
+def history_display_score(score):
+    """Format a completed-match score from the history endpoint.
+
+    History rows use the same player-major ``games`` shape as the live feed,
+    but do not include a live timestamp or point state.  Keep this formatter
+    deliberately conservative: a result without two readable sides is not
+    safe to publish as a permanent match.
+    """
+    if not isinstance(score, dict):
+        return ""
+    games = score.get("games")
+    if not isinstance(games, list) or len(games) != 2:
+        return ""
+    first, second = games
+    if not isinstance(first, list) or not isinstance(second, list):
+        return ""
+    sets = []
+    for left, right in zip(first, second):
+        if isinstance(left, int) and isinstance(right, int):
+            sets.append(f"{left}\u2013{right}")
+    return " ".join(sets)
+
+
 def _score_sets(score):
     """Return set scores without tie-break annotations or retirement text.
 
@@ -352,6 +375,209 @@ def fetch_matches(status, session=requests):
             break
         offset += len(page)
     return matches
+
+
+def fetch_history_matches(from_date, to_date, session=requests, limit=200):
+    """Fetch one quota-conscious page of completed results.
+
+    The FREE Live Tennis API key exposes a small monthly history allowance.
+    Callers therefore choose the date window explicitly and this helper makes
+    exactly one request; it never silently pages through the paid endpoint.
+    """
+    key = os.environ.get("LIVETENNISAPI_KEY", "").strip()
+    if not key:
+        raise RuntimeError("LIVETENNISAPI_KEY is not configured.")
+    response = session.get(
+        f"{API_ROOT}/history/matches",
+        params={
+            "from": from_date,
+            "to": to_date,
+            "draw": "singles",
+                "tier": ",".join(FEATURED_TIERS),
+            "limit": min(max(int(limit), 1), 200),
+            "offset": 0,
+        },
+        headers={"X-API-Key": key, "User-Agent": "Tennisd/1.0"},
+        timeout=30,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    rows = payload.get("data", []) if isinstance(payload, dict) else []
+    return rows if isinstance(rows, list) else []
+
+
+def history_tour(tier, tour):
+    """Map the provider's broader tour groups to Tennisd's ATP/WTA model."""
+    tier = str(tier or "").lower()
+    tour = str(tour or "").lower()
+    if tier.startswith(("wta_", "itf_w")) or tour == "wta":
+        return "WTA"
+    if tier.startswith(("atp_", "challenger_", "itf_m")) or tour in ("atp", "challenger"):
+        return "ATP"
+    return None
+
+
+def normalize_history_match(item, now=None):
+    """Turn a completed history item into the permanent match shape."""
+    if not isinstance(item, dict) or item.get("status") not in ("completed", None):
+        return None
+    tier = str(item.get("tier") or "").lower()
+    tour = history_tour(tier, item.get("tour"))
+    tournament = slam_name(item.get("tournament")) or str(item.get("tournament") or "").strip()
+    if not tour or not tournament or tier not in FEATURED_TIERS:
+        return None
+    if item.get("draw") != "singles" or item.get("is_doubles") is True:
+        return None
+    winner_side = item.get("winner")
+    if winner_side not in (1, 2):
+        return None
+    players = item.get("players") or {}
+    p1, p2 = players.get("p1") or {}, players.get("p2") or {}
+    if not p1.get("name") or not p2.get("name"):
+        return None
+    score = history_display_score(item.get("score"))
+    if not score:
+        if item.get("outcome") == "walkover":
+            score = "W/O"
+        elif item.get("outcome") == "default":
+            score = "DEF"
+        else:
+            return None
+    starts_at = None
+    for candidate in (item.get("scheduled_time"), item.get("date"), item.get("played_at")):
+        starts_at = parse_instant(candidate)
+        if starts_at:
+            break
+    if not starts_at:
+        return None
+    raw_surface = str(item.get("surface") or "hard").title()
+    surface = raw_surface if raw_surface in ("Hard", "Clay", "Grass") else "Hard"
+    round_code = str(item.get("round_code") or item.get("round") or "R?")
+    # Match.round is intentionally short in the existing schema; use the
+    # provider's controlled code whenever it is present.
+    round_code = round_code[:4] or "R?"
+    return {
+        "provider_id": str(item.get("id")),
+        "tour": tour,
+        "tournament": tournament,
+        "tournament_id": str(item.get("tournament_id") or "") or None,
+        "tier": tier,
+        "surface": surface,
+        "round": round_code,
+        "starts_at": starts_at,
+        "winner_side": winner_side,
+        "outcome": item.get("outcome") or "completed",
+        "score": score,
+        "player1_name": p1["name"],
+        "player2_name": p2["name"],
+        "player1_provider_id": str(p1.get("id") or "") or None,
+        "player2_provider_id": str(p2.get("id") or "") or None,
+        "synced_at": now or datetime.now(timezone.utc),
+    }
+
+
+def ensure_history_players(rows):
+    """Create or reuse permanent profiles for history participants."""
+    participants = []
+    for row in rows:
+        participants.extend((
+            (row["tour"], row["player1_name"], row["player1_provider_id"]),
+            (row["tour"], row["player2_name"], row["player2_provider_id"]),
+        ))
+    provider_ids = {provider_id for _, _, provider_id in participants if provider_id}
+    external_rows = db.session.scalars(
+        select(PlayerExternalId)
+        .where(
+            PlayerExternalId.provider == "livetennisapi",
+            PlayerExternalId.external_id.in_(provider_ids),
+        )
+        .options(joinedload(PlayerExternalId.player))
+    ).all() if provider_ids else []
+    by_external = {row.external_id: row.player for row in external_rows}
+    lowered_names = {name.casefold() for _, name, _ in participants if name}
+    named_players = db.session.scalars(
+        select(Player).where(func.lower(Player.name).in_(lowered_names))
+    ).all() if lowered_names else []
+    by_name = {(player.tour, normalized_player_name(player.name)): player for player in named_players}
+    created = 0
+    mapped_ids = set(by_external)
+    for tour, name, provider_id in participants:
+        player = by_external.get(provider_id) if provider_id else None
+        if player is None:
+            key = (tour, normalized_player_name(name))
+            player = by_name.get(key)
+            if player is None:
+                player = Player(id=live_player_id(tour, provider_id, name), tour=tour, name=name)
+                db.session.add(player)
+                by_name[key] = player
+                created += 1
+        if provider_id and provider_id not in mapped_ids:
+            db.session.add(PlayerExternalId(
+                player=player, provider="livetennisapi", external_id=provider_id,
+            ))
+            by_external[provider_id] = player
+            mapped_ids.add(provider_id)
+    return created
+
+
+def import_history_matches(from_date, to_date, session=requests, now=None):
+    """Import completed history rows into ``Match`` without deleting anything."""
+    now = now or datetime.now(timezone.utc)
+    normalized = [normalize_history_match(item, now) for item in fetch_history_matches(from_date, to_date, session)]
+    rows = [row for row in normalized if row]
+    ensure_history_players(rows)
+    db.session.flush()
+    written = 0
+    for row in rows:
+        winner_row = row if row["winner_side"] == 1 else {
+            **row,
+            "player1_name": row["player2_name"],
+            "player1_provider_id": row["player2_provider_id"],
+            "player2_name": row["player1_name"],
+            "player2_provider_id": row["player1_provider_id"],
+        }
+        winner = db.session.scalar(select(Player).join(PlayerExternalId).where(
+            PlayerExternalId.provider == "livetennisapi",
+            PlayerExternalId.external_id == winner_row["player1_provider_id"],
+        )) if winner_row["player1_provider_id"] else None
+        loser = db.session.scalar(select(Player).join(PlayerExternalId).where(
+            PlayerExternalId.provider == "livetennisapi",
+            PlayerExternalId.external_id == winner_row["player2_provider_id"],
+        )) if winner_row["player2_provider_id"] else None
+        # A few historical rows have names but no provider participant id.
+        # Reuse the profile created above rather than dropping those results.
+        if winner is None:
+            winner = db.session.scalar(select(Player).where(
+                Player.tour == winner_row["tour"],
+                func.lower(Player.name) == winner_row["player1_name"].casefold(),
+            ))
+        if loser is None:
+            loser = db.session.scalar(select(Player).where(
+                Player.tour == winner_row["tour"],
+                func.lower(Player.name) == winner_row["player2_name"].casefold(),
+            ))
+        if winner is None or loser is None:
+            continue
+        provider_id = f"livetennisapi:{row['provider_id']}"
+        match = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
+        if match is None:
+            match = Match(id=f"lt-{row['provider_id']}", provider="livetennisapi", provider_id=provider_id)
+            db.session.add(match)
+        match.status = "finished"
+        match.tour = row["tour"]
+        match.tournament = row["tournament"]
+        match.level = archive_level(row["tier"])
+        match.surface = row["surface"]
+        match.week_start = row["starts_at"].date()
+        match.scheduled_at = row["starts_at"]
+        match.completed_at = row["starts_at"]
+        match.round = row["round"]
+        match.winner = winner
+        match.loser = loser
+        match.score = score_from_winner_side(row["score"], row["winner_side"])
+        written += 1
+    db.session.commit()
+    return len(rows), written
 
 
 def sync_matches(status, session=requests, now=None):

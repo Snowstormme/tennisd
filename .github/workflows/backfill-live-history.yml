@@ -1,0 +1,39 @@
+name: Backfill completed Live Tennis API history
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: Earliest match date (UTC, YYYY-MM-DD)
+        required: true
+        default: '2026-10-19'
+        type: string
+      to_date:
+        description: Latest match date (UTC, YYYY-MM-DD)
+        required: true
+        default: '2026-10-26'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-tennis-history-backfill
+  cancel-in-progress: false
+
+jobs:
+  import-history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Import one bounded history window
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/import_live_history.py "${{ inputs.from_date }}" "${{ inputs.to_date }}"

@@ -6,7 +6,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tennisd import create_app, db
-from tennisd.live_tennis import display_score, normalize_match, sync_matches, winner_from_score
+from tennisd.live_tennis import (
+    display_score,
+    import_history_matches,
+    normalize_history_match,
+    normalize_match,
+    sync_matches,
+    winner_from_score,
+)
 from tennisd.models import LiveMatch, Match, Player, PlayerExternalId
 from sqlalchemy import select
 
@@ -34,6 +41,30 @@ def fixture(status="live", starts_at=None):
             "points": ["30", "15"], "server": 1,
             "timestamp": "2026-07-08T13:20:00Z",
         },
+    }
+
+
+def history_fixture():
+    return {
+        "id": 81234,
+        "tournament": "China Open",
+        "tournament_id": "china-open-atp",
+        "tier": "atp_500",
+        "tour": "atp",
+        "surface": "hard",
+        "round": "Final",
+        "round_code": "F",
+        "draw": "singles",
+        "is_doubles": False,
+        "status": "completed",
+        "scheduled_time": "2026-10-19T12:00:00Z",
+        "winner": 1,
+        "outcome": "completed",
+        "players": {
+            "p1": {"id": 101, "name": "Carlos Alcaraz"},
+            "p2": {"id": 102, "name": "Jannik Sinner"},
+        },
+        "score": {"sets": [2, 0], "games": [[6, 6], [4, 4]]},
     }
 
 
@@ -87,6 +118,22 @@ class LiveTennisTests(unittest.TestCase):
         self.assertEqual(normalize_match(row, now)["tournament"], "Berlin Open")
         row["tier"] = "wta_250"
         self.assertEqual(normalize_match(row, now)["tier"], "wta_250")
+
+    def test_history_match_normalization_and_import(self):
+        row = history_fixture()
+        normalized = normalize_history_match(row)
+        self.assertEqual(normalized["tour"], "ATP")
+        self.assertEqual(normalized["score"], "6–4 6–4")
+        self.assertEqual(normalized["winner_side"], 1)
+        with self.app.app_context(), patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
+            seen, written = import_history_matches(
+                "2026-10-19", "2026-10-26", session=Session([row]),
+            )
+            self.assertEqual((seen, written), (1, 1))
+            archived = db.session.scalar(select(Match).where(Match.provider_id == "livetennisapi:81234"))
+            self.assertIsNotNone(archived)
+            self.assertEqual(archived.score, "6–4 6–4")
+            self.assertEqual(archived.winner.name, "Carlos Alcaraz")
 
     def test_upcoming_window_and_sync(self):
         now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)
