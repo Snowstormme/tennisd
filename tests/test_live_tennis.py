@@ -191,6 +191,19 @@ class LiveTennisTests(unittest.TestCase):
     def test_winner_from_final_score(self):
         self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
         self.assertIsNone(winner_from_score("6–4 5–2"))
+        self.assertEqual(winner_from_score("7–6 (5–7) 6–4"), 1)
+        self.assertEqual(winner_from_score("6–3 2–1 ret."), 1)
+
+    def test_tiebreak_and_retirement_scores_are_final(self):
+        tiebreak = LiveMatch(
+            tour="ATP", tier="atp_500", draw="singles", score="7–6 (7–4) 6–4",
+        )
+        retired = LiveMatch(
+            tour="WTA", tier="wta_500", draw="singles", score="6–3 2–1 ret.",
+        )
+        from tennisd.live_tennis import score_is_final
+        self.assertTrue(score_is_final(tiebreak))
+        self.assertTrue(score_is_final(retired))
 
     def test_verifying_live_duplicate_opens_existing_archive_match(self):
         now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)

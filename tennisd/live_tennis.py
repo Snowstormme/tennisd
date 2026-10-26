@@ -135,8 +135,21 @@ def display_score(score):
     return " ".join(sets)
 
 
+def _score_sets(score):
+    """Return set scores without tie-break annotations or retirement text.
+
+    Live Tennis API uses parenthesized values for tie-break points (for
+    example ``7–6 (7–4)``) and appends ``ret.`` for retirements.  Those are
+    annotations, not additional sets, so they must not affect winner or final
+    score detection.
+    """
+    cleaned = re.sub(r"\([^)]*\)", " ", score or "")
+    cleaned = re.sub(r"\b(?:ret\.?|retired|walkover|w/o|wo)\b", " ", cleaned, flags=re.IGNORECASE)
+    return re.findall(r"(\d+)[–-](\d+)", cleaned)
+
+
 def winner_from_score(score):
-    sets = re.findall(r"(\d+)[–-](\d+)", score or "")
+    sets = _score_sets(score)
     def completed_winner(left, right):
         left, right = int(left), int(right)
         if (left >= 6 or right >= 6) and abs(left - right) >= 2:
@@ -149,7 +162,18 @@ def winner_from_score(score):
     completed = [completed_winner(left, right) for left, right in sets]
     won1 = completed.count(1)
     won2 = completed.count(2)
-    return 1 if won1 >= 2 and won1 > won2 else 2 if won2 >= 2 and won2 > won1 else None
+    if won1 >= 2 and won1 > won2:
+        return 1
+    if won2 >= 2 and won2 > won1:
+        return 2
+    # A retirement can end a match before a second set is completed.  The
+    # completed set winner is still the reliable side to archive.
+    if re.search(r"\b(?:ret\.?|retired|walkover|w/o|wo)\b", score or "", re.IGNORECASE):
+        if won1 and not won2:
+            return 1
+        if won2 and not won1:
+            return 2
+    return None
 
 
 def score_is_aged(provider_updated_at, now, minutes=30):
@@ -161,10 +185,10 @@ def score_is_aged(provider_updated_at, now, minutes=30):
 
 
 def score_is_final(match):
-    """Require enough completed sets and no in-game point score before archiving."""
-    if not match.score or "(" in match.score:
+    """Require enough completed sets before archiving a live-feed row."""
+    if not match.score:
         return False
-    sets = re.findall(r"(\d+)[–-](\d+)", match.score)
+    sets = _score_sets(match.score)
     completed = []
     for left, right in sets:
         left, right = int(left), int(right)
@@ -175,7 +199,13 @@ def score_is_final(match):
         elif (right, left) in ((7, 5), (7, 6)):
             completed.append(2)
     required = 3 if match.tour == "ATP" and match.tier == "grand_slam" and match.draw == "singles" else 2
-    return completed.count(1) >= required or completed.count(2) >= required
+    if completed.count(1) >= required or completed.count(2) >= required:
+        return True
+    # Retirements and walkovers can finish before the normal set count.
+    return bool(
+        re.search(r"\b(?:ret\.?|retired|walkover|w/o|wo)\b", match.score, re.IGNORECASE)
+        and completed
+    )
 
 
 def score_from_winner_side(score, winner_side):
