@@ -12,7 +12,17 @@ on:
         required: true
         default: auto
         type: choice
-        options: [auto, live, upcoming]
+        options: [auto, live, upcoming, history]
+      from_date:
+        description: History start date (only used with history mode)
+        required: false
+        default: '2026-10-19'
+        type: string
+      to_date:
+        description: History end date (only used with history mode)
+        required: false
+        default: '2026-10-26'
+        type: string
 
 permissions:
   contents: read
@@ -32,8 +42,16 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - name: Refresh ATP, WTA, Challenger and ITF slate once per day
+        if: ${{ inputs.mode != 'history' }}
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
           AUTO_CREATE_DB: 'false'
         run: python scripts/sync_live_tennis.py "${{ inputs.mode || 'auto' }}"
+      - name: Restore completed results from one bounded history window
+        if: ${{ inputs.mode == 'history' }}
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/import_live_history.py "${{ inputs.from_date }}" "${{ inputs.to_date }}"
