@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_avatars.html' import user_avatar %}
-{% from '_macros.html' import showcase_match_card %}
+{% from '_macros.html' import showcase_match_card, current_match_card %}
 {% block title %}Tennis Match Diary{% endblock %}
 {% block content %}
 <section class="home-hero">
@@ -12,10 +12,14 @@
       <div class="hero-actions"><a class="button" href="{{ url_for('site.matches') }}">Explore matches</a><a class="button button-outline" href="{{ url_for('site.matches') }}">Log a match</a></div>
       <p class="build-notice"><strong>TENNISD IS GROWING, ONE MATCH AT A TIME.</strong> New data and community features are added regularly. <a href="{{ url_for('site.feedback') }}">Share an idea, report a problem or answer the current poll.</a></p>
     </div>
-    {% if featured_matches %}
+    {% if featured_live_matches or featured_matches %}
     <div class="featured-carousel" data-featured-carousel>
-      {% for match in featured_matches %}{{ showcase_match_card(match, match_location, true, loop.first) }}{% endfor %}
-      <div class="featured-controls" aria-label="Featured matches">{% for match in featured_matches %}<button type="button" data-featured-dot="{{ loop.index0 }}" aria-label="Show {{ match.winner.name }} versus {{ match.loser.name }}"{% if loop.first %} aria-current="true"{% endif %}></button>{% endfor %}</div>
+      {% for match in featured_live_matches %}{{ current_match_card(match, featured_live_pairs[match.provider_id], match_location, true, loop.first) }}{% endfor %}
+      {% for match in featured_matches %}{{ showcase_match_card(match, match_location, true, loop.first and not featured_live_matches) }}{% endfor %}
+      <div class="featured-controls" aria-label="Featured matches">
+        {% for match in featured_live_matches %}<button type="button" data-featured-dot="{{ loop.index0 }}" aria-label="Show {{ featured_live_pairs[match.provider_id][0].name }} versus {{ featured_live_pairs[match.provider_id][1].name }}"{% if loop.first %} aria-current="true"{% endif %}></button>{% endfor %}
+        {% for match in featured_matches %}<button type="button" data-featured-dot="{{ loop.index0 + (featured_live_matches|length) }}" aria-label="Show {{ match.winner.name }} versus {{ match.loser.name }}"{% if loop.first and not featured_live_matches %} aria-current="true"{% endif %}></button>{% endfor %}
+      </div>
     </div>
     {% endif %}
   </div>

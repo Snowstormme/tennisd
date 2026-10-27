@@ -643,6 +643,24 @@ def home():
         .options(joinedload(Match.winner), joinedload(Match.loser))
         .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(5)
     ).all()
+    # Prefer current feed matches for the hero carousel.  The permanent Match
+    # archive is intentionally kept as a fallback, because live rows are only
+    # copied there after a verified final score.  Require stored portraits so
+    # the homepage never renders an unknown/placeholder player card.
+    featured_live_matches = []
+    featured_live_pairs = {}
+    if inspect(db.engine).has_table(LiveMatch.__tablename__):
+        live_candidates = current_match_rows("live") + current_match_rows("upcoming")
+        live_candidates = [match for match in live_candidates if not match.is_doubles]
+        candidate_pairs = current_match_players(live_candidates)
+        for live_match in live_candidates:
+            pair = candidate_pairs.get(live_match.provider_id, (None, None))
+            if not all(player and player.primary_photo_url for player in pair):
+                continue
+            featured_live_matches.append(live_match)
+            featured_live_pairs[live_match.provider_id] = pair
+            if len(featured_live_matches) >= 5:
+                break
     recent_reviews = db.session.scalars(
         select(Review).where(Review.is_public.is_(True))
         .options(joinedload(Review.user), joinedload(Review.match))
@@ -650,6 +668,8 @@ def home():
     ).all()
     return render_template(
         "home.html", featured_matches=featured_matches, recent_matches=recent_matches,
+        featured_live_matches=featured_live_matches,
+        featured_live_pairs=featured_live_pairs,
         recent_reviews=recent_reviews, match_location=match_location,
     )
 

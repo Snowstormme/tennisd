@@ -341,6 +341,35 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"https://upload.wikimedia.org/home-runner.jpg", home.data)
         self.assertNotIn(b"/players/home-first/photo", home.data)
 
+    def test_home_prefers_live_matches_with_stored_player_photos(self):
+        with self.app.app_context():
+            first = Player(id="home-live-first", tour="ATP", name="Live Home Winner")
+            second = Player(id="home-live-second", tour="ATP", name="Live Home Runner")
+            unknown_first = Player(id="home-unknown-first", tour="ATP", name="Unknown Home Player")
+            unknown_second = Player(id="home-unknown-second", tour="ATP", name="Unknown Home Rival")
+            db.session.add_all((first, second, unknown_first, unknown_second))
+            db.session.flush()
+            db.session.add_all((
+                PlayerPhoto(player_id=first.id, url="https://upload.wikimedia.org/live-home-winner.jpg", is_primary=True),
+                PlayerPhoto(player_id=second.id, url="https://upload.wikimedia.org/live-home-runner.jpg", is_primary=True),
+                LiveMatch(
+                    provider_id="home-live-featured", status="live", tour="ATP", tournament="Live Home Open",
+                    surface="Hard", round="SF", draw="singles", player1_name=first.name,
+                    player2_name=second.name, score="6–4 2–1", starts_at=datetime.now(timezone.utc),
+                ),
+                LiveMatch(
+                    provider_id="home-live-unknown", status="live", tour="ATP", tournament="Unknown Home Open",
+                    surface="Clay", round="SF", draw="singles", player1_name=unknown_first.name,
+                    player2_name=unknown_second.name, score="6–3", starts_at=datetime.now(timezone.utc),
+                ),
+            ))
+            db.session.commit()
+
+        home = self.client.get("/")
+        self.assertIn(b"Live Home Open", home.data)
+        self.assertIn(b"live-matches/home-live-featured", home.data)
+        self.assertNotIn(b"Unknown Home Open", home.data)
+
     def test_rankings_render_loaded_rows(self):
         with self.app.app_context():
             player = db.session.scalar(select(Player).limit(1))
