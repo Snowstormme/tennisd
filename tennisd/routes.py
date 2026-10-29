@@ -641,7 +641,10 @@ def home():
             or_(loser.wikidata_id.is_not(None), loser_has_stored_photo),
         )
         .options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start.desc(), Match.tournament, Match.id).limit(5)
+        .order_by(
+            func.coalesce(Match.completed_at, Match.scheduled_at).desc(),
+            Match.week_start.desc(), Match.id.desc(),
+        ).limit(5)
     ).all()
     # Prefer current feed matches for the hero carousel.  The permanent Match
     # archive is intentionally kept as a fallback, because live rows are only
