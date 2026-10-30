@@ -8,7 +8,7 @@ from math import ceil
 from functools import lru_cache
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote, urlsplit
-from xml.sax.saxutils import escape as xml_escape
+from xml.sax.saxutils import escape as xml_escape  # nosec B406: output escaping only; no XML parsing
 
 import requests
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
@@ -364,6 +364,7 @@ def check_csrf():
         expected = session.get("csrf_token", "")
         if not expected or not hmac.compare_digest(submitted, expected):
             abort(400, "Your form expired. Reload the page and try again.")
+        limit_action("post-ip", client_ip(), 120, 60)
 
 
 def safe_next(default="site.home"):

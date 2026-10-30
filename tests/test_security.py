@@ -189,6 +189,28 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(blocked.headers["X-Frame-Options"], "DENY")
         self.assertIn("frame-ancestors 'none'", blocked.headers["Content-Security-Policy"])
 
+    def test_login_ip_limit_rejects_the_21st_failed_attempt(self):
+        self.client.get("/login")
+        for attempt in range(20):
+            response = self.client.post("/login", data={
+                "csrf_token": self.token(),
+                "identity": f"unknown-{attempt}",
+                "password": "wrong-password",
+            })
+            self.assertEqual(response.status_code, 200)
+        blocked = self.client.post("/login", data={
+            "csrf_token": self.token(),
+            "identity": "unknown-20",
+            "password": "wrong-password",
+        })
+        self.assertEqual(blocked.status_code, 429)
+
+    def test_csp_disallows_inline_scripts(self):
+        response = self.client.get("/")
+        csp = response.headers["Content-Security-Policy"]
+        script_policy = csp.split("script-src ", 1)[1].split(";", 1)[0]
+        self.assertNotIn("unsafe-inline", script_policy)
+
     def test_legacy_password_hash_upgrades_after_login(self):
         self.app.config["REQUIRE_EMAIL_VERIFICATION"] = False
         self.register()
