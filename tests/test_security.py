@@ -211,6 +211,24 @@ class AccountSecurityFlows(unittest.TestCase):
         script_policy = csp.split("script-src ", 1)[1].split(";", 1)[0]
         self.assertNotIn("unsafe-inline", script_policy)
 
+    def test_csp_style_policy_and_dynamic_styles_are_externalized(self):
+        response = self.client.get("/")
+        csp = response.headers["Content-Security-Policy"]
+        style_policy = csp.split("style-src ", 1)[1].split(";", 1)[0]
+        self.assertNotIn("unsafe-inline", style_policy)
+
+        with self.app.app_context():
+            match = db.session.scalar(select(Match).limit(1))
+            self.assertIsNotNone(match)
+            player_id = match.winner_id
+            match_id = match.id
+
+        for page in (f"/players/{player_id}", f"/matches/{match_id}"):
+            page_response = self.client.get(page)
+            self.assertEqual(page_response.status_code, 200)
+            self.assertNotRegex(page_response.data, rb"\sstyle=")
+            self.assertIn(b"data-style-", page_response.data)
+
     def test_legacy_password_hash_upgrades_after_login(self):
         self.app.config["REQUIRE_EMAIL_VERIFICATION"] = False
         self.register()
