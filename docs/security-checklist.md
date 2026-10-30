@@ -55,10 +55,11 @@ production deployment.
 
 ## CSP style note
 
-The templates currently contain five dynamic `style=` attributes in
-`templates/player.html`, `templates/match.html`, and `templates/profile.html`.
-They carry calculated widths, heights, and a per-rating CSS variable. Replacing
-them with fixed classes would either lose those values or require a larger
-layout rewrite, so `style-src 'unsafe-inline'` remains intentionally scoped to
-styles. There are no inline script blocks, and `script-src` does not allow
-`unsafe-inline`.
+Dynamic widths, heights, and rating tones are carried in `data-*` attributes in
+`tennisd/templates/player.html`, `tennisd/templates/match.html`, and
+`tennisd/templates/profile.html`. `public/static/dynamic-styles.js` applies
+those values through CSSOM, so the production CSP omits `style-src
+'unsafe-inline'`. If AdSense is enabled later, verify its widget in preview;
+only re-add `unsafe-inline` to `style-src` if the widget demonstrably requires
+it, and document that exception here. There are no inline script blocks, and
+`script-src` does not allow `unsafe-inline`.

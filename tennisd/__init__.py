@@ -210,7 +210,7 @@ def create_app(test_config=None):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com "
             "https://fundingchoicesmessages.google.com; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "style-src 'self' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org "
             "https://www.atptour.com https://photoresources.wtatennis.com https://content.wimbledon.com "
