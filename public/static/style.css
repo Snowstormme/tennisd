@@ -412,11 +412,11 @@
    tab. The Tennisd palette, icons and header layout remain unchanged. */
 .site-header .main-nav{position:relative;isolation:isolate}
 .site-header .main-nav a.nav-animated{isolation:isolate}
-.site-header .main-nav a.nav-animated[aria-current="page"]{z-index:2}
-.site-header .main-nav a.nav-animated[aria-current="page"]:before{content:"";position:absolute;z-index:-1;left:-3px;right:-3px;top:2px;bottom:-1px;border:1px solid var(--lime);border-bottom:0;border-radius:24px 24px 0 0;background:#d6ed8014;box-shadow:0 -7px 18px #d6ed8010;pointer-events:none;animation:nav-current-rise .36s cubic-bezier(.2,.75,.25,1) both}
+.site-header .main-nav a.nav-animated[aria-current="page"]{z-index:2;background:transparent}
+.site-header .main-nav a.nav-animated[aria-current="page"]:before{content:"";position:absolute;z-index:-1;left:-3px;right:-3px;top:2px;bottom:-1px;border:1px solid var(--lime);border-bottom:0;border-radius:24px 24px 0 0;background:transparent;box-shadow:0 -7px 18px #d6ed8010;pointer-events:none;animation:nav-current-rise .36s cubic-bezier(.2,.75,.25,1) both}
 .site-header .main-nav a.nav-animated[aria-current="page"]:after{display:block;content:"";position:absolute;z-index:3;left:-9px;right:-9px;bottom:-1px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,var(--lime) 18% 82%,transparent);pointer-events:none;animation:nav-current-line .42s cubic-bezier(.2,.75,.25,1) both}
 @keyframes nav-current-rise{from{opacity:0;transform:translateY(7px) scaleX(.82)}to{opacity:1;transform:none}}
 @keyframes nav-current-line{from{opacity:0;transform:scaleX(.35)}to{opacity:1;transform:none}}
-@media(min-width:901px){.site-header .main-nav a.nav-animated[aria-current="page"]{background:#d6ed8024;box-shadow:none}.site-header .main-nav a.nav-animated[aria-current="page"]:before{top:1px;bottom:0;border-radius:22px 22px 0 0}}
+@media(min-width:901px){.site-header .main-nav a.nav-animated[aria-current="page"]{background:transparent;box-shadow:none}.site-header .main-nav a.nav-animated[aria-current="page"]:before{top:1px;bottom:0;border-radius:22px 22px 0 0}}
 @media(max-width:900px){.site-header .main-nav a.nav-animated[aria-current="page"]:before{left:2px;right:2px;top:3px;border-radius:18px 18px 0 0}.site-header .main-nav a.nav-animated[aria-current="page"]:after{left:0;right:0}}
 @media(prefers-reduced-motion:reduce){.site-header .main-nav a.nav-animated[aria-current="page"]:before,.site-header .main-nav a.nav-animated[aria-current="page"]:after{animation:none}}
