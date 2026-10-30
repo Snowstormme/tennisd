@@ -341,7 +341,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"https://upload.wikimedia.org/home-runner.jpg", home.data)
         self.assertNotIn(b"/players/home-first/photo", home.data)
 
-    def test_home_prefers_live_matches_with_stored_player_photos(self):
+    def test_home_keeps_live_matches_out_of_featured_carousel(self):
         with self.app.app_context():
             first = Player(id="home-live-first", tour="ATP", name="Live Home Winner")
             second = Player(id="home-live-second", tour="ATP", name="Live Home Runner")
@@ -366,8 +366,8 @@ class TennisdFlows(unittest.TestCase):
             db.session.commit()
 
         home = self.client.get("/")
-        self.assertIn(b"Live Home Open", home.data)
-        self.assertIn(b"live-matches/home-live-featured", home.data)
+        self.assertNotIn(b"Live Home Open", home.data)
+        self.assertNotIn(b"live-matches/home-live-featured", home.data)
         self.assertNotIn(b"Unknown Home Open", home.data)
 
     def test_rankings_render_loaded_rows(self):
