@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, current_app, render_template, request, session
+from flask import Flask, abort, current_app, render_template, request, session
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -52,7 +52,7 @@ def create_app(test_config=None):
     static_folder = Path(__file__).resolve().parent.parent / "public" / "static"
     flask_options = {"static_folder": str(static_folder)}
     if os.environ.get("VERCEL"):
-        flask_options["instance_path"] = "/tmp/tennisd-instance"
+        flask_options["instance_path"] = "/tmp/tennisd-instance"  # nosec B108: Vercel writable instance path
     app = Flask(__name__, **flask_options)
     instance_path = Path(app.instance_path)
     instance_path.mkdir(parents=True, exist_ok=True)
@@ -90,7 +90,9 @@ def create_app(test_config=None):
     ))))
 
     app.config.update(
-        SECRET_KEY=os.environ.get("SECRET_KEY") or secrets.token_hex(32),
+        # Production must receive a stable secret only from the host environment.
+        # Development uses an ephemeral key when no local secret is configured.
+        SECRET_KEY=os.environ.get("SECRET_KEY") or (None if production else secrets.token_hex(32)),
         SQLALCHEMY_DATABASE_URI=database_url or f"sqlite:///{instance_path / 'tennisd.db'}",
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
@@ -259,6 +261,11 @@ def create_app(test_config=None):
             response.cache_control.max_age = 60
             response.cache_control.stale_while_revalidate = 300
         return response
+
+    @app.before_request
+    def block_hidden_files():
+        if any(part.startswith('.') for part in request.path.split('/') if part):
+            abort(404)
 
     # Register Flask-Login after our response handler so security_headers runs
     # last and can mark public API responses as independent of session cookies.

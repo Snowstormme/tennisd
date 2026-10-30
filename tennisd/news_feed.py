@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 import json
 import re
 from urllib.parse import parse_qs, quote, quote_plus, urljoin, urlparse
-from xml.etree import ElementTree
+from defusedxml import ElementTree
 
 import requests
 
