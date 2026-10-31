@@ -5,6 +5,7 @@ import os
 from sqlalchemy import text
 
 from tennisd import create_app, db
+from tennisd.migrations import run_migrations
 
 
 def main():
@@ -16,8 +17,9 @@ def main():
         "TESTING": True,
         "SECRET_KEY": "postgres-smoke-test-secret",
         "SQLALCHEMY_DATABASE_URI": database_url,
-        "AUTO_CREATE_DB": True,
+        "AUTO_CREATE_DB": False,
     })
+    run_migrations(app)
     with app.app_context():
         db.session.execute(text("SELECT 1"))
         user_tables = db.session.execute(text(

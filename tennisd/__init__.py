@@ -300,9 +300,11 @@ def create_app(test_config=None):
 
     @app.cli.command("init-db")
     def init_db():
-        """Create tables using a database owner connection."""
-        db.create_all()
-        click.echo("Database initialized.")
+        """Apply schema migrations using a database owner connection."""
+        from .migrations import run_migrations
+
+        run_migrations(app)
+        click.echo("Database migrations are up to date.")
 
     if app.config["AUTO_CREATE_DB"]:
         with app.app_context():

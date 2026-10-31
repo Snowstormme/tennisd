@@ -26,6 +26,8 @@ The dev file includes the runtime dependencies and the pinned dependency auditor
 
 GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL 16 service. It creates the application schema, verifies a database query, and checks the health endpoint before a change can merge.
 
+Database schema changes use the owner-only migration runner documented in [docs/migrations.md](docs/migrations.md); the web role is never responsible for creating schema objects.
+
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.
@@ -65,7 +67,7 @@ GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL
 Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. The connected production branch deploys automatically on Render; the old Vercel hostname is retained only as a redirect to Render. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
-2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
+2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action applies the ordered schema migrations, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
 3. Build a pooled TLS URL using `rallylog_web` and the generated application password, then set it as Render's `DATABASE_URL`.
 4. Create a Brevo account and verify the sender email. Set `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_EMAIL`, `ADMIN_EMAIL` and `CONTACT_EMAIL` in Render before opening registration.
 5. Create the service from `render.yaml`, or configure it manually with build command `pip install -r requirements.txt` and start command `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --access-logfile /dev/null wsgi:app`. Python is pinned by `.python-version`. Set `APP_ENV=production`, `AUTO_CREATE_DB=false`, `REGISTRATION_ENABLED=false`, a stable random 64-character `SECRET_KEY`, and the pooled `DATABASE_URL`. Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`.

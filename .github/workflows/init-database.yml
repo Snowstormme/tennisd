@@ -16,11 +16,11 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Create schema
+      - name: Apply database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
           AUTO_CREATE_DB: "false"
-        run: flask --app wsgi init-db
+        run: python scripts/migrate.py
       - name: Restrict and verify application database role
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
