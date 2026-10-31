@@ -4,6 +4,25 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-11-01
+
+### Fixed
+
+- Check daily ingestion by UTC calendar date so an earlier scheduler run does
+  not skip the next day's refresh behind a strict 24-hour interval.
+
+### Data corrections
+
+- Explain the paused diary form on results under review while preserving the
+  owner's ability to delete an existing entry.
+- Add the source-reviewed correction of lt-211673: Yi Yuan (HKG) is Koray
+  Kirci's opponent in the official ITF M15 Sharm ElSheikh main draw, with a
+  6–1 6–2 result. The active provider misidentifies the opponent as Yue Yuan.
+- Provide a default read-only preview, exact original-field guards, a row lock,
+  idempotent apply/rollback and a public result journal. Preserve match/diary IDs
+  and all existing player/provider mappings; expose the official evidence link
+  when the reviewed correction is present.
+
 ## [0.2.1] - 2026-11-01
 
 ### Fixed

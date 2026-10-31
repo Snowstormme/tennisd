@@ -1,0 +1,42 @@
+name: Correct a reviewed result
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Preview first; apply or roll back the reviewed single-match correction
+        type: choice
+        default: preview
+        options: [preview, apply, rollback]
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-tennis-sync
+  cancel-in-progress: false
+
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Guard and record the reviewed one-match correction
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+          CORRECTION_OPERATION: ${{ inputs.operation }}
+        run: python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operation "$CORRECTION_OPERATION" > reviewed-result-correction.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reviewed-result-correction-${{ github.run_id }}
+          path: reviewed-result-correction.json
+          if-no-files-found: error
+          retention-days: 30
