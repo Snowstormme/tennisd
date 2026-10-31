@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/Snowstormme/tennisd/security/advisories/new
+    about: Please do not disclose security vulnerabilities in a public issue.
+  - name: Read the security policy
+    url: https://github.com/Snowstormme/tennisd/blob/main/SECURITY.md
+    about: Review the supported versions and reporting process.
+  - name: Read the Code of Conduct
+    url: https://github.com/Snowstormme/tennisd/blob/main/CODE_OF_CONDUCT.md
+    about: Please follow these participation guidelines.
