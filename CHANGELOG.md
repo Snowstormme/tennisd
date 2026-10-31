@@ -4,6 +4,29 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+### Fixed
+
+- Require explicit provider outcomes before archiving daily feed results; missing
+  events are no longer treated as cancelled or settled from a partial listing.
+- Validate player names and tours when resolving provider identities, contain
+  inconsistent catalog rows, and preserve diary IDs when correcting results.
+- Render en-dash scores as sets, suppress legacy null point annotations, and
+  show the age and limitations of daily snapshots.
+- Use content hashes for static asset URLs so returning visitors receive updated
+  CSS and JavaScript.
+- Improve mobile match readability, feedback/poll controls and profile checkboxes.
+- Keep successful news snapshots during source failures, refresh outside web
+  requests, and use direct BBC/ESPN publisher RSS feeds.
+
+### Operations
+
+- Add a read-only catalog audit and replace the destructive archive rebuild with
+  bounded provider rechecks.
+- Restore each configured backup into an isolated CI database before encryption,
+  and test the restore guard in CI.
+- Test Python 3.12 and 3.13, constrain runtime dependency versions, and configure
+  the Render Blueprint to deploy after CI passes.
+
 ### Added
 
 - Community contribution guidance, Code of Conduct, accessibility guidance, and issue and pull request templates.

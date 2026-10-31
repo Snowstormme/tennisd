@@ -6,9 +6,9 @@
 <div class="container page-section player-directory">
   <nav class="directory-tabs" aria-label="Player directory">
     <a href="{{ url_for('site.players') }}"{% if view == 'players' %} aria-current="page"{% endif %}>Players</a>
-    <a href="{{ url_for('site.players', view='rankings') }}"{% if view == 'rankings' %} aria-current="page"{% endif %}>Rankings</a>
+    <a href="{{ url_for('site.players', view='rankings') }}"{% if view == 'rankings' %} aria-current="page"{% endif %}>Recorded rankings</a>
   </nav>
-  <div class="section-head"><div><p class="eyebrow">{% if view == 'rankings' %}LATEST CATALOG POSITION{% else %}MOST WATCHED IN THE CATALOG{% endif %}</p><h2>{{ '{:,}'.format(pagination.total) }} {% if view == 'rankings' %}ranked players{% else %}players{% endif %}<span>.</span></h2></div><p class="section-subtle">{% if view == 'rankings' %}The latest singles position recorded for every player in the Tennisd catalog.{% else %}Popular players appear first, based on catalog matches and community follows.{% endif %}</p></div>
+  <div class="section-head"><div><p class="eyebrow">{% if view == 'rankings' %}LATEST CATALOG POSITION{% else %}PLAYERS IN THE CATALOG{% endif %}</p><h2>{{ '{:,}'.format(pagination.total) }} {% if view == 'rankings' %}ranking records{% else %}players{% endif %}<span>.</span></h2></div><p class="section-subtle">{% if view == 'rankings' %}Historical positions from different dates, not a current tour ranking. Each card shows when its position was recorded.{% else %}Popular players appear first, based on catalog matches and community follows.{% endif %}</p></div>
   <form class="inline-filters" method="get">
     <input type="hidden" name="view" value="{{ view }}">
     <label class="visually-hidden" for="player-query">Search players</label><input id="player-query" type="search" name="q" value="{{ query }}" placeholder="{% if view == 'rankings' %}Search the rankings{% else %}Search a player{% endif %}">

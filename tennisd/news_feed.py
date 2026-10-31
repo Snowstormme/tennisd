@@ -5,9 +5,13 @@ from functools import lru_cache
 from html import unescape
 from html.parser import HTMLParser
 import json
+import hashlib
+import logging
 import re
+from threading import Lock
 from urllib.parse import parse_qs, quote, quote_plus, urljoin, urlparse
 from defusedxml import ElementTree
+from defusedxml.common import DefusedXmlException
 
 import requests
 
@@ -51,6 +55,8 @@ NEWS_SOURCES = (
     },
     {
         "key": "bbc",
+        "rss_url": "https://feeds.bbci.co.uk/sport/tennis/rss.xml",
+        "domains": ("bbc.com", "bbc.co.uk"),
         "name": "BBC Sport",
         "url": "https://www.bbc.com/sport/tennis",
         "domain": "bbc.com",
@@ -60,6 +66,7 @@ NEWS_SOURCES = (
     },
     {
         "key": "espn",
+        "rss_url": "https://www.espn.com/espn/rss/tennis/news",
         "name": "ESPN Tennis",
         "url": "https://www.espn.com/tennis/",
         "domain": "espn.com",
@@ -110,7 +117,7 @@ def _source_items(source_key, cache_window):
     source = next(item for item in NEWS_SOURCES if item["key"] == source_key)
     query = quote_plus(source["search"])
     response = requests.get(
-        f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
+        source.get("rss_url") or f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
         headers={"Accept": "application/rss+xml", "User-Agent": "Tennisd/1.0 (news reader)"},
         timeout=5,
     )
@@ -130,11 +137,17 @@ def _source_items(source_key, cache_window):
         if source_key == "sky" and title.startswith("Sports News, Transfers, Scores"):
             continue
         link = (item.findtext("link") or "").strip()
-        if not title or not link.startswith("https://news.google.com/"):
+        hostname = (urlparse(link).hostname or "").lower()
+        domains = source.get("domains", (source["domain"],))
+        direct = link.startswith("https://") and any(
+            hostname == domain or hostname.endswith(f".{domain}") for domain in domains
+        )
+        google_link = link.startswith("https://news.google.com/")
+        if not title or not (direct or google_link):
             continue
         published_at = _published_at(item.findtext("pubDate"))
         stories.append({
-            "id": urlparse(link).path.rsplit("/", 1)[-1],
+            "id": hashlib.sha256(link.encode()).hexdigest() if direct else urlparse(link).path.rsplit("/", 1)[-1],
             "title": title,
             "url": link,
             "source_key": source["key"],
@@ -144,20 +157,67 @@ def _source_items(source_key, cache_window):
     return stories
 
 
-def fetch_news_items(source_key="all", now=None):
-    """Load official publisher headlines through Google News RSS for discovery."""
-    now = now or datetime.now(timezone.utc)
-    cache_window = int(now.timestamp() // 60)
+_NEWS_CACHE = {}
+_NEWS_LOCK = Lock()
+_NEWS_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="tennisd-news")
+_LOGGER = logging.getLogger(__name__)
+
+
+def _refresh_source(key, now):
+    try:
+        items = _source_items(key, int(now.timestamp() // 300))
+    except (ElementTree.ParseError, DefusedXmlException, StopIteration, ValueError, requests.RequestException) as error:
+        # Keep a successful earlier snapshot; never log upstream bodies or keys.
+        _LOGGER.warning("News refresh failed source=%s error=%s", key, type(error).__name__)
+        with _NEWS_LOCK:
+            state = _NEWS_CACHE.setdefault(key, {})
+            state.update(checked_at=now, failed=True, refreshing=False)
+            return list(state.get("items", []))
+    with _NEWS_LOCK:
+        state = _NEWS_CACHE.setdefault(key, {})
+        state.update(items=list(items), checked_at=now, succeeded_at=now, failed=False, refreshing=False)
+    return items
+
+
+def news_feed_state(source_key="all"):
     keys = [source_key] if source_key != "all" else [source["key"] for source in NEWS_SOURCES]
+    with _NEWS_LOCK:
+        states = [_NEWS_CACHE.get(key, {}) for key in keys]
+        succeeded = [state["succeeded_at"] for state in states if state.get("succeeded_at")]
+        return {
+            "refreshing": any(state.get("refreshing") for state in states),
+            "failed_sources": sum(bool(state.get("failed")) for state in states),
+            "checked_sources": sum(bool(state.get("checked_at")) for state in states),
+            "total_sources": len(keys),
+            "last_success": max(succeeded) if succeeded else None,
+        }
 
-    def load(key):
-        try:
-            return _source_items(key, cache_window)
-        except (ElementTree.ParseError, StopIteration, requests.RequestException):
-            return []
 
-    with ThreadPoolExecutor(max_workers=len(keys)) as executor:
-        groups = executor.map(load, keys)
+def fetch_news_items(source_key="all", now=None, *, background=False):
+    """Read the last successful snapshot; web pages refresh it off-request.
+
+    The cache is per web process, survives upstream outages, and is rebuilt
+    after a deploy. It is not a durable archive of third-party news articles.
+    """
+    now = now or datetime.now(timezone.utc)
+    keys = [source_key] if source_key != "all" else [source["key"] for source in NEWS_SOURCES]
+    if not background:
+        with ThreadPoolExecutor(max_workers=len(keys)) as executor:
+            groups = list(executor.map(lambda key: _refresh_source(key, now), keys))
+    else:
+        groups = []
+        for key in keys:
+            with _NEWS_LOCK:
+                state = _NEWS_CACHE.setdefault(key, {})
+                checked_at = state.get("checked_at")
+                retry_after = timedelta(seconds=60 if state.get("failed") else 300)
+                due = checked_at is None or now - checked_at >= retry_after
+                refresh = due and not state.get("refreshing")
+                if refresh:
+                    state["refreshing"] = True
+                groups.append(list(state.get("items", [])))
+            if refresh:
+                _NEWS_EXECUTOR.submit(_refresh_source, key, now)
     stories = [story for group in groups for story in group]
     stories.sort(key=lambda story: story["published_at"], reverse=True)
     return stories
@@ -285,9 +345,15 @@ def fetch_news_article(source_key, article_id, google_url):
     if source is None or not re.fullmatch(r"[A-Za-z0-9_-]{20,500}", article_id):
         return None
     try:
-        original_url = _google_article_url(article_id, google_url)
+        original_url = (
+            _google_article_url(article_id, google_url)
+            if urlparse(google_url).hostname == "news.google.com" else google_url
+        )
         hostname = (urlparse(original_url).hostname or "").lower() if original_url else ""
-        if not hostname or not (hostname == source["domain"] or hostname.endswith(f".{source['domain']}")):
+        if not hostname or not any(
+            hostname == domain or hostname.endswith(f".{domain}")
+            for domain in source.get("domains", (source["domain"],))
+        ):
             return {"original_url": google_url, "description": "", "paragraphs": [], "image": ""}
         response = requests.get(
             original_url,

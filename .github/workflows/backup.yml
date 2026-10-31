@@ -13,7 +13,19 @@ jobs:
     if: ${{ vars.BACKUPS_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     container: postgres:18-bookworm
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tennisd_restore
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tennisd_restore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
+      - uses: actions/checkout@v7
       - name: Install encryption tool
         run: apt-get update -qq && apt-get install -y -qq age
       - name: Dump and encrypt
@@ -24,9 +36,9 @@ jobs:
           set -eu
           test -n "$DATABASE_URL"
           test -n "$BACKUP_RECIPIENT"
-          export PGSSLMODE=require
           trap 'rm -f /tmp/rallylog.dump' EXIT
-          pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file=/tmp/rallylog.dump
+          PGSSLMODE=require pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file=/tmp/rallylog.dump
+          bash scripts/verify_backup.sh /tmp/rallylog.dump
           age -r "$BACKUP_RECIPIENT" -o rallylog.dump.age /tmp/rallylog.dump
           test -s rallylog.dump.age
       - uses: actions/upload-artifact@v7

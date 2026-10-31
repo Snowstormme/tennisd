@@ -9,6 +9,7 @@ from sqlalchemy import delete, or_, select
 from . import db
 from .models import Comment, Match, Report, Review, WatchlistItem
 from .notifications import create_notification
+from .identities import match_identity_is_valid
 from .security import limit_action
 
 
@@ -19,6 +20,9 @@ def register_community_routes(site):
     @login_required
     def log_match(match_id):
         match = db.get_or_404(Match, match_id)
+        if not match_identity_is_valid(match):
+            flash("This result is awaiting a data review. Your existing diary entry is preserved.", "error")
+            return redirect(url_for("site.match_detail", match_id=match_id))
         try:
             watched_on = date.fromisoformat(request.form.get("watched_on", ""))
             if watched_on > date.today() or watched_on < match.week_start:

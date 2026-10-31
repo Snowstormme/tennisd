@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% block title %}News{% endblock %}
 {% block content %}
-<section class="page-banner news-banner"><div class="container"><p class="eyebrow">AROUND THE TOURS</p><h1>Latest news<span>.</span></h1><p>A live reading list from the official tours and tournaments.</p></div></section>
-<main class="container news-page">
+<section class="page-banner news-banner"><div class="container"><p class="eyebrow">AROUND THE TOURS</p><h1>Latest news<span>.</span></h1><p>Headlines from tennis publishers, with links to the original reporting.</p></div></section>
+<div class="container news-page">
   <section class="news-feed-section"{% if page == 1 %} data-news-live data-news-source="{{ selected_source }}" data-news-first="{{ stories[0].id if stories else '' }}"{% endif %}>
     <div class="news-feed-head">
       <div><p class="eyebrow">THE FEED</p><h2>What is happening now<span>.</span></h2></div>
@@ -11,6 +11,7 @@
       <a href="{{ url_for('site.news') }}"{% if selected_source == 'all' %} aria-current="page"{% endif %}>All</a>
       {% for source in sources %}<a href="{{ url_for('site.news', source=source.key) }}"{% if selected_source == source.key %} aria-current="page"{% endif %}>{{ source.name }}</a>{% endfor %}
     </nav>
+    <p class="news-feed-status" role="status">{% if feed_state.refreshing %}Checking the publishers. Saved headlines remain available while the feed refreshes.{% elif feed_state.failed_sources %}Some publishers could not be reached. Showing the last available headlines{% if feed_state.last_success %}, saved {{ feed_state.last_success.strftime('%d %b · %H:%M UTC') }}{% endif %}.{% else %}Headlines are checked every five minutes while this page is in use.{% endif %}</p>
     {% if featured_story %}<a class="news-featured news-story-{{ featured_story.source_key }}" href="{{ url_for('site.news_story', source_key=featured_story.source_key, story_id=featured_story.id) }}">
       <span class="news-featured-media">
         <img class="news-fallback-photo" src="{{ url_for('static', filename='images/news-court-fallback.webp', v='20260930-4') }}" alt="">
@@ -29,14 +30,14 @@
         <span class="news-story-source">{{ story.source }}</span>
         <span class="news-story-copy"><small>{{ story.published_at.strftime('%d %b %Y · %H:%M UTC') }}</small><strong>{{ story.title }}</strong></span>
       </a>
-    {% endfor %}</div>{% else %}<div class="empty-state news-empty"><h3>The feed is taking a changeover.</h3><p>Open an official source below while the latest headlines reconnect.</p></div>{% endif %}
+    {% endfor %}</div>{% else %}<div class="empty-state news-empty"><h3>Headlines are not available yet.</h3><p>We are checking the publishers. You can open a source below; this page will update when headlines arrive.</p></div>{% endif %}
     {% if total_pages > 1 %}<nav class="pagination news-pagination" aria-label="News pages">{% if page > 1 %}<a href="{{ url_for('site.news', source=selected_source if selected_source != 'all' else None, page=page - 1) }}">Previous</a>{% endif %}<span>Page {{ page }} / {{ total_pages }}</span>{% if page < total_pages %}<a href="{{ url_for('site.news', source=selected_source if selected_source != 'all' else None, page=page + 1) }}">Next</a>{% endif %}</nav>{% endif %}
   </section>
 
   <section class="news-sources-section">
     <div class="section-head"><div><p class="eyebrow">FROM THE PUBLISHERS</p><h2>Information sources<span>.</span></h2></div></div>
     <div class="news-grid">{% for source in sources %}<a class="news-source" href="{{ source.url }}" target="_blank" rel="noopener noreferrer"><small>OFFICIAL SOURCE</small><h3>{{ source.name }}</h3><p>{{ source.description }}</p><span>Visit publication</span></a>{% endfor %}</div>
-    <p class="source-note">Headlines are collected through Google News RSS. Tennisd opens a short reader preview; complete reporting, publication times and corrections remain with the source.</p>
+    <p class="source-note">BBC and ESPN headlines use their publisher RSS feeds; other sources are discovered through Google News RSS. Tennisd opens a short reader preview; complete reporting, publication times and corrections remain with the source.</p>
   </section>
-</main>
+</div>
 {% endblock %}

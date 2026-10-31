@@ -69,8 +69,9 @@ def history_fixture():
 
 
 class Response:
-    def __init__(self, rows):
+    def __init__(self, rows, status_code=200):
         self.rows = rows
+        self.status_code = status_code
 
     def raise_for_status(self):
         return None
@@ -80,12 +81,16 @@ class Response:
 
 
 class Session:
-    def __init__(self, rows):
+    def __init__(self, rows, details=None):
         self.rows = rows
+        self.details = details or {}
         self.calls = []
 
     def get(self, url, **kwargs):
         self.calls.append((url, kwargs))
+        if "/matches/" in url:
+            detail = self.details.get(url.rsplit("/", 1)[-1])
+            return Response(detail, 200 if detail else 404)
         return Response(self.rows)
 
 
@@ -169,8 +174,8 @@ class LiveTennisTests(unittest.TestCase):
             db.session.commit()
         page = self.client.get("/matches?view=live")
         self.assertIn(b"data-live-sync-status", page.data)
-        self.assertNotIn(b"Updated ", page.data)
-        self.assertIn(b"Live on court", page.data)
+        self.assertIn(b"Daily snapshot", page.data)
+        self.assertIn(b"Last reported live", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)
         api_response = self.client.get("/api/live-matches")
@@ -226,8 +231,15 @@ class LiveTennisTests(unittest.TestCase):
                 player1_name="Iga Swiatek", player2_name="Aryna Sabalenka", score="6–4 6–3",
             ))
             db.session.commit()
+            completed = history_fixture()
+            completed.update({
+                "id": "settled-1", "tour": "wta", "tier": "grand_slam",
+                "tournament": "Wimbledon", "scheduled_time": (now - timedelta(hours=2)).isoformat(),
+                "players": {"p1": {"name": "Iga Swiatek"}, "p2": {"name": "Aryna Sabalenka"}},
+                "score": {"games": [[6, 6], [4, 3]]},
+            })
             with patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
-                self.assertEqual(sync_matches("live", session=Session([]), now=now), 0)
+                self.assertEqual(sync_matches("live", session=Session([], {"settled-1": completed}), now=now), 0)
             match = db.session.get(LiveMatch, "settled-1")
             self.assertEqual(match.status, "finished")
             self.assertEqual(match.winner_side, 1)
@@ -246,7 +258,7 @@ class LiveTennisTests(unittest.TestCase):
         self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
         self.assertIsNone(winner_from_score("6–4 5–2"))
         self.assertEqual(winner_from_score("7–6 (5–7) 6–4"), 1)
-        self.assertEqual(winner_from_score("6–3 2–1 ret."), 1)
+        self.assertIsNone(winner_from_score("6–3 2–1 ret."))
 
     def test_tiebreak_and_retirement_scores_are_final(self):
         tiebreak = LiveMatch(

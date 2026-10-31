@@ -2,7 +2,7 @@
 {% from '_macros.html' import match_center_header, match_score_rows, match_round_name %}
 {% block title %}{{ match.player1_name }} vs {{ match.player2_name }}{% endblock %}
 {% block content %}
-<div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches', view=match.status if match.status in ('live', 'upcoming', 'finished') else 'archive') }}">BACK TO MATCHES</a><div class="detail-top-right"><span class="live-state{% if match.status == 'live' %} is-live{% endif %}">{{ match.status|upper }}</span><span>{{ match.tour }} · {{ match.draw|upper }}</span></div></div>
+<div class="container detail-top"><a class="back-link" href="{{ url_for('site.matches', view=match.status if match.status in ('live', 'upcoming', 'finished') else 'archive') }}">BACK TO MATCHES</a><div class="detail-top-right"><span class="live-state">{{ 'LIVE AT LAST CHECK' if match.status == 'live' else match.status|upper }}</span><span>{{ match.tour }} · {{ match.draw|upper }}</span></div></div>
 <section class="live-detail-hero surface-{{ match.surface|lower }}" data-live-match="{{ match.provider_id }}">
   <span class="showcase-wash" aria-hidden="true"></span>
   <div class="container live-detail-grid">
@@ -13,6 +13,7 @@
       {{ match_center_header(match.tour, match.surface, match.tournament) }}
       {{ match_score_rows(match.score, match.winner_side or 0, true, ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed')) }}
 
+      <span class="snapshot-age">Daily snapshot · {{ match.synced_at|freshness }}{% if match.synced_at|snapshot_is_stale %} · Refresh overdue{% endif %}</span>
       <span class="featured-facts"><b>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'DATE TBC' }}</b><i>·</i><b>{{ match_round_name(match.round) if match.round else match.status|upper }}</b><i>·</i><b class="featured-location">{{ match_location(match) }}</b></span>
     </div>
     <div class="live-detail-player live-detail-player-right">
@@ -20,13 +21,13 @@
     </div>
   </div>
 </section>
-<main class="container live-detail-body">
+<div class="container live-detail-body">
   <section class="live-detail-facts">
     <span><small>STATUS</small><strong>{{ match.status|title }}</strong></span>
     <span><small>START</small><strong>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'Unavailable' }}</strong><b>{{ match.starts_at.strftime('%H:%M UTC') if match.starts_at else '' }}</b></span>
     <span><small>FORMAT</small><strong>{{ 'Doubles' if match.is_doubles else match.draw|title }}</strong></span>
     <span><small>ROUND</small><strong>{{ match.round or 'TBC' }}</strong></span>
   </section>
-  <div class="live-detail-notes"><section><p class="eyebrow">MATCH TIMELINE</p><h2>{{ 'On court now' if match.status == 'live' else 'Scheduled match' if match.status == 'upcoming' else 'Permanent result' }}<span>.</span></h2><p>{{ 'The score refreshes automatically from the live feed.' if match.status == 'live' else 'This page will become the permanent result when the match finishes.' if match.status == 'upcoming' else 'This match remains in the Tennisd database with its final score and winner.' }}</p></section><section><p class="eyebrow">DATA STATUS</p><h2>Last checked<span>.</span></h2><p class="muted">{{ match.synced_at.strftime('%d %b %Y · %H:%M UTC') if match.synced_at else 'Exact update time unavailable' }} · Live feed information can change until the result is settled.</p></section></div>
-</main>
+  <div class="live-detail-notes"><section><p class="eyebrow">MATCH TIMELINE</p><h2>{{ 'Live at last check' if match.status == 'live' else 'Scheduled match' if match.status == 'upcoming' else 'Result status' }}<span>.</span></h2><p>{{ 'This is a daily snapshot, not a real-time score. The match may have progressed or finished since the last check.' if match.status == 'live' else 'A permanent diary page is created after the provider confirms the final result.' if match.status == 'upcoming' else 'The last reported score is preserved. An unresolved result is not treated as a confirmed winner.' }}</p></section><section><p class="eyebrow">DATA STATUS</p><h2>Last checked<span>.</span></h2><p class="muted">{{ match.synced_at.strftime('%d %b %Y · %H:%M UTC') if match.synced_at else 'Exact update time unavailable' }} · Live feed information can change until the result is settled.</p></section></div>
+</div>
 {% endblock %}

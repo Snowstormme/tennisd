@@ -1,11 +1,12 @@
 import os
 import re
 import secrets
+import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, abort, current_app, g, render_template, request, session
+from flask import Flask, abort, current_app, g, render_template, request, session, url_for
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -44,6 +45,19 @@ def freshness(value, now=None):
     return f"Updated {days} day{'s' if days != 1 else ''} ago"
 
 
+def clean_score_text(value):
+    """Hide legacy null point annotations without changing the recorded result."""
+    return re.sub(r"\s*\((?:None|null|)[–-](?:None|null|)\)", "", value or "", flags=re.IGNORECASE).strip()
+
+
+def snapshot_is_stale(value):
+    if value is None:
+        return True
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - value > timedelta(hours=30)
+
+
 @event.listens_for(Engine, "connect")
 def enforce_sqlite_foreign_keys(connection, _record):
     if connection.__class__.__module__.startswith("sqlite3"):
@@ -56,6 +70,11 @@ def create_app(test_config=None):
     if os.environ.get("VERCEL"):
         flask_options["instance_path"] = "/tmp/tennisd-instance"  # nosec B108: Vercel writable instance path
     app = Flask(__name__, **flask_options)
+    asset_versions = {
+        path.relative_to(static_folder).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+        for path in static_folder.rglob("*") if path.is_file()
+    }
+    app.extensions["asset_versions"] = asset_versions
     instance_path = Path(app.instance_path)
     instance_path.mkdir(parents=True, exist_ok=True)
 
@@ -178,6 +197,14 @@ def create_app(test_config=None):
 
     db.init_app(app)
     app.jinja_env.filters["freshness"] = freshness
+    app.jinja_env.filters["clean_score"] = clean_score_text
+    app.jinja_env.filters["snapshot_is_stale"] = snapshot_is_stale
+
+    @app.context_processor
+    def static_assets():
+        return {"asset_url": lambda filename: url_for(
+            "static", filename=filename, v=asset_versions[filename],
+        )}
 
     from .models import User
 
@@ -253,7 +280,10 @@ def create_app(test_config=None):
             "site.sitemap_tournaments", "site.sitemap_tournament_editions",
             "site.sitemap_matches",
         }
-        if request.endpoint == "static" and request.args.get("v"):
+        if (
+            request.endpoint == "static" and response.status_code == 200
+            and request.args.get("v") == asset_versions.get((request.view_args or {}).get("filename"))
+        ):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
             response.headers["Vercel-CDN-Cache-Control"] = "max-age=31536000"
         elif request.endpoint in shared_public_endpoints:

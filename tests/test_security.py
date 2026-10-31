@@ -66,11 +66,14 @@ class AccountSecurityFlows(unittest.TestCase):
             self.assertTrue(session["csrf_token"])
 
     def test_versioned_static_assets_are_immutable(self):
-        response = self.client.get("/static/app.js?v=test-release")
+        version = self.app.extensions["asset_versions"]["app.js"]
+        response = self.client.get(f"/static/app.js?v={version}")
         self.assertEqual(response.status_code, 200)
         self.assertIn("max-age=31536000", response.headers["Cache-Control"])
         self.assertIn("immutable", response.headers["Cache-Control"])
         self.assertEqual(response.headers["Vercel-CDN-Cache-Control"], "max-age=31536000")
+        stale = self.client.get("/static/app.js?v=previous-release")
+        self.assertNotIn("immutable", stale.headers["Cache-Control"])
 
     def test_footer_displays_application_version(self):
         response = self.client.get("/")

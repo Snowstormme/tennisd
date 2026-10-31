@@ -8,11 +8,14 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.13'
+          python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -r requirements-dev.txt
       - name: Audit Python dependencies
@@ -44,3 +47,44 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: PYTHONPATH=. python scripts/postgres_smoke.py
+
+  backup-restore-smoke:
+    runs-on: ubuntu-latest
+    container: postgres:18-bookworm
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tennisd_source
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tennisd_source"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify dump, restore, and refusal to overwrite an existing database
+        shell: bash
+        run: |
+          set -euo pipefail
+          source='postgresql://postgres:postgres@postgres:5432/tennisd_source?sslmode=disable'
+          createdb -h postgres -U postgres tennisd_restore
+          psql "$source" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE public."user" (id integer PRIMARY KEY);
+          CREATE TABLE public.match (id integer PRIMARY KEY);
+          CREATE TABLE public.review (user_id integer REFERENCES public."user", match_id integer REFERENCES public.match, body text);
+          INSERT INTO public."user" VALUES (1);
+          INSERT INTO public.match VALUES (1);
+          INSERT INTO public.review VALUES (1, 1, 'Backup smoke note');
+          SQL
+          pg_dump "$source" --format=custom --no-owner --no-acl --file=/tmp/test.dump
+          bash scripts/verify_backup.sh /tmp/test.dump
+          restored=$(psql 'postgresql://postgres:postgres@postgres:5432/tennisd_restore?sslmode=disable' -At -c "SELECT count(*) FROM public.review WHERE body='Backup smoke note'")
+          test "$restored" = '1'
+          if bash scripts/verify_backup.sh /tmp/test.dump; then
+            echo 'Unexpectedly accepted a nonempty restore destination' >&2
+            exit 1
+          fi

@@ -20,9 +20,9 @@ def commons_image(filename, width=1600):
 
 
 GENERIC_TROPHY = {
-    "image_url": commons_image("Betty Ford's tennis trophy.JPG"),
-    "image_page": "https://commons.wikimedia.org/wiki/File:Betty_Ford%27s_tennis_trophy.JPG",
-    "image_credit": "Gerald R. Ford Presidential Museum · public domain",
+    "image_url": "/static/images/news-court-fallback.webp",
+    "image_page": "/static/images/news-court-fallback.webp",
+    "image_credit": "Tennisd court image",
 }
 
 
@@ -266,11 +266,12 @@ def tournament_level(levels):
 def tournament_profile(name):
     normalized_name = tournament_slug(name)
     profile = dict(GENERIC_TROPHY)
+    lookup_name = normalized_name.replace("u-s-open", "us-open")
     known_profile = TOURNAMENT_PROFILES.get((name or "").casefold())
     if known_profile is None:
         for known_name, candidate in TOURNAMENT_PROFILES.items():
             known_slug = tournament_slug(known_name)
-            if known_slug and known_slug in normalized_name:
+            if known_slug and known_slug in lookup_name:
                 known_profile = candidate
                 break
     profile.update(known_profile or {})
