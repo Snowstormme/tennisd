@@ -231,6 +231,7 @@ def create_app(test_config=None):
         shared_public_endpoints = {
             "site.live_matches_api", "site.news_status", "site.player_photo",
             "site.live_player_photo", "site.news_image",
+            "site.sync_status",
             "site.google_site_verification", "site.google_search_console_verification",
             "site.ads_txt", "site.indexnow_key", "site.robots_txt",
             "site.sitemap_index", "site.sitemap_core", "site.sitemap_players",

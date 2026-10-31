@@ -113,6 +113,16 @@ class LiveTennisTests(unittest.TestCase):
         normalized = normalize_match(row, now)
         self.assertEqual(normalized["tournament"], "Wimbledon")
         self.assertEqual(normalized["tour"], "WTA")
+
+    def test_sync_status_is_safe_when_no_provider_run_exists(self):
+        response = self.client.get("/api/sync-status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {
+            "provider": "livetennisapi",
+            "status": "degraded",
+            "feeds": {},
+        })
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
         row["tournament"] = "Berlin Open"
         row["tier"] = "wta_500"
         self.assertEqual(normalize_match(row, now)["tournament"], "Berlin Open")

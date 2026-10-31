@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, IngestionRun, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
@@ -823,6 +823,35 @@ def live_matches_api():
     return shared_cache(
         response, browser_seconds=15, cdn_seconds=30, stale_seconds=30,
     )
+
+
+@site.get("/api/sync-status")
+def sync_status():
+    """Expose provider freshness without returning operational secrets."""
+    if not inspect(db.engine).has_table(IngestionRun.__tablename__):
+        return jsonify({"provider": "livetennisapi", "status": "unavailable", "feeds": {}})
+    runs = db.session.scalars(
+        select(IngestionRun)
+        .where(IngestionRun.provider.like("livetennisapi:%"))
+        .order_by(IngestionRun.started_at.desc())
+        .limit(20)
+    ).all()
+    feeds = {}
+    for run in runs:
+        feed = run.provider.split(":", 1)[-1]
+        if feed in feeds:
+            continue
+        feeds[feed] = {
+            "status": run.status,
+            "started_at": run.started_at.isoformat() if run.started_at else None,
+            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+            "records_written": run.records_written,
+            "has_error": bool(run.error),
+        }
+    overall = "ok" if feeds and all(item["status"] == "success" for item in feeds.values()) else "degraded"
+    response = jsonify({"provider": "livetennisapi", "status": overall, "feeds": feeds})
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @site.get("/matches/<path:match_id>")

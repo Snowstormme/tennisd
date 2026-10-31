@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tennisd import create_app, db
 from tennisd.live_tennis import sync_matches
-from tennisd.models import IngestionCursor
+from tennisd.models import IngestionCursor, IngestionRun
 
 
 PROVIDER = "livetennisapi"
@@ -54,7 +54,26 @@ def main():
             print("Live Tennis API refresh is not due yet.")
             return
         for selected in modes:
-            count = sync_matches(selected, now=now)
+            run = IngestionRun(provider=f"{PROVIDER}:{selected}", started_at=now)
+            db.session.add(run)
+            db.session.commit()
+            try:
+                count = sync_matches(selected, now=now)
+            except Exception as error:
+                db.session.rollback()
+                failed_run = db.session.get(IngestionRun, run.id)
+                failed_run.status = "failed"
+                failed_run.finished_at = datetime.now(timezone.utc)
+                # Keep provider responses and connection details out of the
+                # database; the workflow log remains the diagnostic surface.
+                failed_run.error = type(error).__name__
+                db.session.commit()
+                raise
+            run.status = "success"
+            run.finished_at = datetime.now(timezone.utc)
+            run.records_seen = count
+            run.records_written = count
+            db.session.commit()
             mark_feed(selected, now)
             print(f"Synced {count} {selected} ATP, WTA, Challenger and ITF matches.")
 
