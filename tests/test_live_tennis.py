@@ -173,6 +173,7 @@ class LiveTennisTests(unittest.TestCase):
             ))
             db.session.commit()
         page = self.client.get("/matches?view=live")
+        self.assertIn(b"data-live-sync-status", page.data)
         self.assertIn(b"Live on court", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)
