@@ -21,6 +21,7 @@ from . import db
 from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, RankingSnapshot, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action
+from .identities import catalog_identity_is_valid, match_identity_is_valid, player_identity_matches
 from .stats import community_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
@@ -99,11 +100,20 @@ def current_match_players(matches):
     players = db.session.scalars(
         select(Player).where(func.lower(Player.name).in_(names))
     ).all()
-    by_name = {normalized_person_name(player.name): player for player in players}
+    by_name = {(player.tour, normalized_person_name(player.name)): player for player in players}
+
+    def validated_player(match, side):
+        name = getattr(match, f"player{side}_name")
+        external_id = getattr(match, f"player{side}_provider_id")
+        player = by_external.get(external_id)
+        if player is not None:
+            return player if player_identity_matches(player, match.tour, name) else None
+        return by_name.get((match.tour, normalized_person_name(name)))
+
     return {
         match.provider_id: (
-            by_external.get(match.player1_provider_id) or by_name.get(normalized_person_name(match.player1_name)),
-            by_external.get(match.player2_provider_id) or by_name.get(normalized_person_name(match.player2_name)),
+            validated_player(match, 1),
+            validated_player(match, 2),
         )
         for match in matches
     }
@@ -161,7 +171,6 @@ def player_live_matches(player, limit=12):
             PlayerExternalId.provider == "livetennisapi",
         )
     ).all()
-    identity = normalized_person_name(player.name)
     conditions = [
         func.lower(LiveMatch.player1_name) == player.name.casefold(),
         func.lower(LiveMatch.player2_name) == player.name.casefold(),
@@ -181,6 +190,7 @@ def player_live_matches(player, limit=12):
         select(LiveMatch)
         .where(
             LiveMatch.is_doubles.is_(False),
+            LiveMatch.tour == player.tour,
             LiveMatch.status != "cancelled",
             or_(*conditions),
         )
@@ -190,12 +200,8 @@ def player_live_matches(player, limit=12):
     # SQLite and some feeds compare accented names differently; provider IDs remain authoritative.
     matched = [
         match for match in matches
-        if any((
-            match.player1_provider_id in external_ids,
-            match.player2_provider_id in external_ids,
-            normalized_person_name(match.player1_name) == identity,
-            normalized_person_name(match.player2_name) == identity,
-        ))
+        if player_identity_matches(player, match.tour, match.player1_name)
+        or player_identity_matches(player, match.tour, match.player2_name)
     ]
     return [
         match for match in matched
@@ -615,6 +621,7 @@ def home():
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
+            catalog_identity_is_valid(),
             Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
             winner_has_stored_photo,
             loser_has_stored_photo,
@@ -629,6 +636,7 @@ def home():
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
+            catalog_identity_is_valid(),
             Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
             or_(winner.wikidata_id.is_not(None), winner_has_stored_photo),
             or_(loser.wikidata_id.is_not(None), loser_has_stored_photo),
@@ -644,7 +652,7 @@ def home():
     featured_live_matches = []
     featured_live_pairs = {}
     recent_reviews = db.session.scalars(
-        select(Review).where(Review.is_public.is_(True))
+        select(Review).join(Match).where(Review.is_public.is_(True), catalog_identity_is_valid())
         .options(joinedload(Review.user), joinedload(Review.match))
         .order_by(Review.created_at.desc()).limit(4)
     ).all()
@@ -724,7 +732,7 @@ def matches():
             year=year, level=level, order=order, match_location=match_location,
         )
 
-    statement = select(Match).options(joinedload(Match.winner), joinedload(Match.loser))
+    statement = select(Match).where(catalog_identity_is_valid()).options(joinedload(Match.winner), joinedload(Match.loser))
     if query:
         winner = aliased(Player)
         loser = aliased(Player)
@@ -741,7 +749,7 @@ def matches():
         statement = statement.where(Match.surface == surface)
     if level in ("G", "M", "PM", "P", "A", "I", "F", "O", "D"):
         statement = statement.where(Match.level == level)
-    if year.isdigit() and 1968 <= int(year) <= 2026:
+    if year.isdigit() and 1968 <= int(year) <= date.today().year:
         statement = statement.where(func.extract("year", Match.week_start) == int(year))
     statement = statement.order_by(
         Match.week_start.asc() if order == "oldest" else Match.week_start.desc(),
@@ -752,7 +760,7 @@ def matches():
     return render_template(
         "matches.html", view=view, pagination=pagination, current_matches=current_matches,
         live_players=live_players, query=query, tour=tour,
-        surface=surface, year=year, level=level, order=order, match_location=match_location,
+        surface=surface, year=year, level=level, order=order, match_location=match_location, current_year=date.today().year,
     )
 
 
@@ -809,6 +817,7 @@ def match_detail(match_id):
         "match.html", match=match, reviews=reviews, own_review=own_review,
         community=community_statistics(match), serve_stats=serve_stats,
         today=date.today(), on_watchlist=on_watchlist, match_location=match_location,
+        data_warning=not match_identity_is_valid(match),
     )
 
 
@@ -839,8 +848,8 @@ def players():
     if view not in ("players", "rankings"):
         view = "players"
     appearances = union_all(
-        select(Match.winner_id.label("player_id")),
-        select(Match.loser_id.label("player_id")),
+        select(Match.winner_id.label("player_id")).where(catalog_identity_is_valid()),
+        select(Match.loser_id.label("player_id")).where(catalog_identity_is_valid()),
     ).subquery()
     match_counts = select(
         appearances.c.player_id, func.count().label("match_count")
@@ -865,7 +874,7 @@ def players():
         statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name)
     else:
         statement = (
-            select(Player)
+            select(Player).where(func.lower(Player.name).not_in(("unknown player", "unknown", "tbd", "tba")))
             .outerjoin(match_counts, match_counts.c.player_id == Player.id)
             .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
         )
@@ -953,7 +962,7 @@ def tournaments():
     if level in ("G", "M", "PM", "P", "A", "I", "F", "O", "D"):
         statement = statement.where(Match.level == level)
     rows = db.session.execute(
-        statement.group_by(Match.tournament, Match.surface, Match.tour, Match.level)
+        statement.where(catalog_identity_is_valid()).group_by(Match.tournament, Match.surface, Match.tour, Match.level)
         .order_by(func.max(Match.week_start).desc(), Match.tournament, Match.tour)
     ).all()
     grouped = {}
@@ -1003,7 +1012,7 @@ def tournament_detail(tour, slug):
     tournament_name = resolve_tournament_name(tour, slug)
     if tournament_name is None:
         abort(404)
-    condition = (Match.tour == tour, Match.tournament == tournament_name)
+    condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_identity_is_valid())
     match_rows = db.session.scalars(
         select(Match).where(*condition)
         .options(joinedload(Match.winner), joinedload(Match.loser))
@@ -1074,7 +1083,7 @@ def tournament_edition_detail(tour, slug, season):
         abort(404)
     matches = db.session.scalars(
         select(Match).where(
-            Match.tour == tour, Match.tournament == tournament_name,
+            Match.tour == tour, Match.tournament == tournament_name, catalog_identity_is_valid(),
             func.extract("year", Match.week_start) == season,
         ).options(joinedload(Match.winner), joinedload(Match.loser))
         .order_by(Match.week_start, Match.round, Match.id)
@@ -1121,17 +1130,22 @@ def toggle_tournament_subscription(tour, slug):
 @site.get("/search")
 def search():
     query = request.args.get("q", "").strip()[:80]
-    players_found, matches_found, members = [], [], []
+    players_found, matches_found, members, tournaments_found = [], [], [], []
     if query:
         players_found = db.session.scalars(
             select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name).limit(15)
         ).all()
         winner, loser = aliased(Player), aliased(Player)
         matches_found = db.session.scalars(
-            select(Match).join(winner, Match.winner).join(loser, Match.loser).where(or_(
+            select(Match).join(winner, Match.winner).join(loser, Match.loser).where(catalog_identity_is_valid()).where(or_(
                 Match.tournament.ilike(f"%{query}%"), winner.name.ilike(f"%{query}%"),
                 loser.name.ilike(f"%{query}%"),
             )).order_by(Match.week_start.desc()).limit(9)
+        ).all()
+        tournaments_found = db.session.execute(
+            select(Match.tour, Match.tournament).where(
+                catalog_identity_is_valid(), Match.tournament.ilike(f"%{query}%"),
+            ).distinct().order_by(Match.tournament, Match.tour).limit(12)
         ).all()
         members = db.session.scalars(
             select(User).where(or_(User.username.ilike(f"%{query}%"), User.display_name.ilike(f"%{query}%")))
@@ -1139,7 +1153,7 @@ def search():
         ).all()
     return render_template(
         "search.html", query=query, players=players_found, matches=matches_found,
-        members=members, match_location=match_location,
+        members=members, tournaments_found=tournaments_found, tournament_slug=tournament_slug, match_location=match_location,
     )
 
 

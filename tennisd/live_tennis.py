@@ -3,15 +3,16 @@
 import os
 import re
 import hashlib
-import unicodedata
 from datetime import datetime, timedelta, timezone
 
 import requests
+from flask import current_app
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from . import db
-from .models import LiveMatch, Match, Player, PlayerExternalId
+from .models import IngestionCursor, LiveMatch, Match, Player, PlayerExternalId
+from .identities import normalized_player_name, player_identity_matches
 
 
 API_ROOT = "https://api.livetennisapi.com/api/public/v1"
@@ -36,12 +37,6 @@ FEATURED_TIERS = (
 )
 
 
-def normalized_player_name(value):
-    value = unicodedata.normalize("NFKD", value or "")
-    value = "".join(character for character in value if not unicodedata.combining(character))
-    return re.sub(r"[^a-z0-9]+", " ", value.casefold()).strip()
-
-
 def live_player_id(tour, provider_id, name):
     identity = provider_id or normalized_player_name(name)
     digest = hashlib.sha256(f"{tour}:{identity}".encode()).hexdigest()[:16]
@@ -58,6 +53,11 @@ def ensure_live_player_profiles(matches):
             (match.tour, match.player1_name, match.player1_provider_id),
             (match.tour, match.player2_name, match.player2_provider_id),
         ))
+    return ensure_player_profiles(participants)
+
+
+def ensure_player_profiles(participants):
+    """Never attach a provider ID to a conflicting name or another tour."""
     if not participants:
         return 0
 
@@ -82,14 +82,23 @@ def ensure_live_player_profiles(matches):
     mapped_ids = set(by_external)
     for tour, name, provider_id in participants:
         player = by_external.get(provider_id) if provider_id else None
+        if player is not None and not player_identity_matches(player, tour, name):
+            current_app.logger.warning("Player identity conflict provider=livetennisapi id=%s", provider_id)
+            continue
         if player is None:
             key = (tour, normalized_player_name(name))
             player = by_name.get(key)
             if player is None:
-                player = Player(id=live_player_id(tour, provider_id, name), tour=tour, name=name)
-                db.session.add(player)
+                identifier = live_player_id(tour, provider_id, name)
+                player = db.session.get(Player, identifier)
+                if player is not None and not player_identity_matches(player, tour, name):
+                    current_app.logger.warning("Local player identity conflict id=%s", identifier)
+                    continue
+                if player is None:
+                    player = Player(id=identifier, tour=tour, name=name)
+                    db.session.add(player)
+                    created += 1
                 by_name[key] = player
-                created += 1
         if provider_id and provider_id not in mapped_ids:
             db.session.add(PlayerExternalId(
                 player=player, provider="livetennisapi", external_id=provider_id,
@@ -103,7 +112,8 @@ def parse_instant(value):
     if not value or not isinstance(value, str):
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
     except ValueError:
         return None
 
@@ -130,7 +140,11 @@ def display_score(score):
         if isinstance(left, int) and isinstance(right, int):
             sets.append(f"{left}–{right}")
     points = score.get("points")
-    if isinstance(points, list) and len(points) == 2 and any(str(point) not in ("0", "") for point in points):
+    if (
+        isinstance(points, list) and len(points) == 2
+        and all(point is not None and str(point).strip() for point in points)
+        and any(str(point) != "0" for point in points)
+    ):
         sets.append(f"({points[0]}–{points[1]})")
     return " ".join(sets)
 
@@ -172,6 +186,10 @@ def _score_sets(score):
 
 
 def winner_from_score(score):
+    # A player may retire while leading. Only an explicit provider outcome
+    # can identify the winner of a retirement, default or walkover.
+    if re.search(r"ret|walkover|w/o|\bwo\b|\bdef", score or "", re.IGNORECASE):
+        return None
     sets = _score_sets(score)
     def completed_winner(left, right):
         left, right = int(left), int(right)
@@ -189,13 +207,6 @@ def winner_from_score(score):
         return 1
     if won2 >= 2 and won2 > won1:
         return 2
-    # A retirement can end a match before a second set is completed.  The
-    # completed set winner is still the reliable side to archive.
-    if re.search(r"\b(?:ret\.?|retired|walkover|w/o|wo)\b", score or "", re.IGNORECASE):
-        if won1 and not won2:
-            return 1
-        if won2 and not won1:
-            return 2
     return None
 
 
@@ -262,8 +273,8 @@ def permanent_profile(match, side):
                 PlayerExternalId.external_id == provider_id,
             )
         )
-        if profile:
-            return profile
+        if profile is not None:
+            return profile if player_identity_matches(profile, match.tour, name) else None
     return db.session.scalar(
         select(Player).where(Player.tour == match.tour, func.lower(Player.name) == name.casefold())
     )
@@ -273,17 +284,26 @@ def preserve_finished_match(live_match, now):
     """Copy a settled singles feed row into the permanent community catalog once."""
     if (
         live_match.is_doubles or live_match.winner_side not in (1, 2)
-        or not live_match.starts_at or not score_is_final(live_match)
+        or not live_match.starts_at or live_match.status != "finished"
+        or live_match.outcome not in {"completed", "retired", "walkover", "default"}
     ):
         return None
     provider_id = f"livetennisapi:{live_match.provider_id}"
     existing = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
-    if existing:
-        return existing
     winner = permanent_profile(live_match, live_match.winner_side)
     loser = permanent_profile(live_match, 2 if live_match.winner_side == 1 else 1)
-    if not winner or not loser:
+    if not winner or not loser or winner.id == loser.id:
         return None
+    if existing:
+        # Keep the permanent ID and user entries while accepting a provider
+        # correction to the score, outcome or participant mapping.
+        existing.winner, existing.loser = winner, loser
+        existing.score = score_from_winner_side(live_match.score, live_match.winner_side)
+        existing.status, existing.tour = "finished", live_match.tour
+        existing.tournament, existing.surface = live_match.tournament, live_match.surface
+        existing.level, existing.round = archive_level(live_match.tier), (live_match.round or "R?")[:4]
+        existing.scheduled_at, existing.week_start = live_match.starts_at, live_match.starts_at.date()
+        return existing
     archived = Match(
         id=f"lt-{live_match.provider_id}", provider="livetennisapi", provider_id=provider_id,
         status="finished", tour=live_match.tour, tournament=live_match.tournament,
@@ -298,6 +318,8 @@ def preserve_finished_match(live_match, now):
 
 
 def normalize_match(item, now=None):
+    if not isinstance(item, dict) or item.get("id") is None:
+        return None
     now = now or datetime.now(timezone.utc)
     tier = str(item.get("tier") or "").lower()
     tournament = slam_name(item.get("tournament")) or str(item.get("tournament") or "").strip()
@@ -315,17 +337,23 @@ def normalize_match(item, now=None):
     if status == "upcoming" and (not starts_at or starts_at < now - timedelta(hours=6) or starts_at > now + timedelta(days=7)):
         return None
     players = item.get("players") or {}
-    p1, p2 = players.get("p1") or {}, players.get("p2") or {}
-    if not p1.get("name") or not p2.get("name"):
+    if not isinstance(players, dict):
         return None
-    surface = str(item.get("surface") or "hard").title()
+    p1, p2 = players.get("p1") or {}, players.get("p2") or {}
+    if not valid_participant(p1) or not valid_participant(p2):
+        return None
+    if normalized_player_name(p1["name"]) == normalized_player_name(p2["name"]):
+        return None
+    if item.get("score") is not None and not isinstance(item["score"], dict):
+        return None
+    surface = str(item.get("surface") or "Unknown").title()
     return {
         "provider_id": str(item["id"]),
         "status": status,
         "tour": tour,
         "tournament": tournament,
         "tournament_id": str(item.get("tournament_id") or "") or None,
-        "surface": surface if surface in ("Hard", "Clay", "Grass") else "Hard",
+        "surface": surface if surface in ("Hard", "Clay", "Grass") else "Unknown",
         "round": item.get("round_code") or item.get("round") or None,
         "draw": draw,
         "is_doubles": item.get("is_doubles") is True or draw == "doubles",
@@ -348,9 +376,9 @@ def fetch_matches(status, session=requests):
         raise RuntimeError("LIVETENNISAPI_KEY is not configured.")
     matches = []
     offset = 0
-    # One page per refresh keeps the automatic schedule inside the free
-    # The daily workflow makes one live request and one upcoming request.
-    max_pages = 1
+    # Bound request cost even on a large slate. Absence from this capped
+    # listing is never used to infer a cancellation or a final result.
+    max_pages = max(1, min(int(os.environ.get("LIVETENNISAPI_MAX_PAGES", "5")), 10))
     pages = 0
     while pages < max_pages:
         response = session.get(
@@ -366,14 +394,16 @@ def fetch_matches(status, session=requests):
         )
         response.raise_for_status()
         payload = response.json()
-        page = payload.get("data", []) if isinstance(payload, dict) else []
+        page = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(page, list):
-            break
+            raise ValueError("Live Tennis API returned an invalid match listing.")
         matches.extend(page)
         pages += 1
         if len(page) < 100:
             break
         offset += len(page)
+    if pages == max_pages and len(page) == 100:
+        current_app.logger.warning("Live listing capped status=%s pages=%s", status, max_pages)
     return matches
 
 
@@ -417,32 +447,49 @@ def history_tour(tier, tour):
     return None
 
 
+def valid_participant(player):
+    return bool(
+        isinstance(player, dict) and isinstance(player.get("name"), str)
+        and 1 <= len(player["name"].strip()) <= 120
+        and normalized_player_name(player["name"]) not in {"", "unknown player", "unknown", "tbd", "tba"}
+        and len(str(player.get("id") or "")) <= 32
+    )
+
+
 def normalize_history_match(item, now=None):
     """Turn a completed history item into the permanent match shape."""
-    if not isinstance(item, dict) or item.get("status") not in ("completed", None):
+    if not isinstance(item, dict) or item.get("status") != "completed" or item.get("id") is None:
         return None
     tier = str(item.get("tier") or "").lower()
     tour = history_tour(tier, item.get("tour"))
     tournament = slam_name(item.get("tournament")) or str(item.get("tournament") or "").strip()
-    if not tour or not tournament or tier not in FEATURED_TIERS:
+    if not tour or not tournament or len(tournament) > 120 or tier not in FEATURED_TIERS:
         return None
     if item.get("draw") != "singles" or item.get("is_doubles") is True:
         return None
     winner_side = item.get("winner")
-    if winner_side not in (1, 2):
+    outcome = item.get("outcome") or "completed"
+    if type(winner_side) is not int or winner_side not in (1, 2) or outcome not in {
+        "completed", "retired", "walkover", "default",
+    }:
         return None
     players = item.get("players") or {}
+    if not isinstance(players, dict):
+        return None
     p1, p2 = players.get("p1") or {}, players.get("p2") or {}
-    if not p1.get("name") or not p2.get("name"):
+    if not valid_participant(p1) or not valid_participant(p2):
+        return None
+    if normalized_player_name(p1["name"]) == normalized_player_name(p2["name"]):
         return None
     score = history_display_score(item.get("score"))
-    if not score:
-        if item.get("outcome") == "walkover":
-            score = "W/O"
-        elif item.get("outcome") == "default":
-            score = "DEF"
-        else:
-            return None
+    if outcome == "walkover":
+        score = "W/O"
+    elif outcome == "default":
+        score = f"{score} def.".strip() if score else "DEF"
+    elif not score:
+        return None
+    elif outcome == "retired":
+        score += " ret."
     starts_at = None
     for candidate in (item.get("scheduled_time"), item.get("date"), item.get("played_at")):
         starts_at = parse_instant(candidate)
@@ -450,8 +497,8 @@ def normalize_history_match(item, now=None):
             break
     if not starts_at:
         return None
-    raw_surface = str(item.get("surface") or "hard").title()
-    surface = raw_surface if raw_surface in ("Hard", "Clay", "Grass") else "Hard"
+    raw_surface = str(item.get("surface") or "Unknown").title()
+    surface = raw_surface if raw_surface in ("Hard", "Clay", "Grass") else "Unknown"
     round_code = str(item.get("round_code") or item.get("round") or "R?")
     # Match.round is intentionally short in the existing schema; use the
     # provider's controlled code whenever it is present.
@@ -466,7 +513,7 @@ def normalize_history_match(item, now=None):
         "round": round_code,
         "starts_at": starts_at,
         "winner_side": winner_side,
-        "outcome": item.get("outcome") or "completed",
+        "outcome": outcome,
         "score": score,
         "player1_name": p1["name"],
         "player2_name": p2["name"],
@@ -477,107 +524,125 @@ def normalize_history_match(item, now=None):
 
 
 def ensure_history_players(rows):
-    """Create or reuse permanent profiles for history participants."""
-    participants = []
-    for row in rows:
-        participants.extend((
-            (row["tour"], row["player1_name"], row["player1_provider_id"]),
-            (row["tour"], row["player2_name"], row["player2_provider_id"]),
-        ))
-    provider_ids = {provider_id for _, _, provider_id in participants if provider_id}
-    external_rows = db.session.scalars(
-        select(PlayerExternalId)
-        .where(
-            PlayerExternalId.provider == "livetennisapi",
-            PlayerExternalId.external_id.in_(provider_ids),
-        )
-        .options(joinedload(PlayerExternalId.player))
-    ).all() if provider_ids else []
-    by_external = {row.external_id: row.player for row in external_rows}
-    lowered_names = {name.casefold() for _, name, _ in participants if name}
-    named_players = db.session.scalars(
-        select(Player).where(func.lower(Player.name).in_(lowered_names))
-    ).all() if lowered_names else []
-    by_name = {(player.tour, normalized_player_name(player.name)): player for player in named_players}
-    created = 0
-    mapped_ids = set(by_external)
-    for tour, name, provider_id in participants:
-        player = by_external.get(provider_id) if provider_id else None
-        if player is None:
-            key = (tour, normalized_player_name(name))
-            player = by_name.get(key)
-            if player is None:
-                player = Player(id=live_player_id(tour, provider_id, name), tour=tour, name=name)
-                db.session.add(player)
-                by_name[key] = player
-                created += 1
-        if provider_id and provider_id not in mapped_ids:
-            db.session.add(PlayerExternalId(
-                player=player, provider="livetennisapi", external_id=provider_id,
-            ))
-            by_external[provider_id] = player
-            mapped_ids.add(provider_id)
-    return created
+    """Create profiles using the same identity checks as the current feed."""
+    return ensure_player_profiles([
+        (row["tour"], row[f"player{side}_name"], row[f"player{side}_provider_id"])
+        for row in rows for side in (1, 2)
+    ])
+
+
+def store_confirmed_result(row, now):
+    """Store an explicit provider result, preserving existing diary references."""
+    match = db.session.get(LiveMatch, row["provider_id"])
+    if match is None:
+        match = LiveMatch(provider_id=row["provider_id"])
+        db.session.add(match)
+    for field in (
+        "tour", "tournament", "tournament_id", "tier", "surface", "round", "starts_at",
+        "player1_name", "player2_name", "player1_provider_id", "player2_provider_id",
+        "score", "winner_side", "outcome",
+    ):
+        setattr(match, field, row[field])
+    match.status = "finished"
+    match.draw = "singles"
+    match.is_doubles = False
+    match.finished_at = row["starts_at"]
+    match.synced_at = now
+    match.server = None
+    return preserve_finished_match(match, now)
 
 
 def import_history_matches(from_date, to_date, session=requests, now=None):
-    """Import completed history rows into ``Match`` without deleting anything."""
+    """Import completed results; never infer a result from the live score."""
     now = now or datetime.now(timezone.utc)
-    normalized = [normalize_history_match(item, now) for item in fetch_history_matches(from_date, to_date, session)]
-    rows = [row for row in normalized if row]
+    rows = [normalize_history_match(item, now) for item in fetch_history_matches(from_date, to_date, session)]
+    rows = [row for row in rows if row]
     ensure_history_players(rows)
     db.session.flush()
-    written = 0
-    for row in rows:
-        winner_row = row if row["winner_side"] == 1 else {
-            **row,
-            "player1_name": row["player2_name"],
-            "player1_provider_id": row["player2_provider_id"],
-            "player2_name": row["player1_name"],
-            "player2_provider_id": row["player1_provider_id"],
-        }
-        winner = db.session.scalar(select(Player).join(PlayerExternalId).where(
-            PlayerExternalId.provider == "livetennisapi",
-            PlayerExternalId.external_id == winner_row["player1_provider_id"],
-        )) if winner_row["player1_provider_id"] else None
-        loser = db.session.scalar(select(Player).join(PlayerExternalId).where(
-            PlayerExternalId.provider == "livetennisapi",
-            PlayerExternalId.external_id == winner_row["player2_provider_id"],
-        )) if winner_row["player2_provider_id"] else None
-        # A few historical rows have names but no provider participant id.
-        # Reuse the profile created above rather than dropping those results.
-        if winner is None:
-            winner = db.session.scalar(select(Player).where(
-                Player.tour == winner_row["tour"],
-                func.lower(Player.name) == winner_row["player1_name"].casefold(),
-            ))
-        if loser is None:
-            loser = db.session.scalar(select(Player).where(
-                Player.tour == winner_row["tour"],
-                func.lower(Player.name) == winner_row["player2_name"].casefold(),
-            ))
-        if winner is None or loser is None:
-            continue
-        provider_id = f"livetennisapi:{row['provider_id']}"
-        match = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
-        if match is None:
-            match = Match(id=f"lt-{row['provider_id']}", provider="livetennisapi", provider_id=provider_id)
-            db.session.add(match)
-        match.status = "finished"
-        match.tour = row["tour"]
-        match.tournament = row["tournament"]
-        match.level = archive_level(row["tier"])
-        match.surface = row["surface"]
-        match.week_start = row["starts_at"].date()
-        match.scheduled_at = row["starts_at"]
-        match.completed_at = row["starts_at"]
-        match.round = row["round"]
-        match.winner = winner
-        match.loser = loser
-        match.score = score_from_winner_side(row["score"], row["winner_side"])
-        written += 1
+    written = sum(store_confirmed_result(row, now) is not None for row in rows)
     db.session.commit()
     return len(rows), written
+
+
+def fetch_match_detail(provider_id, session=requests):
+    """The documented FREE detail endpoint also exposes terminal outcomes.
+
+    404 and merged IDs are unresolved here; neither means cancelled. Respect
+    quota errors instead of retrying or falling back to a guessed result.
+    """
+    key = os.environ.get("LIVETENNISAPI_KEY", "").strip()
+    if not key:
+        raise RuntimeError("LIVETENNISAPI_KEY is not configured.")
+    response = session.get(
+        f"{API_ROOT}/matches/{requests.utils.quote(str(provider_id), safe='')}",
+        headers={"X-API-Key": key, "User-Agent": "Tennisd/1.0"}, timeout=20,
+    )
+    if getattr(response, "status_code", 200) in (404, 410):
+        return None
+    response.raise_for_status()
+    payload = response.json()
+    detail = payload.get("data", payload) if isinstance(payload, dict) else None
+    if not isinstance(detail, dict) or str(detail.get("id")) != str(provider_id):
+        raise ValueError("Live Tennis API returned an invalid match detail.")
+    return detail
+
+
+def reconcile_live_matches(*, session=requests, now=None, limit=10, exclude_ids=(), include_finished=False):
+    """Recheck a bounded number of stored IDs, using explicit provider outcomes."""
+    now = now or datetime.now(timezone.utc)
+    statuses = ("live", "upcoming", "verifying", "finished") if include_finished else ("live", "upcoming", "verifying")
+    statement = select(LiveMatch).outerjoin(IngestionCursor, (
+        (IngestionCursor.provider == "livetennisapi:reconcile")
+        & (IngestionCursor.feed == LiveMatch.provider_id)
+    )).where(
+        LiveMatch.status.in_(statuses), LiveMatch.starts_at <= now,
+        LiveMatch.is_doubles.is_(False),
+    )
+    if exclude_ids:
+        statement = statement.where(LiveMatch.provider_id.not_in(exclude_ids))
+    candidates = db.session.scalars(
+        statement.order_by(
+            func.coalesce(IngestionCursor.updated_at, LiveMatch.synced_at), LiveMatch.provider_id,
+        ).limit(max(0, min(limit, 50)))
+    ).all()
+    written = 0
+    for match in candidates:
+        detail = fetch_match_detail(match.provider_id, session)
+        cursor = db.session.get(IngestionCursor, ("livetennisapi:reconcile", match.provider_id))
+        if cursor is None:
+            cursor = IngestionCursor(provider="livetennisapi:reconcile", feed=match.provider_id, value=now.isoformat())
+            db.session.add(cursor)
+        else:
+            cursor.value = now.isoformat()
+        if detail is None:
+            continue
+        row = normalize_history_match(detail, now)
+        if row:
+            ensure_history_players([row])
+            db.session.flush()
+            written += store_confirmed_result(row, now) is not None
+        elif detail.get("status") == "cancelled":
+            match.status, match.outcome = "cancelled", None
+            match.winner_side, match.finished_at = None, None
+            match.synced_at = now
+            archived = db.session.scalar(select(Match).where(Match.provider_id == f"livetennisapi:{match.provider_id}"))
+            if archived:
+                archived.status = "cancelled"
+        elif detail.get("status") in ("live", "upcoming"):
+            current = normalize_match(detail, now)
+            if current:
+                for field, value in current.items():
+                    setattr(match, field, value)
+        else:
+            # The provider may close an event with no proven winner.
+            match.status, match.outcome = "verifying", "unverified"
+            match.winner_side, match.finished_at = None, None
+            match.synced_at = now
+            archived = db.session.scalar(select(Match).where(Match.provider_id == f"livetennisapi:{match.provider_id}"))
+            if archived:
+                archived.status = "verifying"
+    db.session.commit()
+    return written
 
 
 def sync_matches(status, session=requests, now=None):
@@ -602,30 +667,10 @@ def sync_matches(status, session=requests, now=None):
         .limit(500)
     ).all()
     ensure_live_player_profiles(recent_feed_matches)
-    stale_statuses = (status, "verifying") if status == "live" else (status,)
-    stale = LiveMatch.query.filter(LiveMatch.status.in_(stale_statuses)).all()
-    for match in stale:
-        if match.provider_id not in current_ids:
-            # Keep the same provider record permanently. A later reconciliation
-            # can enrich its final outcome without losing its identity or score.
-            winner = winner_from_score(match.score) if status == "live" else None
-            # Some completed rows leave the live endpoint without ever
-            # receiving a score timestamp. Disappearance from the live feed
-            # plus a complete final score is sufficient evidence to settle
-            # those matches; otherwise they remain "verifying" forever.
-            score_aged = (
-                match.provider_updated_at is None
-                or score_is_aged(match.provider_updated_at, now)
-            )
-            verified = status == "live" and winner and score_is_final(match) and score_aged
-            match.status = "finished" if verified else "verifying" if status == "live" else "cancelled"
-            match.finished_at = now if verified else None
-            match.outcome = "completed" if verified else "unverified" if status == "live" else "cancelled"
-            match.winner_side = winner if verified else None
-            match.synced_at = now
-            if verified:
-                preserve_finished_match(match, now)
-    if status == "upcoming":
-        LiveMatch.query.filter(LiveMatch.starts_at > now + timedelta(days=7)).delete(synchronize_session=False)
+    # A quota-limited listing is not a complete tournament snapshot. Missing
+    # IDs retain their last observed state until the detail endpoint confirms
+    # what happened. Do not refresh their timestamps merely for being absent.
     db.session.commit()
+    if status == "live":
+        reconcile_live_matches(session=session, now=now, exclude_ids=current_ids)
     return len(rows)

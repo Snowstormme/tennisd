@@ -13,7 +13,7 @@ pip install -r requirements.txt
 flask --app wsgi run --debug
 ```
 
-Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled [Live Tennis API](https://livetennisapi.com/) feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary. Existing historical rows remain in the database, but Tennisd no longer imports new history from a second tennis provider.
+Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled [Live Tennis API](https://livetennisapi.com/) feed. A singles result enters the permanent match catalog only after the provider detail endpoint explicitly confirms its outcome and winner. An event disappearing from a capped listing is not treated as a result or cancellation. Existing historical rows remain in the database, but Tennisd no longer imports new history from a second tennis provider.
 
 To install the complete development and CI environment, use the shared dev requirements file:
 
@@ -22,7 +22,7 @@ python3 -m pip install -r requirements-dev.txt
 python3 -m unittest discover -s tests -v
 ```
 
-The dev file includes the runtime dependencies and the pinned dependency auditor used by GitHub Actions, so local verification and CI use the same dependency set.
+The dev file includes the runtime dependencies and the pinned dependency auditor used by GitHub Actions. `constraints.txt` pins resolved runtime versions; update it with dependency changes and rerun the audit. CI tests both Python 3.12 (production) and 3.13.
 
 GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL 16 service. It creates the application schema, verifies a database query, and checks the health endpoint before a change can merge.
 
@@ -33,9 +33,9 @@ Every response includes an `X-Request-ID` correlation token. Server-side 5xx log
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.
-- **Matches:** Grand Slam, ATP/WTA 1000 and ATP/WTA 500 live scores and the next seven days of singles, plus historical search by player, tournament, tour, surface, level and year.
+- **Matches:** Grand Slam, tour, Challenger and ITF daily score snapshots and the next seven days of singles, plus historical search by player, tournament, tour, surface, level and year.
 - **Match page:** score, recorded serve statistics, community rating, reviews and comments.
-- **Diary:** one editable entry per user and match with viewing date, optional half-star rating, review, favorite, spoiler flag and public/private choice.
+- **Diary:** one editable entry per user and match with viewing date, optional 1–10 rating, review, favorite, spoiler flag and public/private choice.
 - **Watchlist:** save matches to watch later; logging a match removes it from the watchlist.
 - **Players:** biography, imported wins and losses, surface and season splits, titles, serve metrics, frequent opponents and followed players.
 - **Profiles:** personal diary, watched surfaces, tour split, ratings and favorites.
@@ -67,7 +67,7 @@ Every response includes an `X-Request-ID` correlation token. Server-side 5xx log
 
 ## Public deployment
 
-Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. The connected production branch deploys automatically on Render; the old Vercel hostname is retained only as a redirect to Render. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
+Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. The connected production branch deploys on Render after its CI checks pass; the old Vercel hostname is retained only as a redirect to Render. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
 2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action applies the ordered schema migrations, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
@@ -90,15 +90,15 @@ Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`; do not create them manual
 
 ### Live top-tier feed
 
-Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It runs once every 24 hours at 02:07 UTC and refreshes the live slate plus fixtures for the next seven days. Existing finished singles remain in Tennisd's permanent `match` table. This is a daily snapshot rather than real-time scoring, and GitHub scheduled workflows can start several minutes late.
+Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and ITF events. Create a free Live Tennis API key, add it to GitHub as `LIVETENNISAPI_KEY`, and add the limited `rallylog_web` pooled TLS connection as `TENNISD_SYNC_DATABASE_URL`. Run `scripts/add_live_matches.sql` once as the database owner, then enable the **Sync live top-tier matches** workflow. It runs once every 24 hours at 02:07 UTC and refreshes the current slate plus fixtures for the next seven days. Each slate is capped at five pages of 100 rows by default (`LIVETENNISAPI_MAX_PAGES`, 1–10). The live pass also rechecks at most ten stored singles IDs through the free match-detail endpoint. A default daily cycle therefore uses at most 20 requests; a capped slate is not complete coverage. Confirmed singles results remain in Tennisd's permanent `match` table. Provider corrections update the existing row so its diary and review IDs remain intact. This is a daily snapshot rather than real-time scoring, and GitHub scheduled workflows can start several minutes late.
 
-The Live Tennis API refresh is a daily snapshot rather than point-by-point streaming. Every live card shows how long ago its stored score was updated. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
+The Live Tennis API refresh is a daily snapshot rather than point-by-point streaming. Every snapshot card shows when its data was checked and warns when the daily refresh is overdue. Browser polling only reads the stored snapshot; it does not make the provider feed real time. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
 
 The checked-in [Render Blueprint](render.yaml) is the production web-service configuration. Neon free compute sleeps while idle, so the first request after inactivity can be slower. Free plans suit an early public preview and are not an uptime guarantee.
 
 ## Backups and recovery
 
-The **Encrypted database backup** GitHub action creates a PostgreSQL custom-format dump, encrypts it with an age public key before upload and retains the artifact for 30 days. Configure:
+The **Encrypted database backup** GitHub action creates a PostgreSQL custom-format dump, restores it into an empty, temporary PostgreSQL service and verifies the core tables, encrypts it with an age public key before upload, and retains the artifact for 30 days. A separate CI smoke job verifies the restore helper and its refusal to overwrite a populated destination. Configure:
 
 - GitHub secret `BACKUP_DATABASE_URL`: a TLS database URL that can read all Tennisd tables.
 - GitHub variable `BACKUP_RECIPIENT`: the public `age1...` key. Keep the private age key offline and outside GitHub.
@@ -146,3 +146,15 @@ tennisd/
   render.yaml             public web service configuration
   wsgi.py                 web server entry point
 ```
+
+## Catalog stabilization and operations
+
+- `python scripts/audit_catalog.py` is read-only and reports inconsistent player tours, self-matches, legacy null scores and placeholder players. It does not export account records.
+- Inconsistent archive rows are excluded from discovery and player statistics. Their detail pages show a data-review notice; existing diary entries remain available. This is containment, not an automatic identity merge.
+- `python scripts/repair_live_archive.py --limit 10` rechecks existing provider IDs and accepts explicit results. It never deletes and rebuilds the archive. It needs `LIVETENNISAPI_KEY` and the limited database connection, and uses one provider request per checked ID.
+- Player identity conflicts are logged and are not automatically merged. Resolve the source identity using an authoritative provider response before repairing a mapping.
+- Static CSS and JavaScript URLs use hashes of their contents. A new web process computes the hashes at startup; changed files receive new cache URLs on deploy.
+- News pages read a process-local last-successful cache and refresh publishers in background threads. BBC and ESPN use their direct publisher RSS feeds. Other sources use Google News RSS. Failed sources retry after one minute; successful feeds refresh after five minutes. The cache is rebuilt after a deploy and is not a permanent news archive.
+- Backup automation remains opt-in. Code changes do not configure production secrets or establish an offline age private key. Verify the configured backup workflow and a decrypt/restore drill before relying on it.
+
+See [the stabilization runbook](docs/stabilization.md) for rollout and the next product-validation steps.

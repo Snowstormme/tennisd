@@ -3,7 +3,7 @@
 from flask import abort, jsonify, redirect, render_template, url_for
 from sqlalchemy import select
 
-from . import db
+from . import db, clean_score_text, snapshot_is_stale
 from .models import IngestionRun, LiveMatch
 from .web import schema_table_exists, shared_cache
 
@@ -33,7 +33,7 @@ def register_live_routes(
         matches = current_match_rows("live")
         response = jsonify({
             "matches": [{
-                "id": match.provider_id, "score": match.score,
+                "id": match.provider_id, "score": clean_score_text(match.score),
                 "winner_side": match.winner_side, "server": match.server,
                 "synced_at": match.synced_at.isoformat(),
             } for match in matches]
@@ -64,9 +64,13 @@ def register_live_routes(
                 "finished_at": run.finished_at.isoformat() if run.finished_at else None,
                 "records_written": run.records_written,
                 "has_error": bool(run.error),
+                "stale": snapshot_is_stale(run.finished_at),
             }
         overall = (
-            "ok" if feeds and all(item["status"] == "success" for item in feeds.values())
+            "ok" if all(
+                feed in feeds and feeds[feed]["status"] == "success" and not feeds[feed]["stale"]
+                for feed in ("live", "upcoming")
+            )
             else "degraded"
         )
         response = jsonify({"provider": "livetennisapi", "status": overall, "feeds": feeds})

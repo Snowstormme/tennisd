@@ -50,7 +50,7 @@ def notify_followers(now):
     if not matches:
         return 0
     followed = db.session.execute(
-        select(FollowedPlayer.user_id, FollowedPlayer.player_id, Player.name)
+        select(FollowedPlayer.user_id, FollowedPlayer.player_id, Player.name, Player.tour)
         .join(Player, Player.id == FollowedPlayer.player_id)
     ).all()
     subscriptions = db.session.execute(
@@ -59,11 +59,11 @@ def notify_followers(now):
     created = 0
     for match in matches:
         url = f"/live-matches/{quote(match.provider_id, safe='')}"
-        title = "Live match" if match.status == "live" else "Upcoming match"
+        title = "Daily match snapshot" if match.status == "live" else "Upcoming match"
         body = f"{match.player1_name} vs {match.player2_name} · {match.tournament}"
         names = {match.player1_name.casefold(), match.player2_name.casefold()}
-        for user_id, _player_id, player_name in followed:
-            if player_name.casefold() in names and create_notification(
+        for user_id, _player_id, player_name, player_tour in followed:
+            if player_tour == match.tour and player_name.casefold() in names and create_notification(
                 user_id, kind="followed_player_match", title=title, body=body, url=url,
             ):
                 created += 1

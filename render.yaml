@@ -7,10 +7,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --access-logfile /dev/null wsgi:app
     healthCheckPath: /healthz
-    # Deploy commits from the connected production branch automatically.
+    # Wait for the connected branch's CI checks before deploying.
     # The service itself remains the Render deployment target; vercel.json is
     # only a compatibility redirect for the old Vercel hostname.
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass
     envVars:
       - key: APP_ENV
         value: production

@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 import requests
 from flask import Response, abort, current_app, jsonify, render_template, request
 
-from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
+from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items, news_feed_state
 from .web import shared_cache
 
 
@@ -20,7 +20,7 @@ def register_news_routes(site):
         if selected_source not in source_keys:
             selected_source = "all"
         all_stories = [] if current_app.config["TESTING"] else curate_news_items(
-            fetch_news_items(selected_source), minimum=8 if selected_source != "all" else 0,
+            fetch_news_items(selected_source, background=True), minimum=8 if selected_source != "all" else 0,
         )
         try:
             page = max(1, int(request.args.get("page", 1)))
@@ -33,15 +33,12 @@ def register_news_routes(site):
         stories = all_stories[(page - 1) * page_size:page * page_size]
         featured_story = stories[0] if page == 1 and stories else None
         featured_article = None
-        if featured_story is not None:
-            featured_article = fetch_news_article(
-                featured_story["source_key"], featured_story["id"], featured_story["url"]
-            )
         feed_stories = stories[1:] if featured_story is not None else stories
         return render_template(
             "news.html", sources=NEWS_SOURCES, stories=stories, feed_stories=feed_stories,
             featured_story=featured_story, featured_article=featured_article, selected_source=selected_source,
             total_stories=total_stories, page=page, total_pages=total_pages,
+            feed_state=news_feed_state(selected_source),
         )
 
     @site.get("/api/news-status")
@@ -51,12 +48,19 @@ def register_news_routes(site):
         if selected_source not in source_keys:
             selected_source = "all"
         stories = [] if current_app.config["TESTING"] else curate_news_items(
-            fetch_news_items(selected_source), minimum=8 if selected_source != "all" else 0,
+            fetch_news_items(selected_source, background=True), minimum=8 if selected_source != "all" else 0,
         )
         response = jsonify({
             "first_id": stories[0]["id"] if stories else None,
             "total": len(stories),
             "checked_at": datetime.now(timezone.utc).isoformat(),
+            "feed_state": {
+                **news_feed_state(selected_source),
+                "last_success": (
+                    news_feed_state(selected_source)["last_success"].isoformat()
+                    if news_feed_state(selected_source)["last_success"] else None
+                ),
+            },
         })
         return shared_cache(
             response, browser_seconds=60, cdn_seconds=300, stale_seconds=600,

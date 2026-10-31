@@ -1,0 +1,71 @@
+/* Readable data and form controls, shared by the archive and daily snapshot. */
+.feed-note { max-width: 70ch; color: var(--muted); line-height: 1.6; }
+.snapshot-age { display: block; margin: 10px 0; color: #e0eac7; font-size: 12px; line-height: 1.5; }
+.showcase-center .featured-facts { font-size: 11px; line-height: 1.5; flex-wrap: wrap; }
+.showcase-center .featured-meta-row { font-size: 10px; }
+.match-score-status { font-size: 15px; line-height: 1.5; letter-spacing: normal; }
+.featured-set small { font-size: 10px; }
+.feedback-rating label, .poll-option { position: relative; }
+.feedback-rating input, .poll-option input {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: 0;
+  border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.feedback-form select {
+  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 4px; background: #10231f; color: var(--cream); font: inherit;
+}
+.stack-form .checkbox-line { display: flex; flex-direction: row; align-items: center; gap: 10px; }
+.stack-form input[type="checkbox"] { flex: 0 0 20px; width: 20px; height: 20px; margin: 0; padding: 0; }
+.news-feed-status { margin-block: 12px 24px; color: var(--muted); line-height: 1.6; }
+.page-banner:has(+ .match-view-switcher) { padding-block: 35px; }
+
+@media (max-width: 600px) {
+  .page-banner:has(+ .match-view-switcher) { padding-block: 26px; }
+  .page-banner:has(+ .match-view-switcher) h1 { font-size: 36px; line-height: 1.08; }
+  .match-view-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; overflow: visible; }
+  .match-view-tabs a { display: flex; align-items: center; min-height: 44px; padding-block: 10px; font-size: 12px; }
+  .feed-note { font-size: 13px; }
+  .showcase-center .featured-facts, .live-detail-center .featured-facts {
+    font-size: 11px; gap: 5px; line-height: 1.5; flex-wrap: wrap;
+  }
+  .showcase-center .featured-facts b:last-child, .live-detail-center .featured-facts b:last-child {
+    max-width: none; white-space: normal; overflow: visible;
+  }
+  .showcase-center .featured-meta-row, .live-detail-center .featured-meta-row { font-size: 10px; }
+  .match-score-status { font-size: 16px; padding: 9px 2px; }
+  .snapshot-age { font-size: 12px; }
+  .showcase-center .featured-set small, .live-detail-center .featured-set small { font-size: 10px; }
+  .home-match-card.scoreboard-match-card .showcase-center .featured-set b,
+  .live-detail-center .featured-set b:first-of-type,
+  .live-detail-center .featured-set b:last-of-type { font-size: 20px; }
+  .home-match-card.scoreboard-match-card {
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto;
+    min-height: 0; padding: 16px; gap: 12px; background: var(--court-deep);
+  }
+  .home-match-card.scoreboard-match-card .showcase-wash { display: none; }
+  .home-match-card.scoreboard-match-card .match-portrait {
+    position: relative; grid-column: 1; display: flex; gap: 12px; align-items: center;
+    min-width: 0; height: auto; overflow: visible; background: none;
+  }
+  .home-match-card.scoreboard-match-card .match-portrait-left { grid-row: 1; }
+  .home-match-card.scoreboard-match-card .match-portrait-right { grid-row: 2; }
+  .home-match-card.scoreboard-match-card .match-portrait img {
+    position: static; inset: auto; flex: 0 0 40px; width: 40px; height: 48px;
+    object-fit: cover; transform: none; opacity: 1; filter: none; mix-blend-mode: normal;
+  }
+  .home-match-card.scoreboard-match-card .match-portrait strong {
+    display: block; width: auto; padding: 0; background: none; font-size: 19px;
+    line-height: 1.25; text-align: left; text-shadow: none; overflow-wrap: anywhere;
+  }
+  .home-match-card.scoreboard-match-card .showcase-center {
+    grid-row: 3; grid-column: 1; position: relative; inset: auto; transform: none;
+    border: 0; border-top: 1px solid #ffffff30; background: none; box-shadow: none;
+    padding: 14px 0 0; text-shadow: none;
+  }
+  .home-match-card.scoreboard-match-card .showcase-event { margin-top: 8px; font-size: 18px; line-height: 1.25; }
+  .home-match-card.scoreboard-match-card .featured-set-score { width: min(100%, 220px); margin: 14px auto; }
+  .home-match-card.scoreboard-match-card .featured-set { grid-template-columns: 1fr 50px 1fr; }
+  .home-match-card.scoreboard-match-card .match-card-user-rating { top: 8px; right: 8px; font-size: 11px; }
+  .featured-slide .match-portrait strong { font-size: 14px; }
+  .site-header .header-search, .site-header .mobile-notifications { width: 44px; height: 44px; flex-basis: 44px; }
+}

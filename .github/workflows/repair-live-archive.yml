@@ -16,8 +16,9 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Rebuild verified completed matches
+      - name: Recheck a bounded set of results without deleting diary entries
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           AUTO_CREATE_DB: 'false'
+          LIVETENNISAPI_KEY: ${{ secrets.LIVETENNISAPI_KEY }}
         run: python scripts/repair_live_archive.py

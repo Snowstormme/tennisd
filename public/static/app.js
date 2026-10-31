@@ -142,7 +142,8 @@ document.addEventListener("DOMContentLoaded", () => {
         scoreNode.textContent = rawScore;
         return;
       }
-      const sets = String(rawScore).trim().split(/\s+/).filter((token) => token.includes("-"));
+      const sets = String(rawScore).replaceAll("–", "-").trim().split(/\s+/)
+        .filter((token) => /^\d+-\d+(?:\(\d+\))?$/.test(token));
       if (!sets.length) {
         const status = document.createElement("span");
         status.className = "match-score-status";
@@ -177,6 +178,13 @@ document.addEventListener("DOMContentLoaded", () => {
           document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
             const score = card.querySelector("[data-live-score]");
             if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
+            const age = card.querySelector(".snapshot-age");
+            if (age && match.synced_at) {
+              const checked = new Date(match.synced_at.endsWith("Z") || /[+-]\d\d:\d\d$/.test(match.synced_at)
+                ? match.synced_at : `${match.synced_at}Z`);
+              const hours = Math.floor((Date.now() - checked.getTime()) / 3600000);
+              if (Number.isFinite(hours)) age.textContent = `Daily snapshot · Checked ${Math.max(0, hours)}h ago${hours > 30 ? " · Refresh overdue" : ""}`;
+            }
           });
         });
       } catch (_) {
@@ -206,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? ""
           : ` · ${Math.max(0, Math.floor((Date.now() - checked.getTime()) / 60000))}m ago`;
         syncStatus.textContent = payload.status === "ok"
-          ? `Feed healthy${minutes}`
+          ? `Daily snapshot checked${minutes}`
           : `Feed needs attention${minutes}`;
       } catch (_) {
         syncStatus.textContent = "Feed status unavailable";
@@ -229,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = await response.json();
         if (count) count.textContent = `${payload.total} stories`;
         if (checked) checked.textContent = "Checked just now";
-        if (firstStory && payload.first_id && payload.first_id !== firstStory) {
+        if (payload.first_id && payload.first_id !== firstStory) {
           window.location.reload();
           return;
         }
@@ -238,7 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (checked) checked.textContent = "Live update paused";
       }
     };
-    startVisiblePolling(refreshNews, 300000);
+    startVisiblePolling(refreshNews, firstStory ? 300000 : 15000);
   }
 
 });

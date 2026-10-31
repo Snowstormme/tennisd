@@ -6,6 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from . import db
 from .models import Match, Review
+from .identities import catalog_identity_is_valid
 
 
 def percent(part, total):
@@ -15,7 +16,7 @@ def percent(part, total):
 def player_statistics(player):
     matches = db.session.scalars(
         select(Match)
-        .where(or_(Match.winner_id == player.id, Match.loser_id == player.id))
+        .where(catalog_identity_is_valid(), or_(Match.winner_id == player.id, Match.loser_id == player.id))
         .options(joinedload(Match.winner), joinedload(Match.loser))
         .order_by(Match.week_start.desc())
     ).all()

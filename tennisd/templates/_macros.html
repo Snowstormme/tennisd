@@ -10,8 +10,9 @@
 {% macro player_portrait(player, side) %}<span class="match-portrait match-portrait-{{ side }}"><img src="{{ player.primary_photo_url or url_for('site.player_photo', player_id=player.id, v=6) }}" alt="{{ player.name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ player.name }}</strong></span>{% endmacro %}
 
 {% macro match_score_rows(score, winner_side=1, live=false, fallback='Score unavailable') %}
+{% set score = score|clean_score %}
 <span class="showcase-score featured-set-score"{% if live %} data-live-score data-winner-side="{{ winner_side or 0 }}"{% endif %} aria-label="{{ 'Score ' ~ score if score else fallback }}">
-  {% if score %}{% set score_state = namespace(rendered=false) %}{% for set_score in score.split() %}{% if '-' in set_score %}{% set games = set_score.split('-', 1) %}{% set score_state.rendered = true %}<span class="featured-set"><b{% if winner_side == 1 %} class="set-winner"{% endif %}>{{ games[0] }}</b><small>SET {{ loop.index }}</small><b{% if winner_side == 2 %} class="set-winner"{% endif %}>{{ games[1] if games|length > 1 else '—' }}</b></span>{% endif %}{% endfor %}{% if not score_state.rendered %}<span class="match-score-status">{{ score }}</span>{% endif %}
+  {% if score %}{% set score_state = namespace(rendered=false) %}{% for set_score in score.replace('–', '-').split() %}{% if '-' in set_score and not set_score.startswith('(') %}{% set games = set_score.split('-', 1) %}{% set score_state.rendered = true %}<span class="featured-set"><b{% if winner_side == 1 %} class="set-winner"{% endif %}>{{ games[0] }}</b><small>SET {{ loop.index }}</small><b{% if winner_side == 2 %} class="set-winner"{% endif %}>{{ games[1] if games|length > 1 else '—' }}</b></span>{% endif %}{% endfor %}{% if not score_state.rendered %}<span class="match-score-status">{{ score }}</span>{% endif %}
   {% else %}<span class="match-score-status">{{ fallback }}</span>{% endif %}
 </span>
 {% endmacro %}
@@ -50,6 +51,7 @@
     {{ match_center_header(match.tour, match.surface, match.tournament) }}
     {{ match_score_rows(match.score, match.winner_side or 0, true, ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed')) }}
 
+    <span class="snapshot-age">Daily snapshot · {{ match.synced_at|freshness }}{% if match.synced_at|snapshot_is_stale %} · Refresh overdue{% endif %}</span>
     <span class="featured-facts"><b>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'DATE TBC' }}</b><i>·</i><b>{{ match_round_name(match.round) if match.round else match.status|upper }}</b>{% if match_location %}<i>·</i><b class="featured-location">{{ match_location(match) }}</b>{% endif %}</span>
   </span>
   <span class="match-portrait match-portrait-right"><img src="{{ (player_pair[1].primary_photo_url or url_for('site.player_photo', player_id=player_pair[1].id, v=6)) if player_pair and player_pair[1] else url_for('site.live_player_photo', provider_id=match.provider_id, side=2, v=2) }}" alt="{{ match.player2_name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ match.player2_name }}</strong></span>
