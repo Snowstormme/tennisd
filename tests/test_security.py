@@ -72,6 +72,10 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertIn("immutable", response.headers["Cache-Control"])
         self.assertEqual(response.headers["Vercel-CDN-Cache-Control"], "max-age=31536000")
 
+    def test_footer_displays_application_version(self):
+        response = self.client.get("/")
+        self.assertIn(b"Version 0.1.0", response.data)
+
     def test_security_txt_is_rfc9116_document(self):
         response = self.client.get("/.well-known/security.txt")
         self.assertEqual(response.status_code, 200)
