@@ -16,10 +16,10 @@ from sqlalchemy import select
 
 
 PROVIDER = "livetennisapi"
-SYNC_INTERVAL = timedelta(hours=24)
 
 
-def feed_due(feed, now, interval):
+def feed_due(feed, now):
+    """Refresh once per UTC calendar day, regardless of scheduler jitter."""
     cursor = db.session.get(IngestionCursor, (PROVIDER, feed))
     if cursor is None:
         return True
@@ -29,7 +29,9 @@ def feed_due(feed, now, interval):
         return True
     if previous.tzinfo is None:
         previous = previous.replace(tzinfo=timezone.utc)
-    return now - previous >= interval
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return previous.astimezone(timezone.utc).date() < now.astimezone(timezone.utc).date()
 
 
 def mark_feed(feed, now):
@@ -86,9 +88,9 @@ def main():
         modes = [mode]
         if mode == "auto":
             modes = []
-            if feed_due("live", now, SYNC_INTERVAL):
+            if feed_due("live", now):
                 modes.append("live")
-            if feed_due("upcoming", now, SYNC_INTERVAL):
+            if feed_due("upcoming", now):
                 modes.append("upcoming")
         if not modes:
             print("Live Tennis API refresh is not due yet.")

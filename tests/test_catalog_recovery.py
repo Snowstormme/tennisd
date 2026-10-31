@@ -19,7 +19,7 @@ from tennisd.identities import PlayerIdentityIndex
 from tennisd.live_tennis import ensure_player_profiles, live_player_id, normalize_history_match, normalize_match
 from tennisd.models import FollowedPlayer, LiveMatch, Match, Notification, Player, PlayerExternalId, Review, User
 from tennisd.routes import archived_match_id_for_live, current_match_players, player_live_matches
-from scripts.sync_live_tennis import notify_followers
+from scripts.sync_live_tennis import feed_due, mark_feed, notify_followers
 from test_live_tennis import Session, fixture, history_fixture
 
 
@@ -52,6 +52,17 @@ class CatalogRecoveryTests(unittest.TestCase):
         db.session.add(match)
         db.session.commit()
         return match
+
+    def test_daily_feed_is_due_even_if_todays_scheduler_runs_earlier(self):
+        mark_feed("live", datetime(2026,10,31,8,22,tzinfo=timezone.utc))
+        self.assertTrue(feed_due("live", datetime(2026,11,1,2,7,tzinfo=timezone.utc)))
+        mark_feed("live", datetime(2026,11,1,2,8,tzinfo=timezone.utc))
+        self.assertTrue(feed_due("live", datetime(2026,11,2,2,7,tzinfo=timezone.utc)))
+
+    def test_daily_feed_does_not_repeat_within_the_same_utc_day(self):
+        mark_feed("upcoming", datetime(2026,11,1,0,7,tzinfo=timezone.utc))
+        self.assertFalse(feed_due("upcoming", datetime(2026,11,1,22,7,tzinfo=timezone.utc)))
+        self.assertTrue(feed_due("live", datetime(2026,11,1,22,7,tzinfo=timezone.utc)))
 
     def test_same_source_id_cannot_represent_both_opponents(self):
         for factory, normalize in ((fixture, normalize_match), (history_fixture, normalize_history_match)):

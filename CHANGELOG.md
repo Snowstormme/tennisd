@@ -6,6 +6,11 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [0.2.2] - 2026-11-01
 
+### Fixed
+
+- Check daily ingestion by UTC calendar date so an earlier scheduler run does
+  not skip the next day's refresh behind a strict 24-hour interval.
+
 ### Data corrections
 
 - Explain the paused diary form on results under review while preserving the

@@ -122,3 +122,7 @@ an operation is a no-op. Rollback does not delete the newly created profile.
 This is a narrow correction with a known original row and reversible field
 changes. It does not enable bulk historical repair. A verified production backup
 and independently checked source evidence remain prerequisites for that work.
+
+The auto sync guard allows one refresh per UTC calendar day. It does not require
+24 elapsed hours: schedule jitter or moving the cron earlier must not skip the
+next day. Explicit manual `live`/`upcoming` modes still request a refresh.
