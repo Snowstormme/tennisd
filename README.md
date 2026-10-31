@@ -128,7 +128,14 @@ tennisd/
   tennisd/importer.py     local demo seed for tests and development
   tennisd/stats.py        transparent statistics
   tennisd/prize_money.py  optional Wikidata figure
-  tennisd/routes.py       pages and forms
+  tennisd/routes.py       catalog, match and data pages
+  tennisd/auth_routes.py  registration, login and password recovery
+  tennisd/profile_routes.py profiles, settings and data export
+  tennisd/live_routes.py  live match pages and provider status
+  tennisd/news_routes.py  news feed and article proxy
+  tennisd/social_routes.py notifications, friends and follows
+  tennisd/community_routes.py diary entries, comments and reports
+  tennisd/moderation_routes.py feedback, polls and moderation
   tennisd/security.py     tokens, email and persistent abuse limits
   tennisd/templates/     HTML pages
   public/static/          CSS and favicon served by the hosting CDN
