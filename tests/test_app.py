@@ -383,6 +383,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(player_name, response.data)
         self.assertIn(b'player-ranking-badge">#7', response.data)
+        detail = self.client.get(f"/players/{player.id}")
+        self.assertIn(b"Ranking history", detail.data)
+        self.assertIn(b"#7", detail.data)
         searched = self.client.get(f"/players?view=rankings&q={player_name.decode()}")
         self.assertIn(player_name, searched.data)
 

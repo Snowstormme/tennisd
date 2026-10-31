@@ -1148,6 +1148,16 @@ def player_detail(player_id):
     player = db.get_or_404(Player, player_id)
     update_prize_money(player)
     stats = player_statistics(player)
+    ranking_history = db.session.scalars(
+        select(RankingSnapshot).where(
+            RankingSnapshot.player_id == player.id,
+            RankingSnapshot.ranking_type == "singles",
+        ).order_by(RankingSnapshot.ranked_on.desc()).limit(12)
+    ).all()
+    best_rank = db.session.scalar(select(func.min(RankingSnapshot.rank)).where(
+        RankingSnapshot.player_id == player.id,
+        RankingSnapshot.ranking_type == "singles",
+    ))
     live_matches = player_live_matches(player)
     following = False
     if current_user.is_authenticated:
@@ -1160,7 +1170,7 @@ def player_detail(player_id):
     return render_template(
         "player.html", player=player, stats=stats, following=following,
         live_matches=live_matches, live_players=current_match_players(live_matches),
-        match_location=match_location,
+        match_location=match_location, ranking_history=ranking_history, best_rank=best_rank,
     )
 
 
