@@ -759,6 +759,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(export.status_code, 200)
         self.assertIn("no-store", export.headers["Cache-Control"])
         data = export.get_json()
+        self.assertEqual(data["schema_version"], 1)
         self.assertEqual(data["email"], "alice@example.com")
         self.assertEqual(data["diary"][0]["rating_out_of_ten"], 9)
         self.assertEqual(data["comments"][0]["body"], "Alice's comment")

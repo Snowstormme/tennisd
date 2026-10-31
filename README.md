@@ -61,7 +61,7 @@ Every response includes an `X-Request-ID` correlation token. Server-side 5xx log
 - Profile photos are validated, resized to at most 640 × 640, converted to WebP and stored in PostgreSQL rather than the ephemeral Render filesystem.
 - Player portraits use a linked Wikidata image first, then an exact-name English Wikipedia tennis result. A designed portrait placeholder remains when neither project has a freely hosted image.
 - The web database role receives data access but no schema creation rights. The owner connection is reserved for initialization and recovery.
-- Users can export or delete their data. The privacy page explains stored fields and third-party processing.
+- Users can export or delete their data. JSON exports include a `schema_version` field so future changes can remain backward-compatible. The privacy page explains stored fields and third-party processing.
 - AdSense support is opt-in. Set `ADSENSE_CLIENT_ID` after account creation; keep `ADSENSE_ENABLED=false` until Google approves the site and a certified consent message is published. The app then serves the matching root `ads.txt` automatically.
 
 ## Public deployment

@@ -162,6 +162,7 @@ def register_profile_routes(
             .order_by(Comment.created_at)
         ).all()
         payload = {
+            "schema_version": 1,
             "username": current_user.username,
             "email": current_user.email,
             "display_name": current_user.display_name,
