@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 
 from . import db
 from .models import IngestionCursor, LiveMatch, Match, Player, PlayerExternalId
-from .identities import normalized_player_name, player_identity_matches
+from .identities import PlayerIdentityIndex, normalized_player_name, player_identity_matches
 
 
 API_ROOT = "https://api.livetennisapi.com/api/public/v1"
@@ -58,53 +58,34 @@ def ensure_live_player_profiles(matches):
 
 def ensure_player_profiles(participants):
     """Never attach a provider ID to a conflicting name or another tour."""
+    participants = list(participants)
     if not participants:
         return 0
 
-    provider_ids = {provider_id for _, _, provider_id in participants if provider_id}
-    external_rows = db.session.scalars(
-        select(PlayerExternalId)
-        .where(
-            PlayerExternalId.provider == "livetennisapi",
-            PlayerExternalId.external_id.in_(provider_ids),
-        )
-        .options(joinedload(PlayerExternalId.player))
-    ).all() if provider_ids else []
-    by_external = {row.external_id: row.player for row in external_rows}
-
-    lowered_names = {name.casefold() for _, name, _ in participants if name}
-    named_players = db.session.scalars(
-        select(Player).where(func.lower(Player.name).in_(lowered_names))
-    ).all() if lowered_names else []
-    by_name = {(player.tour, normalized_player_name(player.name)): player for player in named_players}
-
+    index = PlayerIdentityIndex(participants)
     created = 0
-    mapped_ids = set(by_external)
     for tour, name, provider_id in participants:
-        player = by_external.get(provider_id) if provider_id else None
-        if player is not None and not player_identity_matches(player, tour, name):
-            current_app.logger.warning("Player identity conflict provider=livetennisapi id=%s", provider_id)
+        if provider_id in index.by_external:
+            if index.resolve(tour, name, provider_id) is None:
+                current_app.logger.warning("Player identity conflict provider=livetennisapi id=%s", provider_id)
             continue
+        player = index.resolve(tour, name, provider_id)
         if player is None:
-            key = (tour, normalized_player_name(name))
-            player = by_name.get(key)
+            identifier = live_player_id(tour, provider_id, name)
+            player = db.session.get(Player, identifier)
+            if player is not None and not player_identity_matches(player, tour, name):
+                current_app.logger.warning("Local player identity conflict id=%s", identifier)
+                continue
             if player is None:
-                identifier = live_player_id(tour, provider_id, name)
-                player = db.session.get(Player, identifier)
-                if player is not None and not player_identity_matches(player, tour, name):
-                    current_app.logger.warning("Local player identity conflict id=%s", identifier)
-                    continue
-                if player is None:
-                    player = Player(id=identifier, tour=tour, name=name)
-                    db.session.add(player)
-                    created += 1
-                by_name[key] = player
-        if provider_id and provider_id not in mapped_ids:
+                player = Player(id=identifier, tour=tour, name=name)
+                db.session.add(player)
+                created += 1
+            index.add_player(player)
+        if provider_id:
             db.session.add(PlayerExternalId(
                 player=player, provider="livetennisapi", external_id=provider_id,
             ))
-            by_external[provider_id] = player
-            mapped_ids.add(provider_id)
+            index.add_mapping(provider_id, player)
     return created
 
 
@@ -275,9 +256,7 @@ def permanent_profile(match, side):
         )
         if profile is not None:
             return profile if player_identity_matches(profile, match.tour, name) else None
-    return db.session.scalar(
-        select(Player).where(Player.tour == match.tour, func.lower(Player.name) == name.casefold())
-    )
+    return PlayerIdentityIndex([(match.tour, name, provider_id)]).resolve(match.tour, name, provider_id)
 
 
 def preserve_finished_match(live_match, now):
@@ -342,7 +321,10 @@ def normalize_match(item, now=None):
     p1, p2 = players.get("p1") or {}, players.get("p2") or {}
     if not valid_participant(p1) or not valid_participant(p2):
         return None
-    if normalized_player_name(p1["name"]) == normalized_player_name(p2["name"]):
+    if (
+        normalized_player_name(p1["name"]) == normalized_player_name(p2["name"])
+        or (p1.get("id") not in (None, "") and str(p1["id"]) == str(p2.get("id")))
+    ):
         return None
     if item.get("score") is not None and not isinstance(item["score"], dict):
         return None
@@ -479,7 +461,10 @@ def normalize_history_match(item, now=None):
     p1, p2 = players.get("p1") or {}, players.get("p2") or {}
     if not valid_participant(p1) or not valid_participant(p2):
         return None
-    if normalized_player_name(p1["name"]) == normalized_player_name(p2["name"]):
+    if (
+        normalized_player_name(p1["name"]) == normalized_player_name(p2["name"])
+        or (p1.get("id") not in (None, "") and str(p1["id"]) == str(p2.get("id")))
+    ):
         return None
     score = history_display_score(item.get("score"))
     if outcome == "walkover":

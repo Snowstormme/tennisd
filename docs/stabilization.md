@@ -14,13 +14,39 @@ review, watchlist or account rows. Keep the preceding deployment available for r
 
 Run `python scripts/audit_catalog.py --limit 50` using a read-only database
 connection when available. Record the totals and investigate the reported match
-IDs against the provider. The report contains catalog IDs only, not account data.
+IDs against the provider. The report contains bounded public result fields and IDs, not account data. Its SQL transaction rejects writes.
 
 Cross-tour and self-match rows are excluded from discovery and player statistics,
 and their detail pages show a notice. Existing personal entries are preserved.
 This containment does not prove the correctness of every other historical result.
 
-Use `python scripts/repair_live_archive.py --limit 10` with the limited runtime
+Before writing repairs, run:
+
+```sh
+python scripts/plan_catalog_recovery.py --limit 10 > catalog-recovery-plan.json
+# Restrict a preview to a previously reported permanent match ID:
+python scripts/plan_catalog_recovery.py --match-id lt-211673 --limit 1
+```
+
+The **Preview catalog recovery** workflow prepares the same JSON artifact. The
+command runs inside a database-enforced read-only transaction, makes at most one
+provider request per sampled result, and stops requests after the first error.
+It includes original fields, the source response hash and proposed participants;
+conflicting provider mappings are blocked, never globally reassigned. A 404/410
+is unresolved, not evidence of cancellation. Retired `tennis_api` results require
+that original source or independently verified evidence; their numeric IDs must
+never be sent to the active Live Tennis API. The preview is review evidence, not
+an executable migration or proof that every unflagged result is correct.
+
+The shared identity resolver only uses a name-only profile when it is unique in
+its tour and does not compete with another ID from the same provider. Distinct
+IDs with the same name get distinct profiles; uncertain duplicate identities
+require manual review. Namesake profile links, archive redirects and player
+notifications use this same resolver. This can intentionally leave a live match
+unlinked rather than attribute it to an uncertain profile.
+
+After checking the preview and recovery prerequisites, use
+`python scripts/repair_live_archive.py --limit 10` with the limited runtime
 database role and the provider key to recheck a bounded set of existing IDs.
 The script writes explicit provider outcomes without deleting and rebuilding
 matches. It spends up to the requested number of API calls. Confirm remaining

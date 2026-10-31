@@ -274,9 +274,9 @@ class LiveTennisTests(unittest.TestCase):
     def test_verifying_live_duplicate_opens_existing_archive_match(self):
         now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)
         with self.app.app_context():
-            novak = Player(id="novak", tour="ATP", name="Novak Djokovic")
+            novak = db.session.get(Player, "atp-104925")
             alex = Player(id="alex", tour="ATP", name="Alex De Minaur")
-            db.session.add_all((novak, alex))
+            db.session.add(alex)
             db.session.add(Match(
                 id="beijing-final", tour="ATP", tournament="China Open - Beijing",
                 level="A", surface="Hard", week_start=now.date(), round="F",
@@ -285,7 +285,7 @@ class LiveTennisTests(unittest.TestCase):
             ))
             db.session.add(LiveMatch(
                 provider_id="beijing-live", status="verifying", tour="ATP",
-                tournament="Beijing", surface="Hard", round="F", starts_at=now,
+                tournament="China Open - Beijing", surface="Hard", round="F", starts_at=now,
                 player1_name="Alex De Minaur", player2_name="Novak Djokovic",
                 score="6–7 0–0", draw="singles", is_doubles=False,
             ))
@@ -294,7 +294,7 @@ class LiveTennisTests(unittest.TestCase):
         detail = self.client.get("/live-matches/beijing-live")
         self.assertEqual(detail.status_code, 302)
         self.assertTrue(detail.headers["Location"].endswith("/matches/beijing-final"))
-        profile = self.client.get("/players/novak")
+        profile = self.client.get("/players/atp-104925")
         self.assertNotIn(b"VERIFYING", profile.data)
         self.assertIn(b"7-6(3) 0-1 ret.", profile.data)
 

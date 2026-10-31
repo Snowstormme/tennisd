@@ -21,7 +21,7 @@ from . import db
 from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, RankingSnapshot, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action
-from .identities import catalog_identity_is_valid, match_identity_is_valid, player_identity_matches
+from .identities import catalog_identity_is_valid, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
@@ -74,49 +74,7 @@ def current_match_rows(status):
 
 def current_match_players(matches):
     """Match live-feed participants to permanent profiles by provider ID or name."""
-    external_ids = {
-        provider_id
-        for match in matches
-        for provider_id in (match.player1_provider_id, match.player2_provider_id)
-        if provider_id
-    }
-    external_rows = db.session.scalars(
-        select(PlayerExternalId)
-        .where(
-            PlayerExternalId.provider == "livetennisapi",
-            PlayerExternalId.external_id.in_(external_ids),
-        )
-        .options(joinedload(PlayerExternalId.player))
-    ).all() if external_ids else []
-    by_external = {row.external_id: row.player for row in external_rows}
-    names = {
-        name.casefold()
-        for match in matches
-        for name in (match.player1_name, match.player2_name)
-        if name
-    }
-    if not names:
-        return {}
-    players = db.session.scalars(
-        select(Player).where(func.lower(Player.name).in_(names))
-    ).all()
-    by_name = {(player.tour, normalized_person_name(player.name)): player for player in players}
-
-    def validated_player(match, side):
-        name = getattr(match, f"player{side}_name")
-        external_id = getattr(match, f"player{side}_provider_id")
-        player = by_external.get(external_id)
-        if player is not None:
-            return player if player_identity_matches(player, match.tour, name) else None
-        return by_name.get((match.tour, normalized_person_name(name)))
-
-    return {
-        match.provider_id: (
-            validated_player(match, 1),
-            validated_player(match, 2),
-        )
-        for match in matches
-    }
+    return profiles_for_matches(matches)
 
 
 def archived_match_id_for_live(match):
@@ -128,38 +86,22 @@ def archived_match_id_for_live(match):
         return exact
 
     player_pair = current_match_players([match]).get(match.provider_id, (None, None))
-    if all(player_pair):
-        participants = or_(
-            and_(Match.winner_id == player_pair[0].id, Match.loser_id == player_pair[1].id),
-            and_(Match.winner_id == player_pair[1].id, Match.loser_id == player_pair[0].id),
-        )
-        return db.session.scalar(
-            select(Match.id).where(
-                Match.tour == match.tour,
-                Match.week_start == match.starts_at.date(),
-                participants,
-            ).limit(1)
-        )
-
-    winner = aliased(Player)
-    loser = aliased(Player)
-    names = or_(
-        and_(
-            func.lower(winner.name) == match.player1_name.casefold(),
-            func.lower(loser.name) == match.player2_name.casefold(),
-        ),
-        and_(
-            func.lower(winner.name) == match.player2_name.casefold(),
-            func.lower(loser.name) == match.player1_name.casefold(),
-        ),
+    if not all(player_pair):
+        return None
+    participants = or_(
+        and_(Match.winner_id == player_pair[0].id, Match.loser_id == player_pair[1].id),
+        and_(Match.winner_id == player_pair[1].id, Match.loser_id == player_pair[0].id),
     )
-    return db.session.scalar(
-        select(Match.id).join(winner, Match.winner).join(loser, Match.loser).where(
+    matches = db.session.scalars(
+        select(Match.id).where(
+            catalog_identity_is_valid(),
             Match.tour == match.tour,
             Match.week_start == match.starts_at.date(),
-            names,
-        ).limit(1)
-    )
+            func.lower(Match.tournament) == match.tournament.lower(),
+            participants,
+        ).limit(2)
+    ).all()
+    return matches[0] if len(matches) == 1 else None
 
 
 def player_live_matches(player, limit=12):
@@ -197,11 +139,10 @@ def player_live_matches(player, limit=12):
         .order_by(status_order, LiveMatch.starts_at.desc())
         .limit(limit)
     ).all()
-    # SQLite and some feeds compare accented names differently; provider IDs remain authoritative.
+    profiles = profiles_for_matches(matches)
     matched = [
         match for match in matches
-        if player_identity_matches(player, match.tour, match.player1_name)
-        or player_identity_matches(player, match.tour, match.player2_name)
+        if any(profile is not None and profile.id == player.id for profile in profiles[match.provider_id])
     ]
     return [
         match for match in matched

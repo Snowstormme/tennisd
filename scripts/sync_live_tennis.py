@@ -11,6 +11,7 @@ from tennisd import create_app, db
 from tennisd.live_tennis import sync_matches
 from tennisd.models import IngestionCursor, IngestionRun, LiveMatch, Player, FollowedPlayer, TournamentSubscription
 from tennisd.notifications import create_notification
+from tennisd.identities import profiles_for_matches
 from sqlalchemy import select
 
 
@@ -56,14 +57,15 @@ def notify_followers(now):
     subscriptions = db.session.execute(
         select(TournamentSubscription.user_id, TournamentSubscription.tour, TournamentSubscription.tournament)
     ).all()
+    profiles = profiles_for_matches(matches)
     created = 0
     for match in matches:
         url = f"/live-matches/{quote(match.provider_id, safe='')}"
         title = "Daily match snapshot" if match.status == "live" else "Upcoming match"
         body = f"{match.player1_name} vs {match.player2_name} · {match.tournament}"
-        names = {match.player1_name.casefold(), match.player2_name.casefold()}
-        for user_id, _player_id, player_name, player_tour in followed:
-            if player_tour == match.tour and player_name.casefold() in names and create_notification(
+        participant_ids = {player.id for player in profiles[match.provider_id] if player is not None}
+        for user_id, player_id, _player_name, _player_tour in followed:
+            if player_id in participant_ids and create_notification(
                 user_id, kind="followed_player_match", title=title, body=body, url=url,
             ):
                 created += 1
