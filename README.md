@@ -149,10 +149,11 @@ tennisd/
 
 ## Catalog stabilization and operations
 
-- `python scripts/audit_catalog.py` is read-only and reports inconsistent player tours, self-matches, legacy null scores and placeholder players. It does not export account records.
+- `python scripts/audit_catalog.py` enforces a read-only database transaction. It groups identity conflicts by provider/tour and includes bounded public match samples, null-score counts and the latest feed runs. It does not export account records.
+- `python scripts/plan_catalog_recovery.py --limit 10` prepares source-backed proposals without writing records. It preserves the original public fields, source-response hash, proposed participants and blocking mapping conflicts. The **Preview catalog recovery** workflow runs the same command; its JSON artifact contains no account/diary records. A preview cannot apply its proposals or repair a retired provider through another provider's IDs.
 - Inconsistent archive rows are excluded from discovery and player statistics. Their detail pages show a data-review notice; existing diary entries remain available. This is containment, not an automatic identity merge.
 - `python scripts/repair_live_archive.py --limit 10` rechecks existing provider IDs and accepts explicit results. It never deletes and rebuilds the archive. It needs `LIVETENNISAPI_KEY` and the limited database connection, and uses one provider request per checked ID.
-- Player identity conflicts are logged and are not automatically merged. Resolve the source identity using an authoritative provider response before repairing a mapping.
+- Player identity conflicts are logged and are not automatically merged. Name-only resolution requires a unique profile in its tour and no competing ID from the same source. Resolve the source identity using an authoritative provider response before repairing a mapping. Namesakes do not share profile links or followed-player notifications.
 - Static CSS and JavaScript URLs use hashes of their contents. A new web process computes the hashes at startup; changed files receive new cache URLs on deploy.
 - News pages read a process-local last-successful cache and refresh publishers in background threads. BBC and ESPN use their direct publisher RSS feeds. Other sources use Google News RSS. Failed sources retry after one minute; successful feeds refresh after five minutes. The cache is rebuilt after a deploy and is not a permanent news archive.
 - Backup automation remains opt-in. Code changes do not configure production secrets or establish an offline age private key. Verify the configured backup workflow and a decrypt/restore drill before relying on it.

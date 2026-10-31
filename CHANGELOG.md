@@ -4,6 +4,23 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-01
+
+### Fixed
+
+- Keep namesakes and distinct source player IDs separate during import, profile
+  linking and follower notifications; refuse ambiguous archive redirects.
+- Reject a provider result that assigns the same source ID to both opponents.
+
+### Operations
+
+- Classify historical identity conflicts by provider and tour, include bounded
+  public result samples and report the latest live/upcoming ingestion runs.
+- Add a source-backed catalog recovery preview that cannot apply changes and
+  enforces read-only SQL in PostgreSQL and SQLite. Stop provider calls after the
+  first upstream failure, and never query live IDs for a retired source.
+- Test database-level write refusal in the PostgreSQL smoke job.
+
 ## [0.2.0] - 2026-11-01
 
 ### Fixed
