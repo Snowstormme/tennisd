@@ -3,12 +3,15 @@
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tennisd import create_app, db
 from tennisd.live_tennis import sync_matches
-from tennisd.models import IngestionCursor, IngestionRun
+from tennisd.models import IngestionCursor, IngestionRun, LiveMatch, Player, FollowedPlayer, TournamentSubscription
+from tennisd.notifications import create_notification
+from sqlalchemy import select
 
 
 PROVIDER = "livetennisapi"
@@ -36,6 +39,41 @@ def mark_feed(feed, now):
     else:
         cursor.value = now.isoformat()
     db.session.commit()
+
+
+def notify_followers(now):
+    """Create deduplicated alerts for followed players and tournaments."""
+    matches = db.session.scalars(select(LiveMatch).where(
+        LiveMatch.status.in_(("live", "upcoming")),
+        LiveMatch.synced_at >= now - timedelta(minutes=10),
+    )).all()
+    if not matches:
+        return 0
+    followed = db.session.execute(
+        select(FollowedPlayer.user_id, FollowedPlayer.player_id, Player.name)
+        .join(Player, Player.id == FollowedPlayer.player_id)
+    ).all()
+    subscriptions = db.session.execute(
+        select(TournamentSubscription.user_id, TournamentSubscription.tour, TournamentSubscription.tournament)
+    ).all()
+    created = 0
+    for match in matches:
+        url = f"/live-matches/{quote(match.provider_id, safe='')}"
+        title = "Live match" if match.status == "live" else "Upcoming match"
+        body = f"{match.player1_name} vs {match.player2_name} · {match.tournament}"
+        names = {match.player1_name.casefold(), match.player2_name.casefold()}
+        for user_id, _player_id, player_name in followed:
+            if player_name.casefold() in names and create_notification(
+                user_id, kind="followed_player_match", title=title, body=body, url=url,
+            ):
+                created += 1
+        for user_id, tour, tournament in subscriptions:
+            if tour == match.tour and tournament.casefold() == match.tournament.casefold() and create_notification(
+                user_id, kind="followed_tournament_match", title=title, body=body, url=url,
+            ):
+                created += 1
+    db.session.commit()
+    return created
 
 
 def main():
@@ -75,7 +113,8 @@ def main():
             run.records_written = count
             db.session.commit()
             mark_feed(selected, now)
-            print(f"Synced {count} {selected} ATP, WTA, Challenger and ITF matches.")
+            notified = notify_followers(now)
+            print(f"Synced {count} {selected} ATP, WTA, Challenger and ITF matches; queued {notified} notifications.")
 
 
 if __name__ == "__main__":
