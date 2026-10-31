@@ -19,13 +19,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, IngestionRun, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
+from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
 from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
 from .stats import community_statistics, diary_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, safe_next, schema_table_exists, shared_cache, xml_response
+from .live_routes import register_live_routes
 
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
@@ -764,64 +765,6 @@ def matches_this_week():
 @site.get("/matches/top-rated")
 def top_rated_matches():
     return redirect(url_for("site.matches"), code=301)
-
-
-@site.get("/live-matches/<provider_id>")
-def live_match_detail(provider_id):
-    if not schema_table_exists(LiveMatch.__tablename__):
-        abort(404)
-    match = db.get_or_404(LiveMatch, provider_id)
-    archived = archived_match_id_for_live(match)
-    if archived:
-        return redirect(url_for("site.match_detail", match_id=archived))
-    players = current_match_players([match]).get(match.provider_id, (None, None))
-    return render_template(
-        "live_match.html", match=match, players=players,
-        match_location=match_location,
-    )
-
-
-@site.get("/api/live-matches")
-def live_matches_api():
-    matches = current_match_rows("live")
-    response = jsonify({
-        "matches": [{
-            "id": match.provider_id, "score": match.score, "winner_side": match.winner_side,
-            "server": match.server, "synced_at": match.synced_at.isoformat(),
-        } for match in matches]
-    })
-    return shared_cache(
-        response, browser_seconds=15, cdn_seconds=30, stale_seconds=30,
-    )
-
-
-@site.get("/api/sync-status")
-def sync_status():
-    """Expose provider freshness without returning operational secrets."""
-    if not schema_table_exists(IngestionRun.__tablename__):
-        return jsonify({"provider": "livetennisapi", "status": "unavailable", "feeds": {}})
-    runs = db.session.scalars(
-        select(IngestionRun)
-        .where(IngestionRun.provider.like("livetennisapi:%"))
-        .order_by(IngestionRun.started_at.desc())
-        .limit(20)
-    ).all()
-    feeds = {}
-    for run in runs:
-        feed = run.provider.split(":", 1)[-1]
-        if feed in feeds:
-            continue
-        feeds[feed] = {
-            "status": run.status,
-            "started_at": run.started_at.isoformat() if run.started_at else None,
-            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-            "records_written": run.records_written,
-            "has_error": bool(run.error),
-        }
-    overall = "ok" if feeds and all(item["status"] == "success" for item in feeds.values()) else "degraded"
-    response = jsonify({"provider": "livetennisapi", "status": overall, "feeds": feeds})
-    response.headers["Cache-Control"] = "no-store"
-    return response
 
 
 @site.get("/matches/<path:match_id>")
@@ -2077,3 +2020,12 @@ def about():
 @site.get("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+register_live_routes(
+    site,
+    current_match_rows=current_match_rows,
+    current_match_players=current_match_players,
+    archived_match_id_for_live=archived_match_id_for_live,
+    match_location=match_location,
+)
