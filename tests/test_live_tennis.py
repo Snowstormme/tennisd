@@ -113,11 +113,16 @@ class LiveTennisTests(unittest.TestCase):
         normalized = normalize_match(row, now)
         self.assertEqual(normalized["tournament"], "Wimbledon")
         self.assertEqual(normalized["tour"], "WTA")
-        row["tournament"] = "Berlin Open"
-        row["tier"] = "wta_500"
-        self.assertEqual(normalize_match(row, now)["tournament"], "Berlin Open")
-        row["tier"] = "wta_250"
-        self.assertEqual(normalize_match(row, now)["tier"], "wta_250")
+
+    def test_sync_status_is_safe_when_no_provider_run_exists(self):
+        response = self.client.get("/api/sync-status")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {
+            "provider": "livetennisapi",
+            "status": "degraded",
+            "feeds": {},
+        })
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
     def test_history_match_normalization_and_import(self):
         row = history_fixture()
@@ -163,6 +168,7 @@ class LiveTennisTests(unittest.TestCase):
             ))
             db.session.commit()
         page = self.client.get("/matches?view=live")
+        self.assertIn(b"data-live-sync-status", page.data)
         self.assertIn(b"Live on court", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)

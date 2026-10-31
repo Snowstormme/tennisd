@@ -2,29 +2,35 @@ import hmac
 import html
 import io
 import re
-import secrets
 import unicodedata
 from math import ceil
 from functools import lru_cache
-from datetime import date, datetime, timedelta, timezone
-from urllib.parse import quote, urlsplit
+from datetime import date, timedelta
+from urllib.parse import quote
 from xml.sax.saxutils import escape as xml_escape  # nosec B406: output escaping only; no XML parsing
 
 import requests
-from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import current_user, login_required, login_user, logout_user
+from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, send_file, session, url_for
+from flask_login import current_user, login_required, login_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import and_, case, delete, func, inspect, or_, select, union_all
+from sqlalchemy import and_, case, func, or_, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
-from .models import AuthState, AuthToken, Comment, FeedbackSubmission, FollowedPlayer, Friendship, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem, utcnow
-from .news_feed import NEWS_SOURCES, curate_news_items, fetch_news_article, fetch_news_items
+from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, RankingSnapshot, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .prize_money import update_prize_money
-from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
-from .stats import community_statistics, diary_statistics, percent, player_statistics
+from .security import client_ip, limit_action
+from .stats import community_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
+from .web import public_url, schema_table_exists, shared_cache, xml_response
+from .live_routes import register_live_routes
+from .auth_routes import register_auth_routes
+from .news_routes import register_news_routes
+from .profile_routes import register_profile_routes
+from .moderation_routes import register_moderation_routes
+from .social_routes import register_social_routes
+from .community_routes import register_community_routes
 
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
@@ -33,16 +39,6 @@ SITEMAP_START_DATE = date(2020, 1, 1)
 # likely to search for. Lower-level results remain available inside Tennisd.
 SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
 
-
-def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
-    """Cache public, user-independent responses without making them feel stale."""
-    response.headers["Cache-Control"] = (
-        f"public, max-age={browser_seconds}, stale-while-revalidate={stale_seconds}"
-    )
-    response.headers["Vercel-CDN-Cache-Control"] = (
-        f"max-age={cdn_seconds}, stale-while-revalidate={stale_seconds}"
-    )
-    return response
 
 def match_location(match):
     return tournament_profile(match.tournament).get("location", "Location unavailable")
@@ -60,7 +56,7 @@ def resolve_tournament_name(tour, slug):
 
 def current_match_rows(status):
     """Return an empty slate while a new deployment is waiting for its migration."""
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if not schema_table_exists(LiveMatch.__tablename__):
         return []
     statement = select(LiveMatch).where(LiveMatch.status == status)
     if status == "upcoming":
@@ -157,7 +153,7 @@ def archived_match_id_for_live(match):
 
 
 def player_live_matches(player, limit=12):
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if not schema_table_exists(LiveMatch.__tablename__):
         return []
     external_ids = db.session.scalars(
         select(PlayerExternalId.external_id).where(
@@ -367,32 +363,11 @@ def check_csrf():
         limit_action("post-ip", client_ip(), 120, 60)
 
 
-def safe_next(default="site.home"):
-    target = request.args.get("next", "")
-    parsed = urlsplit(target)
-    return (
-        target if target.startswith("/") and not target.startswith("//")
-        and "\\" not in target and not parsed.scheme and not parsed.netloc
-        else url_for(default)
-    )
-
-
 def sign_in_user(user):
     """Create a persistent login that remains revocable via session_version."""
     session.clear()
     session.permanent = True
     login_user(user, remember=True)
-
-
-def public_url(path):
-    return f"{current_app.config['PUBLIC_BASE_URL'].rstrip('/')}{path}"
-
-
-def xml_response(body):
-    return shared_cache(
-        Response(body, content_type="application/xml; charset=utf-8"),
-        browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
-    )
 
 
 def sitemap_match_conditions():
@@ -696,7 +671,7 @@ def player_photo(player_id):
 
 @site.get("/live-matches/<provider_id>/players/<int:side>/photo")
 def live_player_photo(provider_id, side):
-    if side not in (1, 2) or not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if side not in (1, 2) or not schema_table_exists(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
     name = match.player1_name if side == 1 else match.player2_name
@@ -794,35 +769,6 @@ def matches_this_week():
 @site.get("/matches/top-rated")
 def top_rated_matches():
     return redirect(url_for("site.matches"), code=301)
-
-
-@site.get("/live-matches/<provider_id>")
-def live_match_detail(provider_id):
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
-        abort(404)
-    match = db.get_or_404(LiveMatch, provider_id)
-    archived = archived_match_id_for_live(match)
-    if archived:
-        return redirect(url_for("site.match_detail", match_id=archived))
-    players = current_match_players([match]).get(match.provider_id, (None, None))
-    return render_template(
-        "live_match.html", match=match, players=players,
-        match_location=match_location,
-    )
-
-
-@site.get("/api/live-matches")
-def live_matches_api():
-    matches = current_match_rows("live")
-    response = jsonify({
-        "matches": [{
-            "id": match.provider_id, "score": match.score, "winner_side": match.winner_side,
-            "server": match.server, "synced_at": match.synced_at.isoformat(),
-        } for match in matches]
-    })
-    return shared_cache(
-        response, browser_seconds=15, cdn_seconds=30, stale_seconds=30,
-    )
 
 
 @site.get("/matches/<path:match_id>")
@@ -1090,7 +1036,7 @@ def tournament_detail(tour, slug):
         select(Match.level).where(*condition).distinct().order_by(Match.level)
     ).all()
     _, value_label, value_group = tournament_level(levels)
-    subscriptions_ready = inspect(db.engine).has_table(TournamentSubscription.__tablename__)
+    subscriptions_ready = schema_table_exists(TournamentSubscription.__tablename__)
     subscribed = False
     subscriber_count = 0
     if subscriptions_ready:
@@ -1149,7 +1095,7 @@ def tournament_edition_detail(tour, slug, season):
 @site.post("/tournaments/<tour>/<slug>/subscribe")
 @login_required
 def toggle_tournament_subscription(tour, slug):
-    if not inspect(db.engine).has_table(TournamentSubscription.__tablename__):
+    if not schema_table_exists(TournamentSubscription.__tablename__):
         abort(503)
     tour = tour.upper()
     tournament_name = resolve_tournament_name(tour, slug)
@@ -1197,156 +1143,21 @@ def search():
     )
 
 
-@site.get("/news")
-def news():
-    source_keys = {source["key"] for source in NEWS_SOURCES}
-    selected_source = request.args.get("source", "all").strip().lower()
-    if selected_source not in source_keys:
-        selected_source = "all"
-    all_stories = [] if current_app.config["TESTING"] else curate_news_items(
-        fetch_news_items(selected_source), minimum=8 if selected_source != "all" else 0,
-    )
-    try:
-        page = max(1, int(request.args.get("page", 1)))
-    except (TypeError, ValueError):
-        page = 1
-    page_size = 30
-    total_stories = len(all_stories)
-    total_pages = max(1, (total_stories + page_size - 1) // page_size)
-    page = min(page, total_pages)
-    stories = all_stories[(page - 1) * page_size:page * page_size]
-    featured_story = stories[0] if page == 1 and stories else None
-    featured_article = None
-    if featured_story is not None:
-        featured_article = fetch_news_article(
-            featured_story["source_key"], featured_story["id"], featured_story["url"]
-        )
-    feed_stories = stories[1:] if featured_story is not None else stories
-    return render_template(
-        "news.html", sources=NEWS_SOURCES, stories=stories, feed_stories=feed_stories,
-        featured_story=featured_story, featured_article=featured_article, selected_source=selected_source,
-        total_stories=total_stories, page=page, total_pages=total_pages,
-    )
-
-
-@site.get("/api/news-status")
-def news_status():
-    source_keys = {source["key"] for source in NEWS_SOURCES}
-    selected_source = request.args.get("source", "all").strip().lower()
-    if selected_source not in source_keys:
-        selected_source = "all"
-    stories = [] if current_app.config["TESTING"] else curate_news_items(
-        fetch_news_items(selected_source), minimum=8 if selected_source != "all" else 0,
-    )
-    response = jsonify({
-        "first_id": stories[0]["id"] if stories else None,
-        "total": len(stories),
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-    })
-    return shared_cache(
-        response, browser_seconds=60, cdn_seconds=300, stale_seconds=600,
-    )
-
-
-@site.get("/news/<source_key>/<story_id>")
-def news_story(source_key, story_id):
-    if source_key not in {source["key"] for source in NEWS_SOURCES}:
-        abort(404)
-    story = next((item for item in fetch_news_items(source_key) if item["id"] == story_id), None)
-    if story is None:
-        abort(404)
-    article = fetch_news_article(source_key, story_id, story["url"])
-    return render_template("news_story.html", story=story, article=article)
-
-
-@site.get("/news/<source_key>/<story_id>/image")
-def news_image(source_key, story_id):
-    source = next((item for item in NEWS_SOURCES if item["key"] == source_key), None)
-    if source is None:
-        abort(404)
-    story = next((item for item in fetch_news_items(source_key) if item["id"] == story_id), None)
-    if story is None:
-        abort(404)
-    article = fetch_news_article(source_key, story_id, story["url"])
-    image_url = article.get("image", "") if article else ""
-    hostname = (urlsplit(image_url).hostname or "").lower()
-    allowed_domain = source["image_domain"]
-    if not image_url.startswith("https://") or not (
-        hostname == allowed_domain or hostname.endswith(f".{allowed_domain}")
-    ):
-        abort(404)
-    try:
-        upstream = requests.get(
-            image_url, headers={"Accept": "image/avif,image/webp,image/png,image/jpeg", "User-Agent": "Tennisd/1.0"},
-            timeout=8,
-        )
-        upstream.raise_for_status()
-    except requests.RequestException:
-        abort(404)
-    content_type = upstream.headers.get("Content-Type", "").split(";", 1)[0].lower()
-    if content_type not in {"image/avif", "image/jpeg", "image/png", "image/webp"} or len(upstream.content) > 5_000_000:
-        abort(404)
-    response = Response(upstream.content, mimetype=content_type)
-    return shared_cache(
-        response, browser_seconds=86400, cdn_seconds=604800,
-        stale_seconds=604800,
-    )
-
-
-@site.get("/notifications")
-@login_required
-def notifications():
-    requests_in = db.session.scalars(
-        select(Friendship).where(Friendship.addressee_id == current_user.id, Friendship.status == "pending")
-        .options(joinedload(Friendship.requester)).order_by(Friendship.created_at.desc())
-    ).all()
-    comments = db.session.scalars(
-        select(Comment).join(Review).where(Review.user_id == current_user.id, Comment.user_id != current_user.id)
-        .options(joinedload(Comment.user), joinedload(Comment.review).joinedload(Review.match))
-        .order_by(Comment.created_at.desc()).limit(30)
-    ).all()
-    return render_template("notifications.html", requests_in=requests_in, comments=comments)
-
-
-@site.post("/u/<username>/friend")
-@login_required
-def request_friend(username):
-    other = db.session.scalar(select(User).where(User.username == username.lower()))
-    if other is None:
-        abort(404)
-    if other.id == current_user.id:
-        abort(400)
-    existing = db.session.scalar(select(Friendship).where(or_(
-        (Friendship.requester_id == current_user.id) & (Friendship.addressee_id == other.id),
-        (Friendship.requester_id == other.id) & (Friendship.addressee_id == current_user.id),
-    )))
-    if existing is None:
-        db.session.add(Friendship(requester_id=current_user.id, addressee_id=other.id))
-        db.session.commit()
-        flash("Friend request sent.", "success")
-    return redirect(url_for("site.profile", username=other.username))
-
-
-@site.post("/friend-requests/<int:request_id>/<action>")
-@login_required
-def answer_friend_request(request_id, action):
-    item = db.get_or_404(Friendship, request_id)
-    if item.addressee_id != current_user.id or item.status != "pending" or action not in {"accept", "decline"}:
-        abort(403)
-    if action == "accept":
-        item.status = "accepted"
-        flash("You are now friends.", "success")
-    else:
-        db.session.delete(item)
-    db.session.commit()
-    return redirect(url_for("site.notifications"))
-
-
 @site.get("/players/<player_id>")
 def player_detail(player_id):
     player = db.get_or_404(Player, player_id)
     update_prize_money(player)
     stats = player_statistics(player)
+    ranking_history = db.session.scalars(
+        select(RankingSnapshot).where(
+            RankingSnapshot.player_id == player.id,
+            RankingSnapshot.ranking_type == "singles",
+        ).order_by(RankingSnapshot.ranked_on.desc()).limit(12)
+    ).all()
+    best_rank = db.session.scalar(select(func.min(RankingSnapshot.rank)).where(
+        RankingSnapshot.player_id == player.id,
+        RankingSnapshot.ranking_type == "singles",
+    ))
     live_matches = player_live_matches(player)
     following = False
     if current_user.is_authenticated:
@@ -1359,716 +1170,8 @@ def player_detail(player_id):
     return render_template(
         "player.html", player=player, stats=stats, following=following,
         live_matches=live_matches, live_players=current_match_players(live_matches),
-        match_location=match_location,
+        match_location=match_location, ranking_history=ranking_history, best_rank=best_rank,
     )
-
-
-@site.post("/players/<player_id>/follow")
-@login_required
-def follow_player(player_id):
-    db.get_or_404(Player, player_id)
-    follow = db.session.scalar(
-        select(FollowedPlayer).where(
-            FollowedPlayer.user_id == current_user.id,
-            FollowedPlayer.player_id == player_id,
-        )
-    )
-    if follow:
-        db.session.delete(follow)
-    else:
-        db.session.add(FollowedPlayer(user_id=current_user.id, player_id=player_id))
-    db.session.commit()
-    return redirect(url_for("site.player_detail", player_id=player_id))
-
-
-@site.route("/register", methods=["GET", "POST"])
-def register():
-    if not current_app.config["REGISTRATION_ENABLED"]:
-        abort(503)
-    if current_user.is_authenticated:
-        return redirect(url_for("site.my_profile"))
-    if request.method == "POST":
-        limit_action("register-ip", client_ip(), 5, 3600)
-        username = request.form.get("username", "").strip().lower()
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        if not re.fullmatch(r"[a-z0-9_]{3,24}", username):
-            flash("Username: 3–24 lowercase letters, numbers or underscores.", "error")
-        elif not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or len(email) > 255:
-            flash("Enter a valid email address.", "error")
-        elif len(password) < 10 or len(password) > 128:
-            flash("Use a password with 10–128 characters.", "error")
-        elif db.session.scalar(select(User.id).where(or_(User.username == username, User.email == email))):
-            flash("That username or email is already in use.", "error")
-        else:
-            user = User(username=username, email=email, display_name=username)
-            user.set_password(password)
-            user.auth_state = AuthState(
-                email_verified_at=None if current_app.config["REQUIRE_EMAIL_VERIFICATION"] else utcnow()
-            )
-            db.session.add(user)
-            db.session.commit()
-            if current_app.config["REQUIRE_EMAIL_VERIFICATION"]:
-                try:
-                    send_account_email(user, "verify")
-                    session["verification_email"] = user.email
-                    flash("We sent a four-digit verification code to your email.", "success")
-                except requests.RequestException:
-                    current_app.logger.exception("Verification email delivery failed")
-                    flash("We could not send your email. Use the resend link shortly.", "error")
-                return redirect(url_for("site.check_email"))
-            sign_in_user(user)
-            flash("Welcome to Tennisd. Your diary is ready.", "success")
-            return redirect(url_for("site.my_profile"))
-    return render_template("auth.html", mode="register")
-
-
-@site.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("site.my_profile"))
-    if request.method == "POST":
-        identity = request.form.get("identity", "").strip().lower()
-        password = request.form.get("password", "")
-        limit_action("login-ip", client_ip(), 20, 900)
-        limit_action("login-identity", identity[:255], 8, 900)
-        user = db.session.scalar(
-            select(User).where(or_(User.username == identity, User.email == identity))
-        )
-        if user and len(password) <= 128 and user.check_password(password):
-            if current_app.config["REQUIRE_EMAIL_VERIFICATION"] and (
-                user.auth_state is None or user.auth_state.email_verified_at is None
-            ):
-                session["verification_email"] = user.email
-                flash("Verify your email before logging in.", "error")
-                return redirect(url_for("site.check_email"))
-            if not user.password_hash.startswith("$argon2id$"):
-                user.set_password(password)
-                db.session.commit()
-            sign_in_user(user)
-            return redirect(safe_next("site.my_profile"))
-        flash("Incorrect username, email or password.", "error")
-    return render_template("auth.html", mode="login")
-
-
-@site.route("/check-email", methods=["GET", "POST"])
-def check_email():
-    email = session.get("verification_email", "")
-    if request.method == "POST":
-        limit_action("verify-code-ip", client_ip(), 20, 900)
-        email = request.form.get("email", "").strip().lower()[:255]
-        code = request.form.get("code", "").strip()
-        limit_action("verify-code-email", email, 10, 900)
-        user = db.session.scalar(select(User).where(User.email == email))
-        saved = valid_verification_code(user, code)
-        if saved is None or user.auth_state is None or user.auth_state.email_verified_at is not None:
-            flash("The code is incorrect or has expired.", "error")
-        else:
-            user.auth_state.email_verified_at = utcnow()
-            db.session.delete(saved)
-            db.session.commit()
-            session.pop("verification_email", None)
-            flash("Email verified. You can log in now.", "success")
-            return redirect(url_for("site.login"))
-    return render_template("auth_action.html", mode="check", verification_email=email)
-
-
-@site.route("/resend-verification", methods=["GET", "POST"])
-def resend_verification():
-    if not (current_app.config["BREVO_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
-        abort(503)
-    if request.method == "POST":
-        limit_action("resend-ip", client_ip(), 5, 3600)
-        email = request.form.get("email", "").strip().lower()[:255]
-        limit_action("resend-email", email, 3, 3600)
-        user = db.session.scalar(select(User).where(User.email == email))
-        if user and (not user.auth_state or not user.auth_state.email_verified_at):
-            try:
-                send_account_email(user, "verify")
-                session["verification_email"] = user.email
-            except requests.RequestException:
-                current_app.logger.exception("Verification email delivery failed")
-        flash("If this address needs verification, a new code has been sent.", "success")
-        return redirect(url_for("site.check_email"))
-    return render_template("auth_action.html", mode="resend")
-
-
-@site.route("/verify-email/<token>", methods=["GET", "POST"])
-def verify_email(token):
-    saved = valid_token(token, "verify")
-    if saved is None:
-        flash("This verification link has expired. Request a new one.", "error")
-        return redirect(url_for("site.resend_verification"))
-    if request.method == "POST":
-        user = saved.user
-        if user.auth_state is None:
-            user.auth_state = AuthState(session_version=0)
-        user.auth_state.email_verified_at = utcnow()
-        db.session.delete(saved)
-        db.session.commit()
-        flash("Email verified. You can log in now.", "success")
-        return redirect(url_for("site.login"))
-    return render_template("auth_action.html", mode="verify", token=token)
-
-
-@site.route("/forgot-password", methods=["GET", "POST"])
-def forgot_password():
-    if not (current_app.config["BREVO_API_KEY"] or current_app.config.get("MAIL_DELIVERY")):
-        abort(503)
-    if request.method == "POST":
-        limit_action("reset-ip", client_ip(), 5, 3600)
-        email = request.form.get("email", "").strip().lower()[:255]
-        user = db.session.scalar(select(User).where(User.email == email))
-        if user:
-            try:
-                send_account_email(user, "reset")
-            except requests.RequestException:
-                current_app.logger.exception("Password reset email delivery failed")
-        flash("If an account uses this address, a reset link has been sent.", "success")
-        return redirect(url_for("site.login"))
-    return render_template("auth_action.html", mode="forgot")
-
-
-@site.route("/reset-password/<token>", methods=["GET", "POST"])
-def reset_password(token):
-    saved = valid_token(token, "reset")
-    if saved is None:
-        flash("This reset link has expired. Request a new one.", "error")
-        return redirect(url_for("site.forgot_password"))
-    if request.method == "POST":
-        limit_action("reset-submit-ip", client_ip(), 10, 3600)
-        password = request.form.get("password", "")
-        if not 10 <= len(password) <= 128:
-            flash("Use a password with 10–128 characters.", "error")
-        else:
-            user = saved.user
-            user.set_password(password)
-            if user.auth_state is None:
-                user.auth_state = AuthState(session_version=0)
-            user.auth_state.session_version += 1
-            db.session.execute(delete(AuthToken).where(AuthToken.user_id == user.id))
-            db.session.commit()
-            session.clear()
-            flash("Password changed. Log in with your new password.", "success")
-            return redirect(url_for("site.login"))
-    return render_template("auth_action.html", mode="reset", token=token)
-
-
-@site.post("/logout")
-@login_required
-def logout():
-    session.clear()
-    logout_user()
-    return redirect(url_for("site.home"))
-
-
-@site.get("/me")
-@login_required
-def my_profile():
-    return redirect(url_for("site.profile", username=current_user.username))
-
-
-@site.get("/u/<username>")
-def profile(username):
-    user = db.session.scalar(select(User).where(User.username == username.lower()))
-    if user is None:
-        abort(404)
-    own = current_user.is_authenticated and current_user.id == user.id
-    available_tabs = {"profile", "diary", "likes"}
-    if own:
-        available_tabs.update({"watchlist", "friends"})
-    active_tab = request.args.get("tab", "profile").lower()
-    if active_tab not in available_tabs:
-        active_tab = "profile"
-    statement = select(Review).where(Review.user_id == user.id)
-    if not own:
-        statement = statement.where(Review.is_public.is_(True))
-    reviews = db.session.scalars(
-        statement.options(joinedload(Review.match).joinedload(Match.winner),
-                          joinedload(Review.match).joinedload(Match.loser))
-        .order_by(Review.watched_on.desc(), Review.id.desc())
-    ).all()
-    followed = []
-    tournament_subscriptions = []
-    watchlist = []
-    friends = []
-    friend_state = None
-    if own:
-        followed = db.session.scalars(
-            select(FollowedPlayer).where(FollowedPlayer.user_id == user.id)
-            .options(joinedload(FollowedPlayer.player)).limit(12)
-        ).all()
-        watchlist = db.session.scalars(
-            select(WatchlistItem).where(WatchlistItem.user_id == user.id)
-            .options(joinedload(WatchlistItem.match))
-            .order_by(WatchlistItem.added_at.desc())
-        ).all()
-        if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
-            tournament_subscriptions = db.session.scalars(
-                select(TournamentSubscription).where(TournamentSubscription.user_id == user.id)
-                .order_by(TournamentSubscription.created_at.desc())
-            ).all()
-        connections = db.session.scalars(select(Friendship).where(
-            or_(Friendship.requester_id == user.id, Friendship.addressee_id == user.id),
-            Friendship.status == "accepted",
-        ).options(joinedload(Friendship.requester), joinedload(Friendship.addressee))).all()
-        friends = [item.addressee if item.requester_id == user.id else item.requester for item in connections]
-    elif current_user.is_authenticated:
-        friend_state = db.session.scalar(select(Friendship.status).where(or_(
-            (Friendship.requester_id == current_user.id) & (Friendship.addressee_id == user.id),
-            (Friendship.requester_id == user.id) & (Friendship.addressee_id == current_user.id),
-        )))
-    favorites = [review for review in reviews if review.is_favorite]
-    return render_template(
-        "profile.html", user=user, reviews=reviews,
-        stats=diary_statistics(reviews), own=own, followed=followed, watchlist=watchlist,
-        favorites=favorites, active_tab=active_tab, friends=friends, friend_state=friend_state,
-        tournament_subscriptions=tournament_subscriptions, tournament_slug=tournament_slug,
-        match_location=match_location,
-    )
-
-
-@site.route("/settings", methods=["GET", "POST"])
-@login_required
-def settings():
-    if request.method == "POST":
-        display_name = request.form.get("display_name", "").strip()
-        bio = request.form.get("bio", "").strip()
-        current_password = request.form.get("current_password", "")
-        new_password = request.form.get("new_password", "")
-        avatar_upload = request.files.get("avatar")
-        avatar_data = None
-        avatar_error = None
-        if avatar_upload and avatar_upload.filename:
-            limit_action("profile-image", str(current_user.id), 10, 3600)
-            try:
-                avatar_data = prepare_profile_image(avatar_upload)
-            except ValueError as error:
-                avatar_error = str(error)
-        if new_password:
-            limit_action("password-change", str(current_user.id), 5, 3600)
-        if avatar_error:
-            flash(avatar_error, "error")
-        elif not 1 <= len(display_name) <= 60 or len(bio) > 280:
-            flash("Display name or bio is too long.", "error")
-        elif new_password and (
-            not current_user.check_password(current_password) or not 10 <= len(new_password) <= 128
-        ):
-            flash("Check your current password; the new one needs 10–128 characters.", "error")
-        else:
-            current_user.display_name = display_name
-            current_user.bio = bio
-            if avatar_data is not None:
-                if current_user.profile_image is None:
-                    current_user.profile_image = ProfileImage(mime_type="image/webp", image_data=avatar_data)
-                else:
-                    current_user.profile_image.mime_type = "image/webp"
-                    current_user.profile_image.image_data = avatar_data
-                    current_user.profile_image.updated_at = utcnow()
-            elif request.form.get("remove_avatar") == "on":
-                current_user.profile_image = None
-            if new_password:
-                current_user.set_password(new_password)
-                if current_user.auth_state is None:
-                    current_user.auth_state = AuthState(session_version=0)
-                current_user.auth_state.session_version += 1
-            db.session.commit()
-            if new_password:
-                sign_in_user(current_user)
-            flash("Settings saved.", "success")
-            return redirect(url_for("site.settings"))
-    return render_template("settings.html")
-
-
-@site.get("/settings/export")
-@login_required
-def export_diary():
-    reviews = db.session.scalars(
-        select(Review).where(Review.user_id == current_user.id)
-        .options(joinedload(Review.match)).order_by(Review.watched_on)
-    ).all()
-    follows = db.session.scalars(
-        select(FollowedPlayer).where(FollowedPlayer.user_id == current_user.id)
-        .options(joinedload(FollowedPlayer.player))
-    ).all()
-    watchlist = db.session.scalars(
-        select(WatchlistItem).where(WatchlistItem.user_id == current_user.id)
-    ).all()
-    tournament_subscriptions = []
-    if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
-        tournament_subscriptions = db.session.scalars(
-            select(TournamentSubscription).where(TournamentSubscription.user_id == current_user.id)
-            .order_by(TournamentSubscription.created_at)
-        ).all()
-    comments = db.session.scalars(
-        select(Comment).where(Comment.user_id == current_user.id)
-        .options(joinedload(Comment.review))
-        .order_by(Comment.created_at)
-    ).all()
-    payload = {
-        "username": current_user.username,
-        "email": current_user.email,
-        "display_name": current_user.display_name,
-        "bio": current_user.bio,
-        "has_profile_photo": current_user.profile_image is not None,
-        "joined_at": current_user.created_at.isoformat(),
-        "diary": [
-            {
-                "match_id": review.match_id,
-                "match": f"{review.match.winner.name} vs {review.match.loser.name}",
-                "tournament": review.match.tournament,
-                "watched_on": review.watched_on.isoformat(),
-                "rating_out_of_ten": review.rating_half,
-                "review": review.body,
-                "favorite": review.is_favorite,
-                "public": review.is_public,
-                "spoilers": review.has_spoilers,
-            }
-            for review in reviews
-        ],
-        "followed_players": [item.player.name for item in follows],
-        "followed_tournaments": [
-            {"tour": item.tour, "tournament": item.tournament}
-            for item in tournament_subscriptions
-        ],
-        "watchlist_match_ids": [item.match_id for item in watchlist],
-        "comments": [
-            {
-                "match_id": comment.review.match_id,
-                "review_id": comment.review_id,
-                "body": comment.body,
-                "created_at": comment.created_at.isoformat(),
-            }
-            for comment in comments
-        ],
-    }
-    response = jsonify(payload)
-    response.headers["Content-Disposition"] = f'attachment; filename="tennisd-{current_user.username}.json"'
-    response.cache_control.no_store = True
-    return response
-
-
-@site.post("/settings/delete-account")
-@login_required
-def delete_account():
-    limit_action("account-delete", str(current_user.id), 5, 3600)
-    if (
-        request.form.get("username", "").strip().lower() != current_user.username
-        or not current_user.check_password(request.form.get("password", ""))
-    ):
-        flash("Username or password was incorrect. Your account was not deleted.", "error")
-        return redirect(url_for("site.settings"))
-    user = db.session.get(User, current_user.id)
-    db.session.execute(delete(Friendship).where(or_(
-        Friendship.requester_id == user.id, Friendship.addressee_id == user.id,
-    )))
-    db.session.execute(delete(Comment).where(Comment.user_id == user.id))
-    db.session.execute(delete(FollowedPlayer).where(FollowedPlayer.user_id == user.id))
-    if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
-        db.session.execute(delete(TournamentSubscription).where(TournamentSubscription.user_id == user.id))
-    db.session.execute(delete(WatchlistItem).where(WatchlistItem.user_id == user.id))
-    db.session.delete(user)
-    db.session.commit()
-    session.clear()
-    logout_user()
-    flash("Your account and diary have been deleted.", "success")
-    return redirect(url_for("site.home"))
-
-
-@site.post("/matches/<path:match_id>/log")
-@login_required
-def log_match(match_id):
-    match = db.get_or_404(Match, match_id)
-    try:
-        watched_on = date.fromisoformat(request.form.get("watched_on", ""))
-        if watched_on > date.today() or watched_on < match.week_start:
-            raise ValueError
-        rating_text = request.form.get("rating", "")
-        rating = int(rating_text) if rating_text else None
-        if rating is not None and not 1 <= rating <= 10:
-            raise ValueError
-    except ValueError:
-        flash("Choose a valid viewing date and rating.", "error")
-        return redirect(url_for("site.match_detail", match_id=match_id))
-
-    body = request.form.get("body", "").strip()
-    if len(body) > 3000:
-        flash("Keep your review under 3,000 characters.", "error")
-        return redirect(url_for("site.match_detail", match_id=match_id))
-    review = db.session.scalar(
-        select(Review).where(Review.user_id == current_user.id, Review.match_id == match_id)
-    )
-    if review is None:
-        review = Review(user_id=current_user.id, match_id=match_id)
-        db.session.add(review)
-    review.watched_on = watched_on
-    review.rating_half = rating
-    review.body = body
-    review.is_favorite = request.form.get("favorite") == "on"
-    review.is_public = request.form.get("public") == "on"
-    review.has_spoilers = request.form.get("spoilers") == "on"
-    watchlist_item = db.session.scalar(
-        select(WatchlistItem).where(
-            WatchlistItem.user_id == current_user.id, WatchlistItem.match_id == match_id
-        )
-    )
-    if watchlist_item:
-        db.session.delete(watchlist_item)
-    db.session.commit()
-    flash("Your match diary entry was saved.", "success")
-    return redirect(url_for("site.match_detail", match_id=match_id))
-
-
-@site.post("/reviews/<int:review_id>/delete")
-@login_required
-def delete_review(review_id):
-    review = db.get_or_404(Review, review_id)
-    if review.user_id != current_user.id:
-        abort(403)
-    match_id = review.match_id
-    db.session.delete(review)
-    db.session.commit()
-    flash("Diary entry deleted.", "success")
-    return redirect(url_for("site.match_detail", match_id=match_id))
-
-
-@site.post("/reviews/<int:review_id>/comments")
-@login_required
-def add_comment(review_id):
-    review = db.get_or_404(Review, review_id)
-    if not review.is_public:
-        abort(404)
-    body = request.form.get("body", "").strip()
-    if not 1 <= len(body) <= 500:
-        flash("Comments must be 1–500 characters.", "error")
-    else:
-        recent = db.session.scalar(
-            select(Comment).where(
-                Comment.user_id == current_user.id,
-                Comment.created_at > datetime.now(timezone.utc) - timedelta(seconds=15),
-            ).limit(1)
-        )
-        if recent:
-            flash("Please wait a moment before commenting again.", "error")
-        else:
-            db.session.add(Comment(review_id=review.id, user_id=current_user.id, body=body))
-            db.session.commit()
-            flash("Comment added.", "success")
-    return redirect(url_for("site.match_detail", match_id=review.match_id) + f"#review-{review.id}")
-
-
-@site.post("/comments/<int:comment_id>/delete")
-@login_required
-def delete_comment(comment_id):
-    comment = db.get_or_404(Comment, comment_id)
-    if comment.user_id != current_user.id and comment.review.user_id != current_user.id:
-        abort(403)
-    match_id = comment.review.match_id
-    review_id = comment.review_id
-    db.session.delete(comment)
-    db.session.commit()
-    return redirect(url_for("site.match_detail", match_id=match_id) + f"#review-{review_id}")
-
-
-@site.post("/reports")
-@login_required
-def report_content():
-    limit_action("report-user", str(current_user.id), 10, 86400)
-    target = request.form.get("target", "")
-    reason = request.form.get("reason", "")
-    if reason not in {"spam", "harassment", "hate", "other"}:
-        abort(400)
-    if target == "review":
-        review = db.get_or_404(Review, request.form.get("target_id", type=int))
-        if not review.is_public:
-            abort(404)
-        match_id = review.match_id
-        condition = (Report.reporter_id == current_user.id, Report.review_id == review.id)
-        report = Report(reporter_id=current_user.id, review_id=review.id, reason=reason)
-    elif target == "comment":
-        comment = db.get_or_404(Comment, request.form.get("target_id", type=int))
-        if not comment.review.is_public:
-            abort(404)
-        match_id = comment.review.match_id
-        condition = (Report.reporter_id == current_user.id, Report.comment_id == comment.id)
-        report = Report(reporter_id=current_user.id, comment_id=comment.id, reason=reason)
-    else:
-        abort(400)
-    if db.session.scalar(select(Report.id).where(*condition, Report.status == "open")) is None:
-        db.session.add(report)
-        db.session.commit()
-    flash("Thank you. This report is queued for review.", "success")
-    return redirect(url_for("site.match_detail", match_id=match_id))
-
-
-def require_moderator():
-    state = current_user.auth_state if current_user.is_authenticated else None
-    if (
-        not current_user.is_authenticated
-        or current_user.email != current_app.config["ADMIN_EMAIL"]
-        or not state or not state.email_verified_at
-    ):
-        abort(403)
-
-
-def feedback_tables_ready():
-    inspector = inspect(db.engine)
-    return all(inspector.has_table(name) for name in ("feedback_submission", "poll", "poll_option", "poll_vote"))
-
-
-def feedback_visitor_key():
-    token = session.get("feedback_visitor")
-    if not token:
-        token = secrets.token_urlsafe(24)
-        session["feedback_visitor"] = token
-    identity = f"user:{current_user.id}" if current_user.is_authenticated else f"guest:{token}"
-    return hmac.new(current_app.secret_key.encode(), identity.encode(), "sha256").hexdigest()
-
-
-@site.route("/feedback", methods=["GET", "POST"])
-def feedback():
-    ready = feedback_tables_ready()
-    if request.method == "POST":
-        if not ready:
-            abort(503)
-        category = request.form.get("category", "").strip().lower()
-        message = request.form.get("message", "").strip()
-        raw_rating = request.form.get("rating", "").strip()
-        page_path = request.form.get("page_path", "").strip()
-        rating = int(raw_rating) if raw_rating.isdigit() else None
-        if category not in {"idea", "bug", "content", "other"}:
-            flash("Choose a feedback category.", "error")
-        elif rating is not None and rating not in range(1, 6):
-            flash("Choose a rating from 1 to 5.", "error")
-        elif not 10 <= len(message) <= 2000:
-            flash("Write between 10 and 2,000 characters.", "error")
-        else:
-            limit_action("feedback", current_user.id if current_user.is_authenticated else client_ip(), 5, 3600)
-            if (
-                not page_path.startswith("/") or page_path.startswith("//")
-                or "\\" in page_path or len(page_path) > 300
-            ):
-                page_path = None
-            db.session.add(FeedbackSubmission(
-                user_id=current_user.id if current_user.is_authenticated else None,
-                category=category,
-                rating=rating,
-                message=message,
-                page_path=page_path,
-            ))
-            db.session.commit()
-            flash("Thank you — your feedback is now in the Tennisd roadmap inbox.", "success")
-            return redirect(url_for("site.feedback"))
-
-    poll = None
-    selected_option_id = None
-    if ready:
-        now = utcnow()
-        poll = db.session.scalar(
-            select(Poll).where(
-                Poll.is_active.is_(True), Poll.starts_at <= now,
-                or_(Poll.ends_at.is_(None), Poll.ends_at > now),
-            ).order_by(Poll.created_at.desc())
-        )
-        if poll:
-            vote = db.session.scalar(select(PollVote).where(
-                PollVote.poll_id == poll.id,
-                PollVote.visitor_key == feedback_visitor_key(),
-            ))
-            selected_option_id = vote.option_id if vote else None
-    return render_template("feedback.html", ready=ready, poll=poll, selected_option_id=selected_option_id)
-
-
-@site.post("/feedback/polls/<int:poll_id>/vote")
-def vote_poll(poll_id):
-    if not feedback_tables_ready():
-        abort(503)
-    now = utcnow()
-    poll = db.session.scalar(select(Poll).where(
-        Poll.id == poll_id, Poll.is_active.is_(True), Poll.starts_at <= now,
-        or_(Poll.ends_at.is_(None), Poll.ends_at > now),
-    ))
-    if not poll:
-        abort(404)
-    raw_option = request.form.get("option", "")
-    option = db.session.get(PollOption, int(raw_option)) if raw_option.isdigit() else None
-    if not option or option.poll_id != poll.id:
-        flash("Choose one answer.", "error")
-        return redirect(url_for("site.feedback"))
-    visitor_key = feedback_visitor_key()
-    limit_action("poll-vote", visitor_key, 10, 3600)
-    vote = db.session.scalar(select(PollVote).where(
-        PollVote.poll_id == poll.id, PollVote.visitor_key == visitor_key,
-    ))
-    if vote:
-        vote.option_id = option.id
-    else:
-        db.session.add(PollVote(
-            poll_id=poll.id, option_id=option.id,
-            user_id=current_user.id if current_user.is_authenticated else None,
-            visitor_key=visitor_key,
-        ))
-    db.session.commit()
-    flash("Vote saved. Thanks for helping shape Tennisd.", "success")
-    return redirect(url_for("site.feedback"))
-
-
-@site.get("/moderation")
-@login_required
-def moderation():
-    require_moderator()
-    reports = db.session.scalars(
-        select(Report).where(Report.status == "open")
-        .order_by(Report.created_at.asc()).limit(100)
-    ).all()
-    feedback_items = []
-    feedback_summary = {"total": 0, "average": None, "categories": []}
-    polls = []
-    if feedback_tables_ready():
-        feedback_items = db.session.scalars(
-            select(FeedbackSubmission).order_by(FeedbackSubmission.created_at.desc()).limit(100)
-        ).all()
-        total, average = db.session.execute(
-            select(func.count(FeedbackSubmission.id), func.avg(FeedbackSubmission.rating))
-        ).one()
-        categories = db.session.execute(
-            select(FeedbackSubmission.category, func.count(FeedbackSubmission.id))
-            .group_by(FeedbackSubmission.category).order_by(func.count(FeedbackSubmission.id).desc())
-        ).all()
-        feedback_summary = {"total": total, "average": average, "categories": categories}
-        polls = db.session.scalars(select(Poll).order_by(Poll.created_at.desc())).all()
-    return render_template(
-        "moderation.html", reports=reports, feedback_items=feedback_items,
-        feedback_summary=feedback_summary, polls=polls,
-    )
-
-
-@site.post("/moderation/feedback/<int:feedback_id>/<status>")
-@login_required
-def moderate_feedback(feedback_id, status):
-    require_moderator()
-    if status not in {"new", "reviewed", "planned", "closed"}:
-        abort(400)
-    item = db.get_or_404(FeedbackSubmission, feedback_id)
-    item.status = status
-    db.session.commit()
-    return redirect(url_for("site.moderation") + "#feedback")
-
-
-@site.post("/moderation/reports/<int:report_id>/<action>")
-@login_required
-def moderate_report(report_id, action):
-    require_moderator()
-    report = db.get_or_404(Report, report_id)
-    if action == "dismiss":
-        report.status = "dismissed"
-    elif action == "remove":
-        target = report.review or report.comment
-        db.session.delete(target)
-    else:
-        abort(400)
-    db.session.commit()
-    return redirect(url_for("site.moderation"))
 
 
 @site.get("/about")
@@ -2079,3 +1182,26 @@ def about():
 @site.get("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+register_live_routes(
+    site,
+    current_match_rows=current_match_rows,
+    current_match_players=current_match_players,
+    archived_match_id_for_live=archived_match_id_for_live,
+    match_location=match_location,
+)
+
+
+register_auth_routes(site, sign_in_user=sign_in_user)
+register_news_routes(site)
+register_profile_routes(
+    site,
+    match_location=match_location,
+    tournament_slug=tournament_slug,
+    prepare_profile_image=prepare_profile_image,
+    sign_in_user=sign_in_user,
+)
+register_moderation_routes(site)
+register_social_routes(site)
+register_community_routes(site)

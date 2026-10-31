@@ -261,6 +261,33 @@ class IngestionRun(db.Model):
     error = db.Column(db.String(1000))
 
 
+class ModerationAction(db.Model):
+    """Immutable audit record for administrator moderation decisions."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    moderator_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), index=True)
+    action = db.Column(db.String(32), nullable=False, index=True)
+    target_type = db.Column(db.String(32), nullable=False)
+    target_id = db.Column(db.String(64), nullable=False)
+    details = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    moderator = db.relationship("User")
+
+
+class Notification(db.Model):
+    """In-app notification delivered to one member."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False, index=True)
+    title = db.Column(db.String(160), nullable=False)
+    body = db.Column(db.String(500), nullable=False)
+    url = db.Column(db.String(300), nullable=False)
+    read_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    user = db.relationship("User")
+
+
 class IngestionCursor(db.Model):
     """Small durable checkpoint for quota-limited provider imports."""
 

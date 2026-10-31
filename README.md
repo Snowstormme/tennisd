@@ -15,6 +15,21 @@ flask --app wsgi run --debug
 
 Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled [Live Tennis API](https://livetennisapi.com/) feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary. Existing historical rows remain in the database, but Tennisd no longer imports new history from a second tennis provider.
 
+To install the complete development and CI environment, use the shared dev requirements file:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m unittest discover -s tests -v
+```
+
+The dev file includes the runtime dependencies and the pinned dependency auditor used by GitHub Actions, so local verification and CI use the same dependency set.
+
+GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL 16 service. It creates the application schema, verifies a database query, and checks the health endpoint before a change can merge.
+
+Database schema changes use the owner-only migration runner documented in [docs/migrations.md](docs/migrations.md); the web role is never responsible for creating schema objects.
+
+Every response includes an `X-Request-ID` correlation token. Server-side 5xx logs include that token so an incident can be traced without logging credentials or request content.
+
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.
@@ -24,6 +39,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 - **Watchlist:** save matches to watch later; logging a match removes it from the watchlist.
 - **Players:** biography, imported wins and losses, surface and season splits, titles, serve metrics, frequent opponents and followed players.
 - **Profiles:** personal diary, watched surfaces, tour split, ratings and favorites.
+- **Notifications:** in-app updates for friend requests and replies to your reviews.
 - **Settings:** profile photo, display name, bio, password change, diary export and account deletion.
 - **Account safety:** email verification, expiring single-use password reset links and session invalidation after password changes.
 - **Community safety:** report controls and a private moderation queue for the verified administrator.
@@ -46,7 +62,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 - Profile photos are validated, resized to at most 640 × 640, converted to WebP and stored in PostgreSQL rather than the ephemeral Render filesystem.
 - Player portraits use a linked Wikidata image first, then an exact-name English Wikipedia tennis result. A designed portrait placeholder remains when neither project has a freely hosted image.
 - The web database role receives data access but no schema creation rights. The owner connection is reserved for initialization and recovery.
-- Users can export or delete their data. The privacy page explains stored fields and third-party processing.
+- Users can export or delete their data. JSON exports include a `schema_version` field so future changes can remain backward-compatible, and CSV exports are available for spreadsheet use. The privacy page explains stored fields and third-party processing.
 - AdSense support is opt-in. Set `ADSENSE_CLIENT_ID` after account creation; keep `ADSENSE_ENABLED=false` until Google approves the site and a certified consent message is published. The app then serves the matching root `ads.txt` automatically.
 
 ## Public deployment
@@ -54,7 +70,7 @@ Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog
 Tennisd runs as a Flask web service on Render with automatic HTTPS and registration initially disabled. The connected production branch deploys automatically on Render; the old Vercel hostname is retained only as a redirect to Render. It keeps the existing [Neon PostgreSQL](https://neon.com/) database; Render's filesystem is ephemeral, so production must not use SQLite.
 
 1. Create a Neon project in a nearby region. Do not create the website role in the Neon console because console-created roles inherit `neon_superuser`.
-2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action creates the schema, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
+2. Add the owner TLS connection string as the temporary GitHub secret `DATABASE_OWNER_URL` and a random 32-character-or-longer value as `DATABASE_APP_PASSWORD`, then run **Initialize production database**. The action applies the ordered schema migrations, creates `rallylog_web`, grants only runtime data access and verifies that the role has no elevated privileges. Rotate the owner password and remove both temporary GitHub secrets afterward.
 3. Build a pooled TLS URL using `rallylog_web` and the generated application password, then set it as Render's `DATABASE_URL`.
 4. Create a Brevo account and verify the sender email. Set `BREVO_API_KEY`, `MAIL_FROM`, `MAIL_FROM_EMAIL`, `ADMIN_EMAIL` and `CONTACT_EMAIL` in Render before opening registration.
 5. Create the service from `render.yaml`, or configure it manually with build command `pip install -r requirements.txt` and start command `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --access-logfile /dev/null wsgi:app`. Python is pinned by `.python-version`. Set `APP_ENV=production`, `AUTO_CREATE_DB=false`, `REGISTRATION_ENABLED=false`, a stable random 64-character `SECRET_KEY`, and the pooled `DATABASE_URL`. Render supplies `PORT` and `RENDER_EXTERNAL_HOSTNAME`.
@@ -113,7 +129,14 @@ tennisd/
   tennisd/importer.py     local demo seed for tests and development
   tennisd/stats.py        transparent statistics
   tennisd/prize_money.py  optional Wikidata figure
-  tennisd/routes.py       pages and forms
+  tennisd/routes.py       catalog, match and data pages
+  tennisd/auth_routes.py  registration, login and password recovery
+  tennisd/profile_routes.py profiles, settings and data export
+  tennisd/live_routes.py  live match pages and provider status
+  tennisd/news_routes.py  news feed and article proxy
+  tennisd/social_routes.py notifications, friends and follows
+  tennisd/community_routes.py diary entries, comments and reports
+  tennisd/moderation_routes.py feedback, polls and moderation
   tennisd/security.py     tokens, email and persistent abuse limits
   tennisd/templates/     HTML pages
   public/static/          CSS and favicon served by the hosting CDN

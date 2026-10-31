@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, ModerationAction, Notification, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_profile, tournament_slug
@@ -383,6 +383,9 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(player_name, response.data)
         self.assertIn(b'player-ranking-badge">#7', response.data)
+        detail = self.client.get(f"/players/{player.id}")
+        self.assertIn(b"Ranking history", detail.data)
+        self.assertIn(b"#7", detail.data)
         searched = self.client.get(f"/players?view=rankings&q={player_name.decode()}")
         self.assertIn(player_name, searched.data)
 
@@ -520,8 +523,8 @@ class TennisdFlows(unittest.TestCase):
             "paragraphs": ["A short publisher preview is available inside the Tennisd reader."],
             "image": "",
         }
-        with patch("tennisd.routes.fetch_news_items", return_value=[story]), patch(
-            "tennisd.routes.fetch_news_article", return_value=article,
+        with patch("tennisd.news_routes.fetch_news_items", return_value=[story]), patch(
+            "tennisd.news_routes.fetch_news_article", return_value=article,
         ):
             response = self.client.get(f"/news/atp/{story_id}")
         self.assertEqual(response.status_code, 200)
@@ -541,10 +544,10 @@ class TennisdFlows(unittest.TestCase):
         upstream.raise_for_status.return_value = None
         upstream.headers = {"Content-Type": "image/jpeg"}
         upstream.content = b"safe-image-bytes"
-        with patch("tennisd.routes.fetch_news_items", return_value=[story]), patch(
-            "tennisd.routes.fetch_news_article",
+        with patch("tennisd.news_routes.fetch_news_items", return_value=[story]), patch(
+            "tennisd.news_routes.fetch_news_article",
             return_value={"image": "https://www.atptour.com/-/media/example.jpg"},
-        ), patch("tennisd.routes.requests.get", return_value=upstream):
+        ), patch("tennisd.news_routes.requests.get", return_value=upstream):
             response = self.client.get(f"/news/atp/{story_id}/image")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/jpeg")
@@ -596,6 +599,7 @@ class TennisdFlows(unittest.TestCase):
         with self.app.app_context():
             from tennisd.models import Friendship
             request_id = db.session.scalar(select(Friendship.id))
+            self.assertEqual(db.session.scalar(select(Notification.kind)), "friend_request")
         self.client.post(f"/friend-requests/{request_id}/accept", data={"csrf_token": self.token()})
         self.assertIn(b"bob", self.client.get("/u/alice?tab=friends").data)
 
@@ -759,12 +763,21 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(export.status_code, 200)
         self.assertIn("no-store", export.headers["Cache-Control"])
         data = export.get_json()
+        self.assertEqual(data["schema_version"], 1)
         self.assertEqual(data["email"], "alice@example.com")
         self.assertEqual(data["diary"][0]["rating_out_of_ten"], 9)
         self.assertEqual(data["comments"][0]["body"], "Alice's comment")
         self.assertEqual(data["watchlist_match_ids"], [another_match_id])
         self.assertEqual(len(data["followed_players"]), 1)
         self.assertNotIn("password_hash", export.get_data(as_text=True))
+
+        csv_export = self.client.get("/settings/export.csv")
+        self.assertEqual(csv_export.status_code, 200)
+        self.assertIn("text/csv", csv_export.headers["Content-Type"])
+        self.assertIn("attachment; filename=\"tennisd-alice.csv\"", csv_export.headers["Content-Disposition"])
+        self.assertIn("record_type,schema_version", csv_export.get_data(as_text=True))
+        self.assertIn("Alice's private data", csv_export.get_data(as_text=True))
+        self.assertNotIn("password_hash", csv_export.get_data(as_text=True))
 
         self.client.post("/settings/delete-account", data={
             "csrf_token": self.token(), "username": "alice", "password": "wrong-password",
@@ -815,6 +828,7 @@ class TennisdFlows(unittest.TestCase):
         with self.app.app_context():
             self.assertIsNone(db.session.scalar(select(Review.id)))
             self.assertIsNone(db.session.scalar(select(Report.id)))
+            self.assertEqual(db.session.scalar(select(ModerationAction.action)), "remove_content")
 
 
 if __name__ == "__main__":

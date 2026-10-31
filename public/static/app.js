@@ -206,6 +206,36 @@ document.addEventListener("DOMContentLoaded", () => {
     startVisiblePolling(refreshScores, 180000);
   }
 
+  const syncStatus = document.querySelector("[data-live-sync-status]");
+  if (syncStatus) {
+    const refreshSyncStatus = async () => {
+      try {
+        const response = await fetch("/api/sync-status");
+        if (!response.ok) throw new Error("sync status unavailable");
+        const payload = await response.json();
+        const runs = Object.values(payload.feeds || {});
+        const latest = runs
+          .filter((run) => run.finished_at)
+          .sort((left, right) => new Date(right.finished_at) - new Date(left.finished_at))[0];
+        if (!latest) {
+          syncStatus.textContent = "Feed has not completed a check yet";
+          return;
+        }
+        const checked = new Date(latest.finished_at);
+        const minutes = Number.isNaN(checked.getTime())
+          ? ""
+          : ` · ${Math.max(0, Math.floor((Date.now() - checked.getTime()) / 60000))}m ago`;
+        syncStatus.textContent = payload.status === "ok"
+          ? `Feed healthy${minutes}`
+          : `Feed needs attention${minutes}`;
+      } catch (_) {
+        syncStatus.textContent = "Feed status unavailable";
+      }
+    };
+    refreshSyncStatus();
+    startVisiblePolling(refreshSyncStatus, 300000);
+  }
+
   const liveNews = document.querySelector("[data-news-live]");
   if (liveNews) {
     let firstStory = liveNews.dataset.newsFirst;

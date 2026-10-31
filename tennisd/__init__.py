@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, abort, current_app, render_template, request, session
+from flask import Flask, abort, current_app, g, render_template, request, session
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -181,6 +181,15 @@ def create_app(test_config=None):
 
     from .models import User
 
+    # Migrations are authoritative in production, so route handlers can use a
+    # static capability set instead of issuing schema introspection queries.
+    # Tests that disable automatic bootstrap intentionally see no optional
+    # tables until they run the migration command explicitly.
+    app.extensions["schema_capabilities"] = (
+        frozenset(db.metadata.tables)
+        if app.config["AUTO_CREATE_DB"] or production else frozenset()
+    )
+
     @login_manager.user_loader
     def load_user(user_id):
         parts = user_id.split(":")
@@ -204,8 +213,14 @@ def create_app(test_config=None):
             session["csrf_token"] = secrets.token_urlsafe(32)
         return {"csrf_token": session.get("csrf_token", "")}
 
+    @app.before_request
+    def assign_request_id():
+        """Give every response a short correlation token for operational logs."""
+        g.request_id = secrets.token_hex(12)
+
     @app.after_request
     def security_headers(response):
+        response.headers["X-Request-ID"] = g.request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -231,6 +246,7 @@ def create_app(test_config=None):
         shared_public_endpoints = {
             "site.live_matches_api", "site.news_status", "site.player_photo",
             "site.live_player_photo", "site.news_image",
+            "site.sync_status",
             "site.google_site_verification", "site.google_search_console_verification",
             "site.ads_txt", "site.indexnow_key", "site.robots_txt",
             "site.sitemap_index", "site.sitemap_core", "site.sitemap_players",
@@ -287,6 +303,12 @@ def create_app(test_config=None):
     @app.errorhandler(500)
     @app.errorhandler(503)
     def friendly_error(error):
+        if error.code >= 500:
+            current_app.logger.error(
+                "request failed request_id=%s status=%s",
+                g.request_id,
+                error.code,
+            )
         return render_template("error.html", code=error.code), error.code
 
     @app.get("/healthz")
@@ -300,9 +322,11 @@ def create_app(test_config=None):
 
     @app.cli.command("init-db")
     def init_db():
-        """Create tables using a database owner connection."""
-        db.create_all()
-        click.echo("Database initialized.")
+        """Apply schema migrations using a database owner connection."""
+        from .migrations import run_migrations
+
+        run_migrations(app)
+        click.echo("Database migrations are up to date.")
 
     if app.config["AUTO_CREATE_DB"]:
         with app.app_context():
