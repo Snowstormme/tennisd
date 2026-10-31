@@ -523,8 +523,8 @@ class TennisdFlows(unittest.TestCase):
             "paragraphs": ["A short publisher preview is available inside the Tennisd reader."],
             "image": "",
         }
-        with patch("tennisd.routes.fetch_news_items", return_value=[story]), patch(
-            "tennisd.routes.fetch_news_article", return_value=article,
+        with patch("tennisd.news_routes.fetch_news_items", return_value=[story]), patch(
+            "tennisd.news_routes.fetch_news_article", return_value=article,
         ):
             response = self.client.get(f"/news/atp/{story_id}")
         self.assertEqual(response.status_code, 200)
@@ -544,10 +544,10 @@ class TennisdFlows(unittest.TestCase):
         upstream.raise_for_status.return_value = None
         upstream.headers = {"Content-Type": "image/jpeg"}
         upstream.content = b"safe-image-bytes"
-        with patch("tennisd.routes.fetch_news_items", return_value=[story]), patch(
-            "tennisd.routes.fetch_news_article",
+        with patch("tennisd.news_routes.fetch_news_items", return_value=[story]), patch(
+            "tennisd.news_routes.fetch_news_article",
             return_value={"image": "https://www.atptour.com/-/media/example.jpg"},
-        ), patch("tennisd.routes.requests.get", return_value=upstream):
+        ), patch("tennisd.news_routes.requests.get", return_value=upstream):
             response = self.client.get(f"/news/atp/{story_id}/image")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "image/jpeg")

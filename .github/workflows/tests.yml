@@ -43,4 +43,4 @@ jobs:
           python-version: '3.13'
           cache: pip
       - run: pip install -r requirements-dev.txt
-      - run: python scripts/postgres_smoke.py
+      - run: PYTHONPATH=. python scripts/postgres_smoke.py

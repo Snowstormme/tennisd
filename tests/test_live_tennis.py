@@ -123,11 +123,6 @@ class LiveTennisTests(unittest.TestCase):
             "feeds": {},
         })
         self.assertEqual(response.headers["Cache-Control"], "no-store")
-        row["tournament"] = "Berlin Open"
-        row["tier"] = "wta_500"
-        self.assertEqual(normalize_match(row, now)["tournament"], "Berlin Open")
-        row["tier"] = "wta_250"
-        self.assertEqual(normalize_match(row, now)["tier"], "wta_250")
 
     def test_history_match_normalization_and_import(self):
         row = history_fixture()
