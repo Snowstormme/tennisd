@@ -66,10 +66,13 @@ jobs:
       PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v7
-      - name: Verify dump, restore, and refusal to overwrite an existing database
+      - name: Install the same encryption tool as production backups
+        run: apt-get update -qq && apt-get install -y -qq age
+      - name: Verify encrypted round-trip, restore, and refusal to overwrite an existing database
         shell: bash
         run: |
           set -euo pipefail
+          trap 'rm -f /tmp/test.dump /tmp/test.dump.age /tmp/test-restored.dump /tmp/test-identity.agekey' EXIT
           source='postgresql://postgres:postgres@postgres:5432/tennisd_source?sslmode=disable'
           createdb -h postgres -U postgres tennisd_restore
           psql "$source" -v ON_ERROR_STOP=1 <<'SQL'
@@ -81,7 +84,12 @@ jobs:
           INSERT INTO public.review VALUES (1, 1, 'Backup smoke note');
           SQL
           pg_dump "$source" --format=custom --no-owner --no-acl --file=/tmp/test.dump
-          bash scripts/verify_backup.sh /tmp/test.dump
+          age-keygen -o /tmp/test-identity.agekey
+          recipient=$(age-keygen -y /tmp/test-identity.agekey)
+          age -r "$recipient" -o /tmp/test.dump.age /tmp/test.dump
+          age -d -i /tmp/test-identity.agekey -o /tmp/test-restored.dump /tmp/test.dump.age
+          cmp /tmp/test.dump /tmp/test-restored.dump
+          bash scripts/verify_backup.sh /tmp/test-restored.dump
           restored=$(psql 'postgresql://postgres:postgres@postgres:5432/tennisd_restore?sslmode=disable' -At -c "SELECT count(*) FROM public.review WHERE body='Backup smoke note'")
           test "$restored" = '1'
           if bash scripts/verify_backup.sh /tmp/test.dump; then

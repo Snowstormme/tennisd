@@ -69,3 +69,8 @@
   .featured-slide .match-portrait strong { font-size: 14px; }
   .site-header .header-search, .site-header .mobile-notifications { width: 44px; height: 44px; flex-basis: 44px; }
 }
+
+.profile-pagination { align-items: center; flex-wrap: wrap; margin-block: 22px; }
+.profile-pagination a { display: inline-flex; align-items: center; min-height: 44px; }
+.profile-pagination span { color: var(--muted); font-size: 13px; }
+.profile-stat-feature a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }

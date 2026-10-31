@@ -14,7 +14,8 @@ from .models import (
     Review, TournamentSubscription, User, WatchlistItem, utcnow,
 )
 from .security import limit_action
-from .stats import diary_statistics
+from .stats import diary_scope, diary_statistics
+from .pagination import bounded_page
 from .web import schema_table_exists
 
 
@@ -40,52 +41,62 @@ def register_profile_routes(
         active_tab = request.args.get("tab", "profile").lower()
         if active_tab not in available_tabs:
             active_tab = "profile"
-        statement = select(Review).where(Review.user_id == user.id)
-        if not own:
-            statement = statement.where(Review.is_public.is_(True))
-        reviews = db.session.scalars(
-            statement.options(
-                joinedload(Review.match).joinedload(Match.winner),
-                joinedload(Review.match).joinedload(Match.loser),
-            ).order_by(Review.watched_on.desc(), Review.id.desc())
-        ).all()
-        followed = []
-        tournament_subscriptions = []
-        watchlist = []
-        friends = []
+        statement = select(Review).where(diary_scope(user.id, public_only=not own))
+        cards = statement.options(
+            joinedload(Review.match).joinedload(Match.winner),
+            joinedload(Review.match).joinedload(Match.loser),
+        ).order_by(Review.watched_on.desc(), Review.id.desc())
+        page_number = request.args.get("page", 1, type=int)
+        reviews, favorites, followed, tournament_subscriptions, watchlist, friends = [], [], [], [], [], []
         friend_state = None
-        if own:
-            followed = db.session.scalars(
-                select(FollowedPlayer).where(FollowedPlayer.user_id == user.id)
-                .options(joinedload(FollowedPlayer.player)).limit(12)
-            ).all()
-            watchlist = db.session.scalars(
-                select(WatchlistItem).where(WatchlistItem.user_id == user.id)
-                .options(joinedload(WatchlistItem.match))
-                .order_by(WatchlistItem.added_at.desc())
-            ).all()
-            if schema_table_exists(TournamentSubscription.__tablename__):
-                tournament_subscriptions = db.session.scalars(
-                    select(TournamentSubscription).where(TournamentSubscription.user_id == user.id)
-                    .order_by(TournamentSubscription.created_at.desc())
+        pagination = None
+        stats = None
+        if active_tab == "profile":
+            reviews = db.session.scalars(cards.limit(5)).all()
+            favorites = db.session.scalars(cards.where(Review.is_favorite.is_(True)).limit(4)).all()
+            stats = diary_statistics(user.id, public_only=not own)
+            if own:
+                followed = db.session.scalars(
+                    select(FollowedPlayer).where(FollowedPlayer.user_id == user.id)
+                    .options(joinedload(FollowedPlayer.player)).order_by(FollowedPlayer.id.desc()).limit(12)
                 ).all()
-            connections = db.session.scalars(select(Friendship).where(
+                if schema_table_exists(TournamentSubscription.__tablename__):
+                    tournament_subscriptions = db.session.scalars(
+                        select(TournamentSubscription).where(TournamentSubscription.user_id == user.id)
+                        .order_by(TournamentSubscription.created_at.desc(), TournamentSubscription.id.desc())
+                    ).all()
+        elif active_tab in {"diary", "likes"}:
+            if active_tab == "likes":
+                cards = cards.where(Review.is_favorite.is_(True))
+            pagination = bounded_page(cards, page=page_number)
+            if active_tab == "diary":
+                reviews = pagination.items
+            else:
+                favorites = pagination.items
+        elif active_tab == "watchlist":
+            pagination = bounded_page(select(WatchlistItem).where(WatchlistItem.user_id == user.id)
+                .options(joinedload(WatchlistItem.match).joinedload(Match.winner),
+                    joinedload(WatchlistItem.match).joinedload(Match.loser))
+                .order_by(WatchlistItem.added_at.desc(), WatchlistItem.id.desc()), page=page_number)
+            watchlist = pagination.items
+        elif active_tab == "friends":
+            pagination = bounded_page(select(Friendship).where(
                 or_(Friendship.requester_id == user.id, Friendship.addressee_id == user.id),
                 Friendship.status == "accepted",
-            ).options(joinedload(Friendship.requester), joinedload(Friendship.addressee))).all()
-            friends = [item.addressee if item.requester_id == user.id else item.requester for item in connections]
-        elif current_user.is_authenticated:
+            ).options(joinedload(Friendship.requester), joinedload(Friendship.addressee))
+                .order_by(Friendship.created_at.desc(), Friendship.id.desc()), page=page_number)
+            friends = [item.addressee if item.requester_id == user.id else item.requester for item in pagination.items]
+        if not own and current_user.is_authenticated:
             friend_state = db.session.scalar(select(Friendship.status).where(or_(
                 (Friendship.requester_id == current_user.id) & (Friendship.addressee_id == user.id),
                 (Friendship.requester_id == user.id) & (Friendship.addressee_id == current_user.id),
             )))
-        favorites = [review for review in reviews if review.is_favorite]
         return render_template(
             "profile.html", user=user, reviews=reviews,
-            stats=diary_statistics(reviews), own=own, followed=followed, watchlist=watchlist,
+            stats=stats, own=own, followed=followed, watchlist=watchlist,
             favorites=favorites, active_tab=active_tab, friends=friends, friend_state=friend_state,
             tournament_subscriptions=tournament_subscriptions, tournament_slug=tournament_slug,
-            match_location=match_location,
+            match_location=match_location, pagination=pagination,
         )
 
     @site.route("/settings", methods=["GET", "POST"])

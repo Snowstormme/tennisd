@@ -147,6 +147,14 @@ tennisd/
   wsgi.py                 web server entry point
 ```
 
+## Profile and diary scale
+
+- Diary, likes, watchlist and friends show 18 items per page, with stable ordering
+  and navigation at both ends. Invalid and oversized page requests are bounded.
+- The overview loads only five recent entries and four favorites; SQL summaries
+  cover the complete visible diary. Public views exclude private rows from cards,
+  totals and statistics. Exports retain the complete owner diary.
+
 ## Catalog stabilization and operations
 
 - `python scripts/audit_catalog.py` enforces a read-only database transaction. It groups identity conflicts by provider/tour and includes bounded public match samples, null-score counts and the latest feed runs. It does not export account records.

@@ -4,6 +4,28 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-01
+
+### Added
+
+- Paginate diary entries, likes, watchlist and friends in groups of 18, with
+  stable date/ID ordering and bounded invalid/oversized page requests.
+- Calculate profile totals and rating/surface/player summaries in SQL across the
+  entire visible diary. Keep namesakes separate using player IDs.
+
+### Performance and privacy
+
+- Load only the active profile section; the overview fetches at most five recent
+  and four favorite entries. Private rows, page counts and summary aggregates
+  share the same visibility scope. Account exports remain complete.
+
+### Operations
+
+- Test encryption/decryption as well as restoring the recovered dump in CI.
+- Allow opt-in backups to use the existing limited sync connection when a
+  dedicated backup URL is absent, enforce a read-only dump transaction and
+  serialize backup jobs. Backup activation remains disabled by default.
+
 ## [0.2.2] - 2026-11-01
 
 ### Fixed
