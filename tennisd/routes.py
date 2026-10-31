@@ -14,7 +14,7 @@ import requests
 from flask import Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import and_, case, delete, func, inspect, or_, select, union_all
+from sqlalchemy import and_, case, delete, func, or_, select, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
@@ -25,6 +25,7 @@ from .prize_money import update_prize_money
 from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
 from .stats import community_statistics, diary_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
+from .web import public_url, safe_next, schema_table_exists, shared_cache, xml_response
 
 site = Blueprint("site", __name__)
 SITEMAP_PAGE_SIZE = 20_000
@@ -33,24 +34,6 @@ SITEMAP_START_DATE = date(2020, 1, 1)
 # likely to search for. Lower-level results remain available inside Tennisd.
 SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
 
-
-def schema_table_exists(table_name):
-    """Cache schema capability checks for the lifetime of an app process."""
-    cache = current_app.extensions.setdefault("schema_table_cache", {})
-    if table_name not in cache:
-        cache[table_name] = inspect(db.engine).has_table(table_name)
-    return cache[table_name]
-
-
-def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
-    """Cache public, user-independent responses without making them feel stale."""
-    response.headers["Cache-Control"] = (
-        f"public, max-age={browser_seconds}, stale-while-revalidate={stale_seconds}"
-    )
-    response.headers["Vercel-CDN-Cache-Control"] = (
-        f"max-age={cdn_seconds}, stale-while-revalidate={stale_seconds}"
-    )
-    return response
 
 def match_location(match):
     return tournament_profile(match.tournament).get("location", "Location unavailable")
@@ -375,32 +358,11 @@ def check_csrf():
         limit_action("post-ip", client_ip(), 120, 60)
 
 
-def safe_next(default="site.home"):
-    target = request.args.get("next", "")
-    parsed = urlsplit(target)
-    return (
-        target if target.startswith("/") and not target.startswith("//")
-        and "\\" not in target and not parsed.scheme and not parsed.netloc
-        else url_for(default)
-    )
-
-
 def sign_in_user(user):
     """Create a persistent login that remains revocable via session_version."""
     session.clear()
     session.permanent = True
     login_user(user, remember=True)
-
-
-def public_url(path):
-    return f"{current_app.config['PUBLIC_BASE_URL'].rstrip('/')}{path}"
-
-
-def xml_response(body):
-    return shared_cache(
-        Response(body, content_type="application/xml; charset=utf-8"),
-        browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
-    )
 
 
 def sitemap_match_conditions():
