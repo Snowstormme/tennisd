@@ -20,7 +20,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
           AUTO_CREATE_DB: "false"
-        run: python scripts/migrate.py
+        run: PYTHONPATH=. python scripts/migrate.py
       - name: Restrict and verify application database role
         env:
           DATABASE_URL: ${{ secrets.DATABASE_OWNER_URL }}
