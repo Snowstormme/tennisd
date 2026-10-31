@@ -8,9 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: tennisd-encrypted-backup
+  cancel-in-progress: false
+
 jobs:
   backup:
     if: ${{ vars.BACKUPS_ENABLED == 'true' }}
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     container: postgres:18-bookworm
     services:
@@ -30,20 +35,20 @@ jobs:
         run: apt-get update -qq && apt-get install -y -qq age
       - name: Dump and encrypt
         env:
-          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL || secrets.TENNISD_SYNC_DATABASE_URL }}
           BACKUP_RECIPIENT: ${{ vars.BACKUP_RECIPIENT }}
         run: |
           set -eu
           test -n "$DATABASE_URL"
           test -n "$BACKUP_RECIPIENT"
-          trap 'rm -f /tmp/rallylog.dump' EXIT
-          PGSSLMODE=require pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file=/tmp/rallylog.dump
-          bash scripts/verify_backup.sh /tmp/rallylog.dump
-          age -r "$BACKUP_RECIPIENT" -o rallylog.dump.age /tmp/rallylog.dump
-          test -s rallylog.dump.age
+          trap 'rm -f /tmp/tennisd.dump' EXIT
+          PGOPTIONS='-c default_transaction_read_only=on' PGSSLMODE=require pg_dump --dbname="$DATABASE_URL" --format=custom --no-owner --no-acl --file=/tmp/tennisd.dump
+          bash scripts/verify_backup.sh /tmp/tennisd.dump
+          age -r "$BACKUP_RECIPIENT" -o tennisd.dump.age /tmp/tennisd.dump
+          test -s tennisd.dump.age
       - uses: actions/upload-artifact@v7
         with:
-          name: rallylog-backup-${{ github.run_id }}
-          path: rallylog.dump.age
+          name: tennisd-backup-${{ github.run_id }}
+          path: tennisd.dump.age
           if-no-files-found: error
           retention-days: 30

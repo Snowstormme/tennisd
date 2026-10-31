@@ -63,8 +63,14 @@ The repository cannot establish a trustworthy production backup without the
 installation's credentials and an offline encryption key held by its owner.
 
 1. Prepare the age recipient and keep the corresponding private key offline.
-2. Configure `BACKUP_DATABASE_URL` (read access over TLS), `BACKUP_RECIPIENT`
-   (the public age recipient) and `BACKUPS_ENABLED=true` in GitHub.
+2. Configure `BACKUP_RECIPIENT` (the public age recipient). Prefer a dedicated
+   `BACKUP_DATABASE_URL` with read access over TLS; when absent, the workflow
+   uses the existing `TENNISD_SYNC_DATABASE_URL` and enforces a read-only dump
+   transaction. Keep the owner-held private key outside GitHub and the repository.
+   Enable `BACKUPS_ENABLED=true` only after reviewing the data transfer: the
+   complete database, including account/diary records, is read in the repository's
+   GitHub Actions runner, restored into an ephemeral CI database, encrypted,
+   and stored as `tennisd.dump.age` for 30 days.
 3. Run **Encrypted database backup**. It must restore the dump into its isolated
    PostgreSQL service before encrypting and uploading it. A skipped run is not a backup.
 4. Download the encrypted artifact, decrypt it using the offline key, and restore
@@ -88,7 +94,7 @@ These are planned validation steps, not claims of finished features:
   interviews. Validate it with a small prototype before expanding the feature list.
 - Introduce explicit tournament identity/edition aliases with a reviewed migration;
   preserve old URLs and subscriptions while merging duplicates.
-- Add diary/review pagination and profile heavy queries on a representative catalog.
+- Profile heavy queries on a representative catalog; diary, likes, watchlist and friends now use bounded pagination.
 - Decide whether the news section needs durable storage and a separate refresh job.
   The current cache is process-local and is rebuilt on deploy.
 - Connect recommendation rules only after the underlying catalog is trustworthy;
@@ -126,3 +132,20 @@ and independently checked source evidence remain prerequisites for that work.
 The auto sync guard allows one refresh per UTC calendar day. It does not require
 24 elapsed hours: schedule jitter or moving the cron earlier must not skip the
 next day. Explicit manual `live`/`upcoming` modes still request a refresh.
+
+## Bounded profile collections
+
+Diary, likes, watchlist and accepted friends use 18-item pages with previous/next
+navigation at both ends. Tied dates are ordered by descending primary key. Bad
+page values start at page one; oversized pages are clamped after a visibility-
+scoped count and before calculating the SQL offset. Tab links reset pagination.
+
+The profile overview loads five recent reviews and four favorites. Full visible
+counts, averages, rating distributions and player appearances are SQL aggregates,
+not statistics of the current page. Player counts use permanent IDs so namesakes
+stay separate. Public/member views include public reviews only; the owner can
+see private entries. Page counts and summaries use that same visibility condition.
+The watchlist and friends remain owner-only. Account export is not paginated.
+
+No schema migration or production data repair is needed for this release. A
+rollback of the app deployment restores the previous view of the same records.

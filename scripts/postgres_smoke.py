@@ -3,13 +3,15 @@
 import os
 from datetime import date
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_report, readonly_catalog_session
-from tennisd.models import Match, Player
+from tennisd.models import Match, Player, Review, User
+from tennisd.pagination import bounded_page
+from tennisd.stats import diary_statistics
 from tennisd.result_corrections import definitions, reviewed_correction
 
 
@@ -59,6 +61,18 @@ def main():
         )
         db.session.add_all((winner, loser, match))
         db.session.commit()
+
+        member = User(username="pgdiary", email="pgdiary@example.test", display_name="PG diary", password_hash="unused-test-value")
+        db.session.add(Review(user=member, match=match, watched_on=date(2026,10,31),
+            rating_half=7, is_favorite=True, is_public=False, body="PRIVATE_POSTGRES_DIARY_NOTE"))
+        db.session.commit()
+        own = diary_statistics(member.id)
+        public = diary_statistics(member.id, public_only=True)
+        if own["logs"] != 1 or own["average_ten"] != 7.0 or own["favorites"] != 1 or public["logs"] != 0:
+            raise RuntimeError("PostgreSQL diary summaries did not preserve visibility or totals.")
+        page = bounded_page(select(Review).where(Review.user_id == member.id), page=10 ** 100)
+        if page.page != 1 or len(page.items) != 1:
+            raise RuntimeError("PostgreSQL pagination did not bound an oversized offset.")
         if not reviewed_correction(key, operation="apply")["changed"]:
             raise RuntimeError("PostgreSQL correction did not apply under its row lock.")
         db.session.commit()
