@@ -8,7 +8,7 @@
 
 ## Someday
 
-- [ ] **Synchronize repository state and verify main** - Confirm that the working copy contains the expected merge commit `a23baca`; review the discrepancy with local `2127e6b` and update all GitHub Actions references consistently.
+- [x] ~~Synchronize repository state and verify main~~ (2026-10-31) - Fetched upstream and fast-forwarded local `main` from `2127e6b` to the expected `a23baca`; the protected `feature/ml-model` branch was left untouched.
 - [x] ~~Introduce versioned database migrations~~ (2026-10-31) - Ordered migrations and a migration ledger now cover the baseline, moderation audit, and notifications tables.
 - [x] ~~Add PostgreSQL integration coverage in CI~~ (2026-10-31) - CI provisions PostgreSQL and runs the smoke/bootstrap checks.
 - [x] ~~Make local and CI environments reproducible~~ (2026-10-31) - Development requirements and CI installation now include the complete declared test/tooling stack.
