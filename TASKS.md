@@ -17,8 +17,8 @@
 - [ ] **Add followed-player and tournament notifications** - Provide in-app notifications first, with optional email delivery and clear user controls.
 - [ ] **Add ranking history and player-form views** - Show historical ranking movement and transparent recent-form statistics based on loaded data.
 - [ ] **Improve live match freshness** - Move beyond the daily snapshot when provider capacity and operating cost justify it; show provider freshness and outage state clearly.
-- [ ] **Expand moderation auditability** - Add an administrator action log, moderation reason, actor, timestamp, and reversible content workflow.
 
 ## Done
 
 - [x] ~~Version data exports~~ (2026-10-31) - JSON exports now include `schema_version: 1`.
+- [x] ~~Expand moderation auditability~~ (2026-10-31) - Moderation actions now record actor, action, target, details and timestamp.

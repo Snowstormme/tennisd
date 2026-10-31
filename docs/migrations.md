@@ -12,9 +12,10 @@ same time. The web role must not run migrations and does not receive schema
 creation privileges.
 
 The current `0001_baseline` migration creates the schema represented by
-`tennisd.models`. Future schema changes should add the next ordered entry to
-`tennisd/migrations.py`, implement it against the owner connection, and update
-the PostgreSQL smoke check when the change affects startup or health behavior.
+`tennisd.models`. `0002_moderation_audit` adds the administrator action ledger.
+Future schema changes should add the next ordered entry to `tennisd/migrations.py`,
+implement it against the owner connection, and update the PostgreSQL smoke check
+when the change affects startup or health behavior.
 
 Existing databases can be adopted safely: the baseline uses idempotent
 SQLAlchemy metadata creation, then records the version once the schema exists.
