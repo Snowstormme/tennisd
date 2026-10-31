@@ -34,6 +34,14 @@ SITEMAP_START_DATE = date(2020, 1, 1)
 SITEMAP_LEVELS = ("G", "M", "PM", "P", "A", "F")
 
 
+def schema_table_exists(table_name):
+    """Cache schema capability checks for the lifetime of an app process."""
+    cache = current_app.extensions.setdefault("schema_table_cache", {})
+    if table_name not in cache:
+        cache[table_name] = inspect(db.engine).has_table(table_name)
+    return cache[table_name]
+
+
 def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):
     """Cache public, user-independent responses without making them feel stale."""
     response.headers["Cache-Control"] = (
@@ -60,7 +68,7 @@ def resolve_tournament_name(tour, slug):
 
 def current_match_rows(status):
     """Return an empty slate while a new deployment is waiting for its migration."""
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if not schema_table_exists(LiveMatch.__tablename__):
         return []
     statement = select(LiveMatch).where(LiveMatch.status == status)
     if status == "upcoming":
@@ -157,7 +165,7 @@ def archived_match_id_for_live(match):
 
 
 def player_live_matches(player, limit=12):
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if not schema_table_exists(LiveMatch.__tablename__):
         return []
     external_ids = db.session.scalars(
         select(PlayerExternalId.external_id).where(
@@ -696,7 +704,7 @@ def player_photo(player_id):
 
 @site.get("/live-matches/<provider_id>/players/<int:side>/photo")
 def live_player_photo(provider_id, side):
-    if side not in (1, 2) or not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if side not in (1, 2) or not schema_table_exists(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
     name = match.player1_name if side == 1 else match.player2_name
@@ -798,7 +806,7 @@ def top_rated_matches():
 
 @site.get("/live-matches/<provider_id>")
 def live_match_detail(provider_id):
-    if not inspect(db.engine).has_table(LiveMatch.__tablename__):
+    if not schema_table_exists(LiveMatch.__tablename__):
         abort(404)
     match = db.get_or_404(LiveMatch, provider_id)
     archived = archived_match_id_for_live(match)
@@ -828,7 +836,7 @@ def live_matches_api():
 @site.get("/api/sync-status")
 def sync_status():
     """Expose provider freshness without returning operational secrets."""
-    if not inspect(db.engine).has_table(IngestionRun.__tablename__):
+    if not schema_table_exists(IngestionRun.__tablename__):
         return jsonify({"provider": "livetennisapi", "status": "unavailable", "feeds": {}})
     runs = db.session.scalars(
         select(IngestionRun)
@@ -1119,7 +1127,7 @@ def tournament_detail(tour, slug):
         select(Match.level).where(*condition).distinct().order_by(Match.level)
     ).all()
     _, value_label, value_group = tournament_level(levels)
-    subscriptions_ready = inspect(db.engine).has_table(TournamentSubscription.__tablename__)
+    subscriptions_ready = schema_table_exists(TournamentSubscription.__tablename__)
     subscribed = False
     subscriber_count = 0
     if subscriptions_ready:
@@ -1178,7 +1186,7 @@ def tournament_edition_detail(tour, slug, season):
 @site.post("/tournaments/<tour>/<slug>/subscribe")
 @login_required
 def toggle_tournament_subscription(tour, slug):
-    if not inspect(db.engine).has_table(TournamentSubscription.__tablename__):
+    if not schema_table_exists(TournamentSubscription.__tablename__):
         abort(503)
     tour = tour.upper()
     tournament_name = resolve_tournament_name(tour, slug)
@@ -1632,7 +1640,7 @@ def profile(username):
             .options(joinedload(WatchlistItem.match))
             .order_by(WatchlistItem.added_at.desc())
         ).all()
-        if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
+        if schema_table_exists(TournamentSubscription.__tablename__):
             tournament_subscriptions = db.session.scalars(
                 select(TournamentSubscription).where(TournamentSubscription.user_id == user.id)
                 .order_by(TournamentSubscription.created_at.desc())
@@ -1724,7 +1732,7 @@ def export_diary():
         select(WatchlistItem).where(WatchlistItem.user_id == current_user.id)
     ).all()
     tournament_subscriptions = []
-    if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
+    if schema_table_exists(TournamentSubscription.__tablename__):
         tournament_subscriptions = db.session.scalars(
             select(TournamentSubscription).where(TournamentSubscription.user_id == current_user.id)
             .order_by(TournamentSubscription.created_at)
@@ -1793,7 +1801,7 @@ def delete_account():
     )))
     db.session.execute(delete(Comment).where(Comment.user_id == user.id))
     db.session.execute(delete(FollowedPlayer).where(FollowedPlayer.user_id == user.id))
-    if inspect(db.engine).has_table(TournamentSubscription.__tablename__):
+    if schema_table_exists(TournamentSubscription.__tablename__):
         db.session.execute(delete(TournamentSubscription).where(TournamentSubscription.user_id == user.id))
     db.session.execute(delete(WatchlistItem).where(WatchlistItem.user_id == user.id))
     db.session.delete(user)
@@ -1941,8 +1949,7 @@ def require_moderator():
 
 
 def feedback_tables_ready():
-    inspector = inspect(db.engine)
-    return all(inspector.has_table(name) for name in ("feedback_submission", "poll", "poll_option", "poll_vote"))
+    return all(schema_table_exists(name) for name in ("feedback_submission", "poll", "poll_option", "poll_vote"))
 
 
 def feedback_visitor_key():
