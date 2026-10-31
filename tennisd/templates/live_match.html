@@ -13,7 +13,6 @@
       {{ match_center_header(match.tour, match.surface, match.tournament) }}
       {{ match_score_rows(match.score, match.winner_side or 0, true, ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed')) }}
 
-      <time class="live-freshness" data-live-freshness datetime="{{ match.synced_at.isoformat() if match.synced_at else '' }}">{{ match.synced_at|freshness }}</time>
       <span class="featured-facts"><b>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'DATE TBC' }}</b><i>·</i><b>{{ match_round_name(match.round) if match.round else match.status|upper }}</b><i>·</i><b class="featured-location">{{ match_location(match) }}</b></span>
     </div>
     <div class="live-detail-player live-detail-player-right">
@@ -28,6 +27,6 @@
     <span><small>FORMAT</small><strong>{{ 'Doubles' if match.is_doubles else match.draw|title }}</strong></span>
     <span><small>ROUND</small><strong>{{ match.round or 'TBC' }}</strong></span>
   </section>
-  <div class="live-detail-notes"><section><p class="eyebrow">MATCH TIMELINE</p><h2>{{ 'On court now' if match.status == 'live' else 'Scheduled match' if match.status == 'upcoming' else 'Permanent result' }}<span>.</span></h2><p>{{ 'The score refreshes automatically from the live feed.' if match.status == 'live' else 'This page will become the permanent result when the match finishes.' if match.status == 'upcoming' else 'This match remains in the Tennisd database with its final score and winner.' }}</p></section><section><p class="eyebrow">DATA STATUS</p><h2>Last checked<span>.</span></h2><p data-live-freshness datetime="{{ match.synced_at.isoformat() if match.synced_at else '' }}">{{ match.synced_at|freshness }}</p><p class="muted">{{ match.synced_at.strftime('%d %b %Y · %H:%M UTC') if match.synced_at else 'Exact update time unavailable' }} · Live feed information can change until the result is settled.</p></section></div>
+  <div class="live-detail-notes"><section><p class="eyebrow">MATCH TIMELINE</p><h2>{{ 'On court now' if match.status == 'live' else 'Scheduled match' if match.status == 'upcoming' else 'Permanent result' }}<span>.</span></h2><p>{{ 'The score refreshes automatically from the live feed.' if match.status == 'live' else 'This page will become the permanent result when the match finishes.' if match.status == 'upcoming' else 'This match remains in the Tennisd database with its final score and winner.' }}</p></section><section><p class="eyebrow">DATA STATUS</p><h2>Last checked<span>.</span></h2><p class="muted">{{ match.synced_at.strftime('%d %b %Y · %H:%M UTC') if match.synced_at else 'Exact update time unavailable' }} · Live feed information can change until the result is settled.</p></section></div>
 </main>
 {% endblock %}

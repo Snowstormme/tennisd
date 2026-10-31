@@ -201,7 +201,6 @@
 .archive-match-center:before,.live-detail-center:before{content:"";position:absolute;z-index:-1;inset:5% 6%;border:1px solid #ffffff4a;background:linear-gradient(90deg,transparent 49.6%,#ffffff45 49.8% 50.2%,transparent 50.4%),linear-gradient(0deg,transparent 49.6%,#ffffff45 49.8% 50.2%,transparent 50.4%);pointer-events:none}
 .archive-match-center>.court-badge{gap:4px;margin-top:8px;padding:3px 6px;border-color:#ffffff52;background:#07151052;color:#f2f5e9;font-size:6px;letter-spacing:.08em}.archive-match-center>.court-badge i{width:10px;height:6px}
 .archive-match-event,.archive-match-facts{color:#fff}.archive-match-meta{color:#f0f5d0}.archive-match-score,.archive-match-players small,.live-detail-score{color:#efffb0}
-.live-freshness{display:block;margin:.55rem auto 0;font-size:.62rem;font-weight:700;letter-spacing:.04em;opacity:.72;text-align:center}
 @media(max-width:600px){.archive-match-center,.live-detail-center{align-self:auto;border:1px solid color-mix(in srgb,var(--court) 72%,#fff 28%);background:linear-gradient(90deg,color-mix(in srgb,var(--court) 52%,var(--court-deep)),color-mix(in srgb,var(--court) 78%,var(--court-deep)) 14% 86%,color-mix(in srgb,var(--court) 52%,var(--court-deep)));box-shadow:0 0 24px color-mix(in srgb,var(--court) 60%,transparent)}}
 
 /* Unified player directory */
