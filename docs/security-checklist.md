@@ -63,3 +63,14 @@ those values through CSSOM, so the production CSP omits `style-src
 only re-add `unsafe-inline` to `style-src` if the widget demonstrably requires
 it, and document that exception here. There are no inline script blocks, and
 `script-src` does not allow `unsafe-inline`.
+
+## AdSense and CSP
+
+When advertising is connected, do not restore `unsafe-inline` to `style-src`
+as a whole. Allow only the specific Google origins required by the widget in
+`script-src`, `frame-src`, and `img-src`, then check production and preview
+for `Refused` errors in the browser console. The current production CSP
+already lists `pagead.googlesyndication.com`, `googleads.g.doubleclick.net`,
+`tpc.googlesyndication.com`, and `fundingchoicesmessages.google.com` for the
+relevant directives, but advertising is not currently connected, so no ad
+slot is rendered.
