@@ -93,3 +93,32 @@ These are planned validation steps, not claims of finished features:
   The current cache is process-local and is rebuilt on deploy.
 - Connect recommendation rules only after the underlying catalog is trustworthy;
   measure their usefulness before training a model.
+
+## Reviewed single-result correction
+
+The version-controlled record in `tennisd/data/result_corrections.json` documents
+one independently verified exception: `lt-211673` is Koray Kirci versus **Yi Yuan
+(HKG)**, not Yue Yuan (CHN). The official ITF draw and player IDs are linked in the
+record. The active provider still returns the wrong opponent identity, so its
+response alone is insufficient evidence for this repair.
+
+```sh
+# Default operation is a database-enforced read-only preview.
+python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan
+# After reviewing the before/after and official evidence:
+python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operation apply
+# Restore only the original result fields if a correction must be reversed:
+python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operation rollback
+```
+
+The **Correct a reviewed result** workflow exposes those same operations and
+stores a journal containing public result fields only. Apply/rollback lock the
+permanent match, check all reviewed identity/result fields for drift, and stop
+if participant/statistic rows need a broader review. They preserve the match ID,
+all diary entries, and existing external mappings. The verified player gets a
+separate ITF identity; the WTA profile is never renamed or reassigned. Repeating
+an operation is a no-op. Rollback does not delete the newly created profile.
+
+This is a narrow correction with a known original row and reversible field
+changes. It does not enable bulk historical repair. A verified production backup
+and independently checked source evidence remain prerequisites for that work.

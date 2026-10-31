@@ -20,6 +20,7 @@ from sqlalchemy.orm import aliased, joinedload
 from . import db
 from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, RankingSnapshot, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .prize_money import update_prize_money
+from .result_corrections import correction_for_match
 from .security import client_ip, limit_action
 from .identities import catalog_identity_is_valid, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_statistics
@@ -759,6 +760,7 @@ def match_detail(match_id):
         community=community_statistics(match), serve_stats=serve_stats,
         today=date.today(), on_watchlist=on_watchlist, match_location=match_location,
         data_warning=not match_identity_is_valid(match),
+        verified_correction=correction_for_match(match),
     )
 
 

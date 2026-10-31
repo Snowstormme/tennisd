@@ -1,0 +1,41 @@
+[
+  {
+    "id": "itf-sharm-2026-030-kirci-yuan",
+    "verified_on": "2026-11-01",
+    "reason": "The provider confused Yi Yuan (HKG, men) with Yue Yuan (CHN, women). The official ITF main draw identifies Yi Yuan as the opponent, with the same 6-1 6-2 score. This correction applies to one permanent match only.",
+    "evidence": {
+      "draw_url": "https://www.itftennis.com/en/tournament/m15-sharm-elsheikh/egy/2026/m-itf-egy-2026-030/draws-and-results/",
+      "player_url": "https://www.itftennis.com/en/players/yi-yuan/800526975/hkg/mt/s/",
+      "winner_url": "https://www.itftennis.com/en/players/koray-kirci/800344412/tur/mt/s/",
+      "source_response_sha256": "5acadee3844f2c37b0f05925891886801048d8d26a2c87f4dc70a745dc6032b3"
+    },
+    "before": {
+      "id": "lt-211673",
+      "provider": "livetennisapi",
+      "provider_id": "livetennisapi:211673",
+      "tour": "ATP",
+      "tournament": "M15 Sharm ElSheikh 15",
+      "status": "finished",
+      "date": "2026-10-28",
+      "score": "6–1 6–2 (None–None)",
+      "winner": {
+        "id": "lt-416c22dbe2f7a7c6",
+        "name": "Koray Kirci",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "wta-206294",
+        "name": "Yue Yuan",
+        "tour": "WTA"
+      }
+    },
+    "corrected_player": {
+      "id": "itf-800526975",
+      "name": "Yi Yuan",
+      "tour": "ATP",
+      "country": "HKG",
+      "itf_id": "800526975"
+    },
+    "corrected_score": "6–1 6–2"
+  }
+]
