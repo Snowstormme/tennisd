@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, abort, current_app, render_template, request, session
+from flask import Flask, abort, current_app, g, render_template, request, session
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -204,8 +204,14 @@ def create_app(test_config=None):
             session["csrf_token"] = secrets.token_urlsafe(32)
         return {"csrf_token": session.get("csrf_token", "")}
 
+    @app.before_request
+    def assign_request_id():
+        """Give every response a short correlation token for operational logs."""
+        g.request_id = secrets.token_hex(12)
+
     @app.after_request
     def security_headers(response):
+        response.headers["X-Request-ID"] = g.request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -288,6 +294,12 @@ def create_app(test_config=None):
     @app.errorhandler(500)
     @app.errorhandler(503)
     def friendly_error(error):
+        if error.code >= 500:
+            current_app.logger.error(
+                "request failed request_id=%s status=%s",
+                g.request_id,
+                error.code,
+            )
         return render_template("error.html", code=error.code), error.code
 
     @app.get("/healthz")

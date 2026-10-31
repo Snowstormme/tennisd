@@ -28,6 +28,8 @@ GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL
 
 Database schema changes use the owner-only migration runner documented in [docs/migrations.md](docs/migrations.md); the web role is never responsible for creating schema objects.
 
+Every response includes an `X-Request-ID` correlation token. Server-side 5xx logs include that token so an incident can be traced without logging credentials or request content.
+
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.

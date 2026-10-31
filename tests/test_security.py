@@ -205,6 +205,7 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(blocked.status_code, 429)
         self.assertEqual(blocked.headers["X-Frame-Options"], "DENY")
         self.assertIn("frame-ancestors 'none'", blocked.headers["Content-Security-Policy"])
+        self.assertRegex(blocked.headers["X-Request-ID"], r"^[0-9a-f]{24}$")
 
     def test_login_ip_limit_rejects_the_21st_failed_attempt(self):
         self.client.get("/login")
