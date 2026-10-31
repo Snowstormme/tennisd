@@ -25,7 +25,7 @@ Security hardening, documentation, versioning, Dependabot configuration, databas
 6. Make database-backed rate limiting atomic under concurrency.
 7. Split the large Flask route module into focused blueprints/services.
 8. Remove request-time `has_table` probing after migrations are authoritative.
-9. Add product improvements: followed-player/tournament notifications, ranking history, fresher live updates, versioned exports, and moderation audit logs.
+9. Add product improvements: followed-player/tournament notifications, ranking history, fresher live updates, optional CSV exports, and moderation audit logs. JSON export versioning is now implemented with `schema_version: 1`.
 
 ## Audit note
 
