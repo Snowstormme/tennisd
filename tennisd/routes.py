@@ -418,6 +418,23 @@ def google_search_console_verification():
     ), browser_seconds=86400, cdn_seconds=604800, stale_seconds=604800)
 
 
+@site.get("/.well-known/security.txt")
+def security_txt():
+    body = "\n".join((
+        "Contact: https://github.com/Snowstormme/tennisd/security/advisories/new",
+        "Contact: mailto:notsnowstorm@proton.me",
+        "Expires: 2027-10-31T00:00:00.000Z",
+        "Preferred-Languages: en, ru",
+        "Policy: https://github.com/Snowstormme/tennisd/blob/main/SECURITY.md",
+        "Canonical: https://tennisd.onrender.com/.well-known/security.txt",
+        "",
+    ))
+    return shared_cache(
+        Response(body, content_type="text/plain; charset=utf-8"),
+        browser_seconds=3600, cdn_seconds=86400, stale_seconds=86400,
+    )
+
+
 @site.get("/ads.txt")
 def ads_txt():
     client_id = current_app.config.get("ADSENSE_CLIENT_ID", "")

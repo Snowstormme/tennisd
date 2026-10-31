@@ -72,6 +72,19 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertIn("immutable", response.headers["Cache-Control"])
         self.assertEqual(response.headers["Vercel-CDN-Cache-Control"], "max-age=31536000")
 
+    def test_security_txt_is_rfc9116_document(self):
+        response = self.client.get("/.well-known/security.txt")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "text/plain")
+        self.assertIn(b"Contact: mailto:notsnowstorm@proton.me", response.data)
+        self.assertIn(b"Expires: 2027-10-31T00:00:00.000Z", response.data)
+        self.assertIn(b"Canonical: https://tennisd.onrender.com/.well-known/security.txt", response.data)
+
+    def test_privacy_page_lists_security_contact(self):
+        response = self.client.get("/privacy")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"notsnowstorm@proton.me", response.data)
+
     def test_email_verification_is_required_and_single_use(self):
         self.assertEqual(self.register().headers["Location"], "/check-email")
         self.client.get("/login")

@@ -264,7 +264,9 @@ def create_app(test_config=None):
 
     @app.before_request
     def block_hidden_files():
-        if any(part.startswith('.') for part in request.path.split('/') if part):
+        if request.path != "/.well-known/security.txt" and any(
+            part.startswith('.') for part in request.path.split('/') if part
+        ):
             abort(404)
 
     # Register Flask-Login after our response handler so security_headers runs
