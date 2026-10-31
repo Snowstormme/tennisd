@@ -1,0 +1,8 @@
+# Default reviewer for all repository changes.
+* @Snowstormme
+
+# Security-sensitive files should receive maintainer review.
+/SECURITY.md @Snowstormme
+/tennisd/security.py @Snowstormme
+/tennisd/__init__.py @Snowstormme
+/.github/ @Snowstormme
