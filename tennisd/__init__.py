@@ -181,6 +181,15 @@ def create_app(test_config=None):
 
     from .models import User
 
+    # Migrations are authoritative in production, so route handlers can use a
+    # static capability set instead of issuing schema introspection queries.
+    # Tests that disable automatic bootstrap intentionally see no optional
+    # tables until they run the migration command explicitly.
+    app.extensions["schema_capabilities"] = (
+        frozenset(db.metadata.tables)
+        if app.config["AUTO_CREATE_DB"] or production else frozenset()
+    )
+
     @login_manager.user_loader
     def load_user(user_id):
         parts = user_id.split(":")

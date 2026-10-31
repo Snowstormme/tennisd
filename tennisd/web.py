@@ -1,18 +1,14 @@
 """Shared HTTP helpers used by the site routes."""
 
 from flask import current_app, request, url_for
-from sqlalchemy import inspect
 from urllib.parse import urlsplit
 
 from . import db
 
 
 def schema_table_exists(table_name):
-    """Cache schema capability checks for the lifetime of an app process."""
-    cache = current_app.extensions.setdefault("schema_table_cache", {})
-    if table_name not in cache:
-        cache[table_name] = inspect(db.engine).has_table(table_name)
-    return cache[table_name]
+    """Return a migration-backed schema capability without querying per request."""
+    return table_name in current_app.extensions.get("schema_capabilities", ())
 
 
 def shared_cache(response, *, browser_seconds, cdn_seconds, stale_seconds):

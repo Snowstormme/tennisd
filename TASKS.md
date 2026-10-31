@@ -2,7 +2,7 @@
 
 ## Active
 
-- [ ] **Remove request-time schema probing** - Replace the remaining `has_table` checks with migration-backed capability/configuration checks.
+- [x] ~~Remove request-time schema probing~~ (2026-10-31) - Route checks now use an app-level migration capability set instead of per-request database introspection.
 
 ## Waiting On
 
