@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, ModerationAction, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_profile, tournament_slug
@@ -816,6 +816,7 @@ class TennisdFlows(unittest.TestCase):
         with self.app.app_context():
             self.assertIsNone(db.session.scalar(select(Review.id)))
             self.assertIsNone(db.session.scalar(select(Report.id)))
+            self.assertEqual(db.session.scalar(select(ModerationAction.action)), "remove_content")
 
 
 if __name__ == "__main__":

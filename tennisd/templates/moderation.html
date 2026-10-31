@@ -27,5 +27,9 @@
   {% else %}
     <div class="empty-state"><h3>No open reports.</h3><p>The queue is clear.</p></div>
   {% endfor %}
+  <section class="moderation-feedback">
+    <div class="section-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Recent actions<span>.</span></h2></div></div>
+    {% for action in audit_actions %}<article class="moderation-item"><p class="eyebrow">{{ action.action|upper }} · {{ action.target_type }} {{ action.target_id }} · {{ action.created_at.strftime('%d %b %Y · %H:%M') }}</p><p>{{ action.details or 'No additional detail.' }}</p></article>{% else %}<div class="empty-state"><h3>No moderation actions yet.</h3></div>{% endfor %}
+  </section>
 </div>
 {% endblock %}

@@ -261,6 +261,19 @@ class IngestionRun(db.Model):
     error = db.Column(db.String(1000))
 
 
+class ModerationAction(db.Model):
+    """Immutable audit record for administrator moderation decisions."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    moderator_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), index=True)
+    action = db.Column(db.String(32), nullable=False, index=True)
+    target_type = db.Column(db.String(32), nullable=False)
+    target_id = db.Column(db.String(64), nullable=False)
+    details = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    moderator = db.relationship("User")
+
+
 class IngestionCursor(db.Model):
     """Small durable checkpoint for quota-limited provider imports."""
 

@@ -8,7 +8,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, or_, select
 
 from . import db
-from .models import Comment, FeedbackSubmission, Poll, PollOption, PollVote, Report, Review, utcnow
+from .models import Comment, FeedbackSubmission, ModerationAction, Poll, PollOption, PollVote, Report, Review, utcnow
 from .security import client_ip, limit_action
 from .web import schema_table_exists
 
@@ -37,6 +37,15 @@ def register_moderation_routes(site):
             session["feedback_visitor"] = token
         identity = f"user:{current_user.id}" if current_user.is_authenticated else f"guest:{token}"
         return hmac.new(current_app.secret_key.encode(), identity.encode(), "sha256").hexdigest()
+
+    def record_action(action, target_type, target_id, details=None):
+        db.session.add(ModerationAction(
+            moderator_id=current_user.id,
+            action=action,
+            target_type=target_type,
+            target_id=str(target_id),
+            details=details,
+        ))
 
     @site.route("/feedback", methods=["GET", "POST"])
     def feedback():
@@ -130,6 +139,9 @@ def register_moderation_routes(site):
         feedback_items = []
         feedback_summary = {"total": 0, "average": None, "categories": []}
         polls = []
+        audit_actions = db.session.scalars(
+            select(ModerationAction).order_by(ModerationAction.created_at.desc()).limit(50)
+        ).all()
         if feedback_tables_ready():
             feedback_items = db.session.scalars(
                 select(FeedbackSubmission).order_by(FeedbackSubmission.created_at.desc()).limit(100)
@@ -145,7 +157,7 @@ def register_moderation_routes(site):
             polls = db.session.scalars(select(Poll).order_by(Poll.created_at.desc())).all()
         return render_template(
             "moderation.html", reports=reports, feedback_items=feedback_items,
-            feedback_summary=feedback_summary, polls=polls,
+            feedback_summary=feedback_summary, polls=polls, audit_actions=audit_actions,
         )
 
     @site.post("/moderation/feedback/<int:feedback_id>/<status>")
@@ -156,6 +168,7 @@ def register_moderation_routes(site):
             abort(400)
         item = db.get_or_404(FeedbackSubmission, feedback_id)
         item.status = status
+        record_action("update_feedback", "feedback", item.id, f"status={status}")
         db.session.commit()
         return redirect(url_for("site.moderation") + "#feedback")
 
@@ -166,8 +179,10 @@ def register_moderation_routes(site):
         report = db.get_or_404(Report, report_id)
         if action == "dismiss":
             report.status = "dismissed"
+            record_action("dismiss_report", "report", report.id)
         elif action == "remove":
             target = report.review or report.comment
+            record_action("remove_content", "review" if report.review else "comment", target.id)
             db.session.delete(target)
         else:
             abort(400)
