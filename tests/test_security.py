@@ -77,7 +77,8 @@ class AccountSecurityFlows(unittest.TestCase):
 
     def test_footer_displays_application_version(self):
         response = self.client.get("/")
-        self.assertIn(b"Version 0.1.0", response.data)
+        version = (Path(__file__).resolve().parents[1] / "VERSION").read_bytes().strip()
+        self.assertIn(b"Version " + version, response.data)
 
     def test_security_txt_is_rfc9116_document(self):
         response = self.client.get("/.well-known/security.txt")

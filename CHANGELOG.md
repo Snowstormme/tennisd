@@ -4,6 +4,8 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-01
+
 ### Fixed
 
 - Require explicit provider outcomes before archiving daily feed results; missing
