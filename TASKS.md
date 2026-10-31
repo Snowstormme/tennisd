@@ -14,7 +14,6 @@
 - [ ] **Make rate limiting atomic under concurrency** - Replace count-then-insert behavior with an atomic PostgreSQL-safe limiter or a dedicated edge/shared limiter.
 - [ ] **Split the Flask route module** - Separate catalog, live matches, authentication, profiles, moderation, feedback, and sitemap concerns into smaller blueprints/services.
 - [ ] **Remove request-time schema probing** - Replace repeated `inspect(db.engine).has_table(...)` checks with migration-backed capability/configuration checks.
-- [ ] **Add ranking history and player-form views** - Show historical ranking movement and transparent recent-form statistics based on loaded data.
 - [ ] **Improve live match freshness** - Move beyond the daily snapshot when provider capacity and operating cost justify it; show provider freshness and outage state clearly.
 
 ## Done
@@ -22,3 +21,4 @@
 - [x] ~~Version data exports~~ (2026-10-31) - JSON exports now include `schema_version: 1`.
 - [x] ~~Expand moderation auditability~~ (2026-10-31) - Moderation actions now record actor, action, target, details and timestamp.
 - [x] ~~Add followed-player and tournament notifications~~ (2026-10-31) - In-app alerts are created by live-sync with daily deduplication.
+- [x] ~~Add ranking history and player-form views~~ (2026-10-31) - Player pages now show loaded singles ranking snapshots and best rank.
