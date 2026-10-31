@@ -10,8 +10,9 @@
 {% macro player_portrait(player, side) %}<span class="match-portrait match-portrait-{{ side }}"><img src="{{ player.primary_photo_url or url_for('site.player_photo', player_id=player.id, v=6) }}" alt="{{ player.name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ player.name }}</strong></span>{% endmacro %}
 
 {% macro match_score_rows(score, winner_side=1, live=false, fallback='Score unavailable') %}
+{% set score = score|clean_score %}
 <span class="showcase-score featured-set-score"{% if live %} data-live-score data-winner-side="{{ winner_side or 0 }}"{% endif %} aria-label="{{ 'Score ' ~ score if score else fallback }}">
-  {% set score = score|clean_score %}{% if score %}{% set score_state = namespace(rendered=false) %}{% for set_score in score.replace('–', '-').split() %}{% if '-' in set_score and not set_score.startswith('(') %}{% set games = set_score.split('-', 1) %}{% set score_state.rendered = true %}<span class="featured-set"><b{% if winner_side == 1 %} class="set-winner"{% endif %}>{{ games[0] }}</b><small>SET {{ loop.index }}</small><b{% if winner_side == 2 %} class="set-winner"{% endif %}>{{ games[1] if games|length > 1 else '—' }}</b></span>{% endif %}{% endfor %}{% if not score_state.rendered %}<span class="match-score-status">{{ score }}</span>{% endif %}
+  {% if score %}{% set score_state = namespace(rendered=false) %}{% for set_score in score.replace('–', '-').split() %}{% if '-' in set_score and not set_score.startswith('(') %}{% set games = set_score.split('-', 1) %}{% set score_state.rendered = true %}<span class="featured-set"><b{% if winner_side == 1 %} class="set-winner"{% endif %}>{{ games[0] }}</b><small>SET {{ loop.index }}</small><b{% if winner_side == 2 %} class="set-winner"{% endif %}>{{ games[1] if games|length > 1 else '—' }}</b></span>{% endif %}{% endfor %}{% if not score_state.rendered %}<span class="match-score-status">{{ score }}</span>{% endif %}
   {% else %}<span class="match-score-status">{{ fallback }}</span>{% endif %}
 </span>
 {% endmacro %}

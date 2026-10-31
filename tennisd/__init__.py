@@ -47,7 +47,7 @@ def freshness(value, now=None):
 
 def clean_score_text(value):
     """Hide legacy null point annotations without changing the recorded result."""
-    return re.sub(r"\s*\((?:None|null|)[–-](?:None|null|)\)", "", value or "", flags=re.IGNORECASE).strip()
+    return re.sub(r"\s*\([^()]*(?:None|null)[^()]*\)", "", value or "", flags=re.IGNORECASE).strip()
 
 
 def snapshot_is_stale(value):

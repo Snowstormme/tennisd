@@ -107,6 +107,9 @@ class CatalogIntegrityTests(unittest.TestCase):
         row["score"]["games"] = [[6, 2], [1, 3]]
         row["score"]["points"] = [None, None]
         sync_matches("live", session=Session([row]), now=self.now)
+        saved = db.session.get(LiveMatch, "91234")
+        saved.score += " (None–None)"
+        db.session.commit()
         html = self.app.test_client().get("/matches?view=live").get_data(as_text=True)
         self.assertIn("SET 1", html)
         self.assertIn("SET 2", html)
