@@ -21,11 +21,10 @@ Security hardening, documentation, versioning, Dependabot configuration, databas
 2. Introduce versioned database migrations.
 3. Add PostgreSQL integration tests and migration/role checks in CI.
 4. Make local and CI dependency installation reproducible.
-5. Add live-sync observability and monitor `/readyz` as well as `/healthz`.
-6. Make database-backed rate limiting atomic under concurrency.
-7. Split the large Flask route module into focused blueprints/services.
-8. Remove request-time `has_table` probing after migrations are authoritative.
-9. Add product improvements: fresher live updates and optional CSV exports. Player ranking history is implemented from loaded snapshots; JSON export versioning is implemented with `schema_version: 1`; moderation audit logging is implemented in migration `0002`; followed-player/tournament in-app notifications are implemented with daily deduplication.
+5. Remove request-time `has_table` probing after migrations are authoritative.
+6. Add optional CSV exports.
+
+Completed platform work includes live-sync observability, PostgreSQL CI coverage, reproducible development requirements, atomic PostgreSQL rate limiting, and focused route modules. The live page now polls scores every three minutes and displays provider freshness/outage state. Player ranking history is implemented from loaded snapshots; JSON export versioning is implemented with `schema_version: 1`; moderation audit logging is implemented in migration `0002`; followed-player/tournament in-app notifications are implemented with daily deduplication.
 
 ## Audit note
 

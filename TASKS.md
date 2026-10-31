@@ -2,19 +2,20 @@
 
 ## Active
 
+- [ ] **Remove request-time schema probing** - Replace the remaining `has_table` checks with migration-backed capability/configuration checks.
+
 ## Waiting On
 
 ## Someday
 
 - [ ] **Synchronize repository state and verify main** - Confirm that the working copy contains the expected merge commit `a23baca`; review the discrepancy with local `2127e6b` and update all GitHub Actions references consistently.
-- [ ] **Introduce versioned database migrations** - Replace ad hoc `db.create_all()` and one-off SQL workflows with ordered, reviewable migrations; preserve the restricted runtime role model.
-- [ ] **Add PostgreSQL integration coverage in CI** - Run schema/bootstrap, migration, role, and representative request tests against PostgreSQL in GitHub Actions.
-- [ ] **Make local and CI environments reproducible** - Add a development dependency/bootstrap path and a lock or constraints file; ensure a clean install includes `defusedxml` and the complete test stack.
-- [ ] **Add live-sync observability** - Record last successful sync, data age, imported counts, provider errors, and expose a safe operational status view; monitor `/readyz` in addition to `/healthz`.
-- [ ] **Make rate limiting atomic under concurrency** - Replace count-then-insert behavior with an atomic PostgreSQL-safe limiter or a dedicated edge/shared limiter.
-- [ ] **Split the Flask route module** - Separate catalog, live matches, authentication, profiles, moderation, feedback, and sitemap concerns into smaller blueprints/services.
-- [ ] **Remove request-time schema probing** - Replace repeated `inspect(db.engine).has_table(...)` checks with migration-backed capability/configuration checks.
-- [ ] **Improve live match freshness** - Move beyond the daily snapshot when provider capacity and operating cost justify it; show provider freshness and outage state clearly.
+- [x] ~~Introduce versioned database migrations~~ (2026-10-31) - Ordered migrations and a migration ledger now cover the baseline, moderation audit, and notifications tables.
+- [x] ~~Add PostgreSQL integration coverage in CI~~ (2026-10-31) - CI provisions PostgreSQL and runs the smoke/bootstrap checks.
+- [x] ~~Make local and CI environments reproducible~~ (2026-10-31) - Development requirements and CI installation now include the complete declared test/tooling stack.
+- [x] ~~Add live-sync observability~~ (2026-10-31) - Ingestion runs, safe `/api/sync-status`, and a live-page freshness indicator expose provider state without secrets.
+- [x] ~~Make rate limiting atomic under concurrency~~ (2026-10-31) - PostgreSQL advisory locking protects the count-and-insert window.
+- [x] ~~Split the Flask route module~~ (2026-10-31) - Live, auth, news, profile, moderation, social, and community routes are now focused modules.
+- [x] ~~Improve live match freshness~~ (2026-10-31) - Live scores poll every three minutes and the page reports feed freshness/outage state.
 
 ## Done
 
