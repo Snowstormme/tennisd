@@ -20,6 +20,8 @@ load_dotenv()
 db = SQLAlchemy()
 login_manager = LoginManager()
 login_manager.login_view = "site.login"
+VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
+APP_VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() or "0.1.0"
 
 
 def freshness(value, now=None):
@@ -90,6 +92,7 @@ def create_app(test_config=None):
     ))))
 
     app.config.update(
+        APP_VERSION=APP_VERSION,
         # Production must receive a stable secret only from the host environment.
         # Development uses an ephemeral key when no local secret is configured.
         SECRET_KEY=os.environ.get("SECRET_KEY") or (None if production else secrets.token_hex(32)),
