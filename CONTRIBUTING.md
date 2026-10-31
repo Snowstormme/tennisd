@@ -26,18 +26,6 @@ python -m pytest -q
 
 For security-sensitive changes, also run the relevant checks described in `docs/security-checklist.md`.
 
-## Accessibility checklist
-
-For user-interface changes, check the affected page with keyboard-only navigation and a screen reader when possible. Keep these basics intact:
-
-- use semantic headings, landmarks, buttons, and form labels;
-- provide meaningful `alt` text for informative images and empty alt text for decorative ones;
-- keep keyboard focus visible and preserve a logical tab order;
-- maintain readable color contrast and do not communicate meaning by color alone;
-- respect `prefers-reduced-motion` and avoid unexpected focus or scrolling.
-
-Describe the manual checks in the pull request. Report barriers with the [Accessibility report](.github/ISSUE_TEMPLATE/accessibility_report.md) template.
-
 ## Branches and pull requests
 
 Create a focused branch from the current `main` branch. Do not commit directly to `main` in normal contribution work.
