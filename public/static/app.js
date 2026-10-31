@@ -137,25 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const liveMatches = document.querySelectorAll("[data-live-match]");
   if (liveMatches.length) {
-    const freshnessText = (raw) => {
-      const updated = new Date(raw);
-      if (Number.isNaN(updated.getTime())) return "Update time unavailable";
-      const minutes = Math.max(0, Math.floor((Date.now() - updated.getTime()) / 60000));
-      if (minutes < 1) return "Updated just now";
-      if (minutes < 60) return `Updated ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `Updated ${hours} hour${hours === 1 ? "" : "s"} ago`;
-      const days = Math.floor(hours / 24);
-      return `Updated ${days} day${days === 1 ? "" : "s"} ago`;
-    };
-    const renderFreshness = (node, raw) => {
-      if (!node) return;
-      node.setAttribute("datetime", raw || "");
-      node.textContent = freshnessText(raw);
-    };
-    document.querySelectorAll("[data-live-freshness]").forEach((node) => {
-      renderFreshness(node, node.getAttribute("datetime"));
-    });
     const renderSetScore = (scoreNode, rawScore, winnerSide) => {
       if (!scoreNode.classList.contains("featured-set-score")) {
         scoreNode.textContent = rawScore;
@@ -196,7 +177,6 @@ document.addEventListener("DOMContentLoaded", () => {
           document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
             const score = card.querySelector("[data-live-score]");
             if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
-            card.querySelectorAll("[data-live-freshness]").forEach((node) => renderFreshness(node, match.synced_at));
           });
         });
       } catch (_) {
