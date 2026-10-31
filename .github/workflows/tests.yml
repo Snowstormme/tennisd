@@ -88,3 +88,21 @@ jobs:
             echo 'Unexpectedly accepted a nonempty restore destination' >&2
             exit 1
           fi
+
+  required-tests:
+    # Preserve the protected branch's existing required check name while
+    # requiring both Python versions, PostgreSQL and restore verification.
+    name: test
+    if: always()
+    needs: [test, postgres-smoke, backup-restore-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every validation job to pass
+        env:
+          UNIT_RESULT: ${{ needs.test.result }}
+          POSTGRES_RESULT: ${{ needs.postgres-smoke.result }}
+          BACKUP_RESULT: ${{ needs.backup-restore-smoke.result }}
+        run: |
+          test "$UNIT_RESULT" = success
+          test "$POSTGRES_RESULT" = success
+          test "$BACKUP_RESULT" = success

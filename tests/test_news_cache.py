@@ -57,14 +57,15 @@ class NewsCacheTests(unittest.TestCase):
 
     def test_direct_publisher_rss_accepts_only_the_publishers_links(self):
         response = Mock()
-        response.content = b'''<rss><channel>
-          <item><title>A final</title><link>https://www.bbc.co.uk/sport/tennis/articles/example</link><pubDate>Sun, 01 Nov 2026 10:00:00 GMT</pubDate></item>
+        response.content = b'''<rss xmlns:media="http://search.yahoo.com/mrss/"><channel>
+          <item><title>A final</title><link>https://www.bbc.co.uk/sport/tennis/articles/example</link><pubDate>Sun, 01 Nov 2026 10:00:00 GMT</pubDate><media:thumbnail url="http://ichef.bbci.co.uk/example.jpg"/></item>
           <item><title>Unrelated</title><link>https://unrelated.example/article</link></item>
         </channel></rss>'''
         with patch.object(news_feed.requests, "get", return_value=response) as get:
             stories = news_feed._source_items("bbc", -1234)
         self.assertEqual(len(stories), 1)
         self.assertEqual(len(stories[0]["id"]), 64)
+        self.assertEqual(stories[0]["image"], "https://ichef.bbci.co.uk/example.jpg")
         self.assertEqual(get.call_args.args[0], "https://feeds.bbci.co.uk/sport/tennis/rss.xml")
 
 

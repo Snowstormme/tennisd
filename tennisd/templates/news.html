@@ -15,7 +15,7 @@
     {% if featured_story %}<a class="news-featured news-story-{{ featured_story.source_key }}" href="{{ url_for('site.news_story', source_key=featured_story.source_key, story_id=featured_story.id) }}">
       <span class="news-featured-media">
         <img class="news-fallback-photo" src="{{ url_for('static', filename='images/news-court-fallback.webp', v='20260930-4') }}" alt="">
-        {% if featured_article and featured_article.image %}<img src="{{ url_for('site.news_image', source_key=featured_story.source_key, story_id=featured_story.id) }}" alt="" data-news-card-image>{% endif %}
+        {% if featured_story.image %}<img src="{{ featured_story.image }}" alt="" data-news-card-image referrerpolicy="no-referrer">{% endif %}
       </span>
       <span class="news-featured-copy">
         <span class="news-featured-meta"><b>{{ featured_story.source }}</b><time>{{ featured_story.published_at.strftime('%d %b %Y · %H:%M UTC') }}</time></span>
@@ -26,7 +26,7 @@
     </a>{% endif %}
     {% if stories %}<div class="news-feed">{% for story in feed_stories %}
       <a class="news-story news-story-{{ story.source_key }}" href="{{ url_for('site.news_story', source_key=story.source_key, story_id=story.id) }}">
-        <span class="news-story-media"><img class="news-fallback-photo" src="{{ url_for('static', filename='images/news-court-fallback.webp', v='20260930-4') }}" alt="" loading="lazy"><img src="{{ url_for('site.news_image', source_key=story.source_key, story_id=story.id) }}" alt="" loading="lazy" data-news-card-image></span>
+        <span class="news-story-media"><img class="news-fallback-photo" src="{{ asset_url('images/news-court-fallback.webp') }}" alt="" loading="lazy">{% if story.image %}<img src="{{ story.image }}" alt="" loading="lazy" data-news-card-image referrerpolicy="no-referrer">{% endif %}</span>
         <span class="news-story-source">{{ story.source }}</span>
         <span class="news-story-copy"><small>{{ story.published_at.strftime('%d %b %Y · %H:%M UTC') }}</small><strong>{{ story.title }}</strong></span>
       </a>

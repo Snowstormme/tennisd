@@ -1,0 +1,23 @@
+name: Audit catalog quality
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Report catalog inconsistencies without changing records
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+        run: python scripts/audit_catalog.py --limit 50

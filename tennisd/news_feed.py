@@ -146,6 +146,15 @@ def _source_items(source_key, cache_window):
         if not title or not (direct or google_link):
             continue
         published_at = _published_at(item.findtext("pubDate"))
+        thumbnail = item.find("{http://search.yahoo.com/mrss/}thumbnail")
+        image_url = thumbnail.get("url", "") if thumbnail is not None else ""
+        if image_url.startswith("http://"):
+            image_url = "https://" + image_url[7:]
+        image_host = (urlparse(image_url).hostname or "").lower()
+        if not image_url.startswith("https://") or not (
+            image_host == source["image_domain"] or image_host.endswith(f".{source['image_domain']}")
+        ):
+            image_url = ""
         stories.append({
             "id": hashlib.sha256(link.encode()).hexdigest() if direct else urlparse(link).path.rsplit("/", 1)[-1],
             "title": title,
@@ -153,6 +162,7 @@ def _source_items(source_key, cache_window):
             "source_key": source["key"],
             "source": source["name"],
             "published_at": published_at,
+            "image": image_url,
         })
     return stories
 
