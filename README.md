@@ -24,6 +24,8 @@ python3 -m unittest discover -s tests -v
 
 The dev file includes the runtime dependencies and the pinned dependency auditor used by GitHub Actions, so local verification and CI use the same dependency set.
 
+GitHub Actions also runs a PostgreSQL smoke check against a temporary PostgreSQL 16 service. It creates the application schema, verifies a database query, and checks the health endpoint before a change can merge.
+
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.
