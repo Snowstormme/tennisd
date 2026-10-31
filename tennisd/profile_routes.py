@@ -1,6 +1,9 @@
 """Profile, account settings and personal data routes."""
 
-from flask import abort, flash, jsonify, redirect, render_template, request, session, url_for
+import csv
+import io
+
+from flask import abort, flash, jsonify, redirect, render_template, request, session, url_for, Response
 from flask_login import current_user, login_required, logout_user
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import joinedload
@@ -201,6 +204,59 @@ def register_profile_routes(
         }
         response = jsonify(payload)
         response.headers["Content-Disposition"] = f'attachment; filename="tennisd-{current_user.username}.json"'
+        response.cache_control.no_store = True
+        return response
+
+    @site.get("/settings/export.csv")
+    @login_required
+    def export_diary_csv():
+        """Export the same account data as a spreadsheet-friendly CSV file."""
+        payload = export_diary().get_json()
+        columns = (
+            "record_type", "schema_version", "username", "email", "display_name", "bio",
+            "has_profile_photo", "joined_at", "match_id", "match", "tournament", "watched_on",
+            "rating_out_of_ten", "review", "favorite", "public", "spoilers", "player", "tour",
+            "followed_tournament", "comment_body", "review_id", "created_at",
+        )
+        output = io.StringIO(newline="")
+        writer = csv.DictWriter(output, fieldnames=columns, lineterminator="\n")
+        writer.writeheader()
+
+        def safe_cell(value):
+            text = "" if value is None else str(value)
+            return f"'{text}" if text.startswith(("=", "+", "-", "@")) else text
+
+        def write_row(values):
+            writer.writerow({key: safe_cell(value) for key, value in values.items()})
+
+        write_row({
+            "record_type": "account", "schema_version": payload["schema_version"],
+            "username": payload["username"], "email": payload["email"],
+            "display_name": payload["display_name"], "bio": payload["bio"],
+            "has_profile_photo": payload["has_profile_photo"], "joined_at": payload["joined_at"],
+        })
+        for item in payload["diary"]:
+            write_row({"record_type": "diary", **item})
+        for player in payload["followed_players"]:
+            write_row({"record_type": "followed_player", "player": player})
+        for item in payload["followed_tournaments"]:
+            write_row({
+                "record_type": "followed_tournament", "tour": item["tour"],
+                "followed_tournament": item["tournament"],
+            })
+        for match_id in payload["watchlist_match_ids"]:
+            write_row({"record_type": "watchlist", "match_id": match_id})
+        for item in payload["comments"]:
+            write_row({
+                "record_type": "comment", "match_id": item["match_id"],
+                "review_id": item["review_id"], "comment_body": item["body"],
+                "created_at": item["created_at"],
+            })
+
+        response = Response(output.getvalue(), content_type="text/csv; charset=utf-8")
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="tennisd-{current_user.username}.csv"'
+        )
         response.cache_control.no_store = True
         return response
 

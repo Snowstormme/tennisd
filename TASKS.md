@@ -23,3 +23,4 @@
 - [x] ~~Expand moderation auditability~~ (2026-10-31) - Moderation actions now record actor, action, target, details and timestamp.
 - [x] ~~Add followed-player and tournament notifications~~ (2026-10-31) - In-app alerts are created by live-sync with daily deduplication.
 - [x] ~~Add ranking history and player-form views~~ (2026-10-31) - Player pages now show loaded singles ranking snapshots and best rank.
+- [x] ~~Add optional CSV exports~~ (2026-10-31) - Account data can now be downloaded as a spreadsheet-friendly CSV alongside versioned JSON.

@@ -771,6 +771,14 @@ class TennisdFlows(unittest.TestCase):
         self.assertEqual(len(data["followed_players"]), 1)
         self.assertNotIn("password_hash", export.get_data(as_text=True))
 
+        csv_export = self.client.get("/settings/export.csv")
+        self.assertEqual(csv_export.status_code, 200)
+        self.assertIn("text/csv", csv_export.headers["Content-Type"])
+        self.assertIn("attachment; filename=\"tennisd-alice.csv\"", csv_export.headers["Content-Disposition"])
+        self.assertIn("record_type,schema_version", csv_export.get_data(as_text=True))
+        self.assertIn("Alice's private data", csv_export.get_data(as_text=True))
+        self.assertNotIn("password_hash", csv_export.get_data(as_text=True))
+
         self.client.post("/settings/delete-account", data={
             "csrf_token": self.token(), "username": "alice", "password": "wrong-password",
         })

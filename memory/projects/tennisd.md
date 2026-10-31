@@ -21,9 +21,9 @@ Security hardening, documentation, versioning, Dependabot configuration, databas
 2. Introduce versioned database migrations.
 3. Add PostgreSQL integration tests and migration/role checks in CI.
 4. Make local and CI dependency installation reproducible.
-5. Add optional CSV exports.
+5. Keep the repository synchronized with the expected upstream `main` state when network access is available.
 
-Completed platform work includes live-sync observability, PostgreSQL CI coverage, reproducible development requirements, atomic PostgreSQL rate limiting, focused route modules, and removal of request-time schema introspection. The live page now polls scores every three minutes and displays provider freshness/outage state. Player ranking history is implemented from loaded snapshots; JSON export versioning is implemented with `schema_version: 1`; moderation audit logging is implemented in migration `0002`; followed-player/tournament in-app notifications are implemented with daily deduplication.
+Completed platform work includes live-sync observability, PostgreSQL CI coverage, reproducible development requirements, atomic PostgreSQL rate limiting, focused route modules, removal of request-time schema introspection, and spreadsheet-friendly CSV exports. The live page now polls scores every three minutes and displays provider freshness/outage state. Player ranking history is implemented from loaded snapshots; JSON export versioning is implemented with `schema_version: 1`; moderation audit logging is implemented in migration `0002`; followed-player/tournament in-app notifications are implemented with daily deduplication.
 
 ## Audit note
 
