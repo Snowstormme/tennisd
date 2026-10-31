@@ -15,6 +15,15 @@ flask --app wsgi run --debug
 
 Open <http://127.0.0.1:5000>. Test runs receive a small handcrafted demo catalog; production initialization creates an empty schema. Current fixtures and results enter through the scheduled [Live Tennis API](https://livetennisapi.com/) feed. Once a live singles match finishes, the same provider identity is copied into the permanent match catalog, so its score and winner remain available for the diary. Existing historical rows remain in the database, but Tennisd no longer imports new history from a second tennis provider.
 
+To install the complete development and CI environment, use the shared dev requirements file:
+
+```bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m unittest discover -s tests -v
+```
+
+The dev file includes the runtime dependencies and the pinned dependency auditor used by GitHub Actions, so local verification and CI use the same dependency set.
+
 ## What is here
 
 - **Discover:** featured match, archive highlights and recent public reviews.

@@ -8,7 +8,7 @@ import time
 
 import requests
 from flask import abort, current_app, request
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 
 from . import db
 from .models import AuthToken, RateLimitEvent
@@ -20,6 +20,14 @@ def limit_action(action, subject, maximum, seconds):
         current_app.secret_key.encode(), f"{action}:{subject}".encode(), hashlib.sha256
     ).hexdigest()
     now = int(time.time())
+    # Serialize checks for the same key on PostgreSQL. Without this lock, two
+    # concurrent requests can both observe a count below the limit and then
+    # insert, allowing a burst above the configured maximum.
+    if db.engine.dialect.name == "postgresql":
+        db.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:rate_limit_key))"),
+            {"rate_limit_key": key},
+        )
     recent = db.session.scalar(
         select(func.count(RateLimitEvent.id)).where(
             RateLimitEvent.key_hash == key,
