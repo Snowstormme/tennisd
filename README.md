@@ -39,6 +39,7 @@ Every response includes an `X-Request-ID` correlation token. Server-side 5xx log
 - **Watchlist:** save matches to watch later; logging a match removes it from the watchlist.
 - **Players:** biography, imported wins and losses, surface and season splits, titles, serve metrics, frequent opponents and followed players.
 - **Profiles:** personal diary, watched surfaces, tour split, ratings and favorites.
+- **Notifications:** in-app updates for friend requests and replies to your reviews.
 - **Settings:** profile photo, display name, bio, password change, diary export and account deletion.
 - **Account safety:** email verification, expiring single-use password reset links and session invalidation after password changes.
 - **Community safety:** report controls and a private moderation queue for the verified administrator.

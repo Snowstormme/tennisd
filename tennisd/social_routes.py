@@ -6,7 +6,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import joinedload
 
 from . import db
-from .models import Comment, FollowedPlayer, Friendship, Player, Review, User
+from .models import Comment, FollowedPlayer, Friendship, Notification, Player, Review, User, utcnow
+from .notifications import create_notification
 
 
 def register_social_routes(site):
@@ -29,7 +30,23 @@ def register_social_routes(site):
             ).options(joinedload(Comment.user), joinedload(Comment.review).joinedload(Review.match))
             .order_by(Comment.created_at.desc()).limit(30)
         ).all()
-        return render_template("notifications.html", requests_in=requests_in, comments=comments)
+        in_app = db.session.scalars(
+            select(Notification).where(Notification.user_id == current_user.id)
+            .order_by(Notification.created_at.desc()).limit(50)
+        ).all()
+        return render_template(
+            "notifications.html", requests_in=requests_in, comments=comments, in_app=in_app,
+        )
+
+    @site.post("/notifications/<int:notification_id>/read")
+    @login_required
+    def mark_notification_read(notification_id):
+        notification = db.get_or_404(Notification, notification_id)
+        if notification.user_id != current_user.id:
+            abort(403)
+        notification.read_at = utcnow()
+        db.session.commit()
+        return redirect(notification.url)
 
     @site.post("/u/<username>/friend")
     @login_required
@@ -45,6 +62,11 @@ def register_social_routes(site):
         )))
         if existing is None:
             db.session.add(Friendship(requester_id=current_user.id, addressee_id=other.id))
+            create_notification(
+                other.id, kind="friend_request", title="New friend request",
+                body=f"{current_user.display_name} sent you a friend request.",
+                url=url_for("site.notifications"),
+            )
             db.session.commit()
             flash("Friend request sent.", "success")
         return redirect(url_for("site.profile", username=other.username))
@@ -57,6 +79,11 @@ def register_social_routes(site):
             abort(403)
         if action == "accept":
             item.status = "accepted"
+            create_notification(
+                item.requester_id, kind="friend_accept", title="Friend request accepted",
+                body=f"{current_user.display_name} accepted your friend request.",
+                url=url_for("site.notifications"),
+            )
             flash("You are now friends.", "success")
         else:
             db.session.delete(item)

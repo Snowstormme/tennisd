@@ -8,6 +8,7 @@ from sqlalchemy import delete, or_, select
 
 from . import db
 from .models import Comment, Match, Report, Review, WatchlistItem
+from .notifications import create_notification
 from .security import limit_action
 
 
@@ -85,6 +86,12 @@ def register_community_routes(site):
                 flash("Please wait a moment before commenting again.", "error")
             else:
                 db.session.add(Comment(review_id=review.id, user_id=current_user.id, body=body))
+                if review.user_id != current_user.id:
+                    create_notification(
+                        review.user_id, kind="review_comment", title="New reply to your review",
+                        body=f"{current_user.display_name} commented on your match review.",
+                        url=url_for("site.match_detail", match_id=review.match_id) + f"#review-{review.id}",
+                    )
                 db.session.commit()
                 flash("Comment added.", "success")
         return redirect(url_for("site.match_detail", match_id=review.match_id) + f"#review-{review.id}")

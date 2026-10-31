@@ -274,6 +274,20 @@ class ModerationAction(db.Model):
     moderator = db.relationship("User")
 
 
+class Notification(db.Model):
+    """In-app notification delivered to one member."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False, index=True)
+    title = db.Column(db.String(160), nullable=False)
+    body = db.Column(db.String(500), nullable=False)
+    url = db.Column(db.String(300), nullable=False)
+    read_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False, index=True)
+    user = db.relationship("User")
+
+
 class IngestionCursor(db.Model):
     """Small durable checkpoint for quota-limited provider imports."""
 

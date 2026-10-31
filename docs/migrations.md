@@ -13,6 +13,7 @@ creation privileges.
 
 The current `0001_baseline` migration creates the schema represented by
 `tennisd.models`. `0002_moderation_audit` adds the administrator action ledger.
+`0003_notifications` adds durable in-app notifications.
 Future schema changes should add the next ordered entry to `tennisd/migrations.py`,
 implement it against the owner connection, and update the PostgreSQL smoke check
 when the change affects startup or health behavior.

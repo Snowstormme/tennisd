@@ -3,12 +3,13 @@
 from sqlalchemy import text
 
 from . import db
-from .models import ModerationAction
+from .models import ModerationAction, Notification
 
 
 MIGRATIONS = (
     ("0001_baseline", "Create the SQLAlchemy metadata schema."),
     ("0002_moderation_audit", "Create the moderation action audit table."),
+    ("0003_notifications", "Create the in-app notification table."),
 )
 
 
@@ -45,6 +46,8 @@ def run_migrations(app):
                 db.metadata.create_all(bind=connection)
             elif version == "0002_moderation_audit":
                 db.metadata.create_all(bind=connection, tables=[ModerationAction.__table__])
+            elif version == "0003_notifications":
+                db.metadata.create_all(bind=connection, tables=[Notification.__table__])
             else:  # pragma: no cover - protects the registry from silent omissions
                 raise RuntimeError(f"Migration {version} has no implementation.")
             connection.execute(

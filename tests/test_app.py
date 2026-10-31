@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 from tennisd import create_app, db
-from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, ModerationAction, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
+from tennisd.models import Comment, FeedbackSubmission, FollowedPlayer, LiveMatch, Match, ModerationAction, Notification, Player, PlayerPhoto, Poll, PollOption, PollVote, ProfileImage, RankingSnapshot, Report, Review, TournamentSubscription, User, WatchlistItem
 from tennisd.news_feed import NEWS_SOURCES, curate_news_items, fetch_news_items
 from tennisd.routes import normalized_person_name, wikimedia_player_photo
 from tennisd.tournament_catalog import tournament_profile, tournament_slug
@@ -596,6 +596,7 @@ class TennisdFlows(unittest.TestCase):
         with self.app.app_context():
             from tennisd.models import Friendship
             request_id = db.session.scalar(select(Friendship.id))
+            self.assertEqual(db.session.scalar(select(Notification.kind)), "friend_request")
         self.client.post(f"/friend-requests/{request_id}/accept", data={"csrf_token": self.token()})
         self.assertIn(b"bob", self.client.get("/u/alice?tab=friends").data)
 
