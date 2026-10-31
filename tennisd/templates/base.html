@@ -89,7 +89,7 @@
   <main id="main">{% block content %}{% endblock %}</main>
   <footer class="site-footer">
     <div class="container footer-inner">
-      <div><a class="footer-brand" href="{{ url_for('site.home') }}">TENNISD<span>.</span></a><p>A place for the matches that stayed with you.</p></div>
+      <div><a class="footer-brand" href="{{ url_for('site.home') }}">TENNISD<span>.</span></a><p>A place for the matches that stayed with you.</p><p class="site-version">Version {{ config.APP_VERSION }}</p></div>
       <div class="footer-links"><a href="{{ url_for('site.about') }}">About & data</a><a href="{{ url_for('site.feedback') }}">Feedback</a><a href="{{ url_for('site.privacy') }}">Privacy</a><a href="{{ url_for('site.security_txt') }}">Security</a><a href="{{ url_for('site.matches') }}">Explore matches</a><a href="{{ url_for('site.players') }}">Explore players</a></div>
       <p class="data-credit">Tennis data sources, update schedules and coverage are explained on the <a href="{{ url_for('site.about') }}">About page</a>.</p>
     </div>
