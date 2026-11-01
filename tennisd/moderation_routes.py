@@ -5,12 +5,13 @@ import secrets
 
 from flask import abort, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 
 from . import db
 from .models import Comment, FeedbackSubmission, ModerationAction, Poll, PollOption, PollVote, Report, Review, utcnow
 from .security import client_ip, limit_action
-from .web import schema_table_exists
+from .web import database_id, schema_table_exists
+from .moderation_queries import moderation_context
 
 
 def register_moderation_routes(site):
@@ -57,10 +58,10 @@ def register_moderation_routes(site):
             message = request.form.get("message", "").strip()
             raw_rating = request.form.get("rating", "").strip()
             page_path = request.form.get("page_path", "").strip()
-            rating = int(raw_rating) if raw_rating.isdigit() else None
+            rating = int(raw_rating) if raw_rating in ('1','2','3','4','5') else None
             if category not in {"idea", "bug", "content", "other"}:
                 flash("Choose a feedback category.", "error")
-            elif rating is not None and rating not in range(1, 6):
+            elif raw_rating and rating is None:
                 flash("Choose a rating from 1 to 5.", "error")
             elif not 10 <= len(message) <= 2000:
                 flash("Write between 10 and 2,000 characters.", "error")
@@ -86,7 +87,7 @@ def register_moderation_routes(site):
             poll = db.session.scalar(select(Poll).where(
                 Poll.is_active.is_(True), Poll.starts_at <= now,
                 or_(Poll.ends_at.is_(None), Poll.ends_at > now),
-            ).order_by(Poll.created_at.desc()))
+            ).order_by(Poll.created_at.desc(), Poll.id.desc()).limit(1))
             if poll:
                 vote = db.session.scalar(select(PollVote).where(
                     PollVote.poll_id == poll.id,
@@ -97,6 +98,8 @@ def register_moderation_routes(site):
 
     @site.post("/feedback/polls/<int:poll_id>/vote")
     def vote_poll(poll_id):
+        if database_id(poll_id) is None:
+            abort(404)
         if not feedback_tables_ready():
             abort(503)
         now = utcnow()
@@ -107,7 +110,8 @@ def register_moderation_routes(site):
         if not poll:
             abort(404)
         raw_option = request.form.get("option", "")
-        option = db.session.get(PollOption, int(raw_option)) if raw_option.isdigit() else None
+        option_id = database_id(raw_option)
+        option = db.session.get(PollOption, option_id) if option_id else None
         if not option or option.poll_id != poll.id:
             flash("Choose one answer.", "error")
             return redirect(url_for("site.feedback"))
@@ -132,51 +136,36 @@ def register_moderation_routes(site):
     @login_required
     def moderation():
         require_moderator()
-        reports = db.session.scalars(
-            select(Report).where(Report.status == "open")
-            .order_by(Report.created_at.asc()).limit(100)
-        ).all()
-        feedback_items = []
-        feedback_summary = {"total": 0, "average": None, "categories": []}
-        polls = []
-        audit_actions = db.session.scalars(
-            select(ModerationAction).order_by(ModerationAction.created_at.desc()).limit(50)
-        ).all()
-        if feedback_tables_ready():
-            feedback_items = db.session.scalars(
-                select(FeedbackSubmission).order_by(FeedbackSubmission.created_at.desc()).limit(100)
-            ).all()
-            total, average = db.session.execute(
-                select(func.count(FeedbackSubmission.id), func.avg(FeedbackSubmission.rating))
-            ).one()
-            categories = db.session.execute(
-                select(FeedbackSubmission.category, func.count(FeedbackSubmission.id))
-                .group_by(FeedbackSubmission.category).order_by(func.count(FeedbackSubmission.id).desc())
-            ).all()
-            feedback_summary = {"total": total, "average": average, "categories": categories}
-            polls = db.session.scalars(select(Poll).order_by(Poll.created_at.desc())).all()
-        return render_template(
-            "moderation.html", reports=reports, feedback_items=feedback_items,
-            feedback_summary=feedback_summary, polls=polls, audit_actions=audit_actions,
-        )
+        return render_template("moderation.html", **moderation_context(
+            ready=feedback_tables_ready(), tab=request.args.get("tab", "reports"),
+            state=request.args.get("state", ""), category=request.args.get("category", ""),
+            page=request.args.get("page", 1, type=int)))
 
     @site.post("/moderation/feedback/<int:feedback_id>/<status>")
     @login_required
     def moderate_feedback(feedback_id, status):
         require_moderator()
+        if database_id(feedback_id) is None:
+            abort(404)
         if status not in {"new", "reviewed", "planned", "closed"}:
             abort(400)
         item = db.get_or_404(FeedbackSubmission, feedback_id)
         item.status = status
         record_action("update_feedback", "feedback", item.id, f"status={status}")
         db.session.commit()
-        return redirect(url_for("site.moderation") + "#feedback")
+        return redirect(url_for("site.moderation", tab="feedback", _anchor="results"))
 
     @site.post("/moderation/reports/<int:report_id>/<action>")
     @login_required
     def moderate_report(report_id, action):
         require_moderator()
-        report = db.get_or_404(Report, report_id)
+        if database_id(report_id) is None:
+            abort(404)
+        report = db.session.scalar(select(Report).where(Report.id == report_id).with_for_update())
+        if report is None:
+            abort(404)
+        if report.status != "open":
+            abort(409)
         if action == "dismiss":
             report.status = "dismissed"
             record_action("dismiss_report", "report", report.id)

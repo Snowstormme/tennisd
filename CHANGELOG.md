@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-02
+
+- Add complete 25-item moderator report, feedback, poll and audit histories,
+  selected-queue loading, status/category filters and full summary counts.
+- Aggregate poll results in SQL without loading individual votes; link reports
+  to reachable discussions and validate stored feedback destinations.
+- Bound numeric feedback/poll/report/comment inputs before conversion or SQL.
+  Lock report decisions and reject repeat actions on already dismissed reports.
+
 ## [0.12.0] - 2026-11-02
 
 - Page the tournament directory in SQL before loading card metadata, preserving

@@ -14,6 +14,7 @@ from .models import Comment, Match, Report, Review, WatchlistItem
 from .notifications import create_notification
 from .identities import match_identity_is_valid
 from .security import limit_action
+from .web import require_database_id
 
 
 def register_community_routes(site):
@@ -67,7 +68,7 @@ def register_community_routes(site):
     def review_detail(review_id):
         if review_id > 2147483647:
             abort(404)
-        review = db.get_or_404(Review, review_id)
+        review = db.get_or_404(Review, require_database_id(review_id))
         if not review.is_public and (not current_user.is_authenticated or current_user.id != review.user_id):
             abort(404)
         pagination = bounded_page(select(Comment).where(Comment.review_id == review.id)
@@ -92,7 +93,7 @@ def register_community_routes(site):
     @site.post("/reviews/<int:review_id>/delete")
     @login_required
     def delete_review(review_id):
-        review = db.get_or_404(Review, review_id)
+        review = db.get_or_404(Review, require_database_id(review_id))
         if review.user_id != current_user.id:
             abort(403)
         match_id = review.match_id
@@ -104,7 +105,7 @@ def register_community_routes(site):
     @site.post("/reviews/<int:review_id>/comments")
     @login_required
     def add_comment(review_id):
-        review = db.get_or_404(Review, review_id)
+        review = db.get_or_404(Review, require_database_id(review_id))
         if not review.is_public:
             abort(404)
         body = request.form.get("body", "").strip()
@@ -132,7 +133,7 @@ def register_community_routes(site):
     @site.post("/comments/<int:comment_id>/delete")
     @login_required
     def delete_comment(comment_id):
-        comment = db.get_or_404(Comment, comment_id)
+        comment = db.get_or_404(Comment, require_database_id(comment_id))
         if comment.user_id != current_user.id and comment.review.user_id != current_user.id:
             abort(403)
         review_id = comment.review_id
@@ -149,14 +150,14 @@ def register_community_routes(site):
         if reason not in {"spam", "harassment", "hate", "other"}:
             abort(400)
         if target == "review":
-            review = db.get_or_404(Review, request.form.get("target_id", type=int))
+            review = db.get_or_404(Review, require_database_id(request.form.get("target_id")))
             if not review.is_public:
                 abort(404)
             review_id = review.id
             condition = (Report.reporter_id == current_user.id, Report.review_id == review.id)
             report = Report(reporter_id=current_user.id, review_id=review.id, reason=reason)
         elif target == "comment":
-            comment = db.get_or_404(Comment, request.form.get("target_id", type=int))
+            comment = db.get_or_404(Comment, require_database_id(request.form.get("target_id")))
             if not comment.review.is_public:
                 abort(404)
             review_id = comment.review_id
