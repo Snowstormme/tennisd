@@ -79,3 +79,11 @@
 </nav>
 {% endif %}
 {%- endmacro %}
+
+{% macro player_archive_pagination(page, player_id) -%}
+{% if page.pages > 1 %}<nav class="pagination profile-pagination" aria-label="Player match archive pages">
+{% if page.has_prev %}<a href="{{ url_for('site.player_detail', player_id=player_id, page=page.prev_num) }}#match-history" rel="prev">Previous</a>{% endif %}
+<span>Page {{ page.page }} of {{ page.pages }}</span>
+{% if page.has_next %}<a href="{{ url_for('site.player_detail', player_id=player_id, page=page.next_num) }}#match-history" rel="next">Next</a>{% endif %}
+</nav>{% endif %}
+{%- endmacro %}

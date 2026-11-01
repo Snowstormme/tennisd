@@ -12,7 +12,7 @@ from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_s
 from tennisd.models import IngestionRun, Match, MatchParticipant, Player, Review, User
 from tennisd.identities import catalog_is_visible
 from tennisd.pagination import bounded_page
-from tennisd.stats import diary_statistics
+from tennisd.stats import diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
 
 
@@ -230,6 +230,32 @@ def main():
             raise RuntimeError("The hidden round fixture was not preserved.")
         if db.session.scalar(select(Match.id).where(Match.id == hidden.id, catalog_is_visible())) is not None:
             raise RuntimeError("PostgreSQL public discovery exposed a hidden R128 result.")
+
+        stats_player = Player(id="pg-stats",name="Postgres Summary",tour="ATP")
+        opponents = [Player(id="pg-rival-a",name="Alex Same",tour="ATP"), Player(id="pg-rival-b",name="Alex Same",tour="ATP")]
+        for i in range(23):
+            match = Match(id=f"pg-summary-{i:03}",winner=opponents[0] if i==2 else stats_player,
+                loser=stats_player if i==2 else opponents[i%2],tour="ATP",tournament="PG Summary",surface="Hard",
+                level="G" if i==0 else "A",round="F" if i<2 else "R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4")
+            if i==0:
+                match.w_first_in,match.w_svpt,match.w_first_won,match.w_ace = 50,100,25,0
+            elif i==1:
+                match.w_svpt,match.w_ace = 1000,4
+            elif i==2:
+                match.l_first_in,match.l_svpt,match.l_first_won,match.l_ace = 30,60,20,2
+            db.session.add(match)
+        db.session.add(Match(id="pg-summary-hidden",winner=stats_player,loser=opponents[0],tour="ATP",
+            tournament="PG Summary",surface="Hard",level="G",round="R128",status="finished",
+            week_start=date(2024,1,1),score="6-0 6-0",w_ace=999))
+        db.session.commit()
+        summary = player_statistics(stats_player)
+        if (summary["match_count"],summary["wins"],summary["losses"],summary["title_count"],summary["slam_titles"]) != (23,22,1,2,1):
+            raise RuntimeError("PostgreSQL player summaries did not cover the complete visible history.")
+        if (summary["first_serve_pct"],summary["first_serve_won_pct"],summary["aces_per_match"],summary["ace_matches"]) != (50,56,2.0,3):
+            raise RuntimeError("PostgreSQL service summaries used unpaired or hidden observations.")
+        page = bounded_page(select(Match).where(player_match_scope(stats_player.id)).order_by(Match.id), page=10**100)
+        if page.page != 2 or page.total != 23 or len(page.items) != 5:
+            raise RuntimeError("PostgreSQL player history pagination was not bounded.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

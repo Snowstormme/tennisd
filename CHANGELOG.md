@@ -4,6 +4,21 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-01
+
+- Aggregate player wins/losses, titles, surfaces, seasons, opponents and service
+  metrics in SQL across the complete visible history. Load at most twelve title
+  records; keep full title counts and distinct namesake opponent IDs.
+- Add 18-match player archive pages with stable date/ID ordering, bounded page
+  requests and direct player-ID navigation. Remove the ambiguous name-only
+  "Find all" link. Summaries remain independent of the displayed page.
+- Compute each service percentage only from paired, consistent point counts;
+  show its contributing match count, retain known zeros and exclude invalid
+  negative/impossible observations. Keep missing values distinct from zero.
+- Ignore invalid rank zero, retain zero ranking points and clarify that best
+  ranks cover loaded history. All queries preserve the R128 visibility policy.
+
+
 ## [0.4.0] - 2026-11-01
 
 - Public discovery starts at R64 (1/32 final). Hide R128 in archive searches,

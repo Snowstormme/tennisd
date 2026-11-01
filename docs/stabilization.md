@@ -258,3 +258,19 @@ snapshots are recorded individually. Only R128 → R64 is changed; no global rou
 substitution is performed. Use the existing read-only preview, atomic apply and
 rollback operations. This group reaches the existing 20-record limit and does
 not include the three other opening-round results still awaiting review.
+
+## Bounded player profiles (0.5.0)
+
+Player summaries use SQL aggregates across `player_match_scope`, including the
+public visibility policy and exact player ID. Namesake players and opponents
+remain separate. Only twelve latest title objects are loaded, with an independent
+whole-history title count. Archive pages fetch at most 18 matches, ordered by
+match date and permanent ID; invalid/oversized pages use the existing bounded
+pagination helper. Changing page never changes the aggregate scope.
+
+Service rates are ratios of total paired observations, not averages of match
+percentages. Missing, negative, zero-denominator and numerator-above-denominator
+pairs do not contribute; each metric has its own coverage count. Zero aces and
+valid zero percentages remain visible. Ranking zero is omitted, while known zero
+ranking points remain visible. These are loaded-catalog summaries, not complete
+career records. No schema migration or production data rewrite is required.
