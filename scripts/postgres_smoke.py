@@ -9,7 +9,7 @@ from sqlalchemy.exc import DBAPIError
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_report, readonly_catalog_session
-from tennisd.models import Match, Player, Review, User
+from tennisd.models import Match, MatchParticipant, Player, Review, User
 from tennisd.pagination import bounded_page
 from tennisd.stats import diary_statistics
 from tennisd.result_corrections import definitions, reviewed_correction
@@ -94,14 +94,18 @@ def main():
             week_start=date.fromisoformat(original["date"]), score=original["score"],
             winner=winner, loser=loser, level="G", round="R128", surface="Hard",
         )
-        db.session.add_all((winner, loser, target, historical)); db.session.commit()
+        db.session.add_all((winner, loser, target, historical))
+        db.session.add_all(MatchParticipant(**row) for row in definition["related_before"]["participants"])
+        db.session.commit()
         with readonly_catalog_session():
             reviewed_correction(existing_key)
         reviewed_correction(existing_key, operation="apply"); db.session.commit()
-        if historical.loser_id != target.id:
+        participant_id = definition["related_before"]["participants"][1]["id"]
+        participant = db.session.get(MatchParticipant, participant_id)
+        if historical.loser_id != target.id or participant.player_id != target.id:
             raise RuntimeError("PostgreSQL correction did not reuse the reviewed existing profile.")
         reviewed_correction(existing_key, operation="rollback"); db.session.commit()
-        if historical.loser_id != original["loser"]["id"]:
+        if historical.loser_id != original["loser"]["id"] or participant.player_id != original["loser"]["id"]:
             raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
 
     response = app.test_client().get("/healthz")

@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from tennisd import create_app, db
 from tennisd.catalog_audit import match_snapshot, readonly_catalog_session
 from tennisd.live_tennis import ensure_history_players, normalize_history_match, store_confirmed_result
-from tennisd.models import Match, MatchStatistic, Player, PlayerExternalId, Review, User, utcnow
+from tennisd.models import Match, MatchParticipant, MatchSet, MatchStatistic, Player, PlayerExternalId, Review, User, utcnow
 from tennisd.result_corrections import corrected_snapshot, correction_for_match, definitions, reviewed_correction
 
 
@@ -86,6 +86,10 @@ class ResultCorrectionTests(unittest.TestCase):
 
     def test_related_statistics_require_review_instead_of_silent_reassignment(self):
         db.session.add(MatchStatistic(match_id=self.match.id, player_id=self.match.loser_id, aces=4));db.session.commit()
+        preview = reviewed_correction(self.key)
+        self.assertIn("additional review", preview["blocked"])
+        self.assertFalse(preview["changed"])
+        self.assertEqual(preview["related_before"]["statistics"][0]["aces"], 4)
         with self.assertRaisesRegex(ValueError,"additional review"):
             reviewed_correction(self.key,operation="apply")
         db.session.rollback()
@@ -125,6 +129,8 @@ class ExistingProfileCorrectionTests(unittest.TestCase):
             review = Review(user=user, match=match, watched_on=date(2024,8,27), is_public=False, body="Keep history diary")
             db.session.add_all((winner, loser, target, match, review,
                 PlayerExternalId(player=loser, provider="tennis_api", external_id=key)))
+            for name, model in (("participants", MatchParticipant), ("statistics", MatchStatistic), ("sets", MatchSet)):
+                db.session.add_all(model(**row) for row in correction["related_before"][name])
             self.matches[key], self.reviews[key] = match, review
         db.session.commit()
 
@@ -145,6 +151,10 @@ class ExistingProfileCorrectionTests(unittest.TestCase):
                 self.assertTrue(reviewed_correction(key, operation="apply")["changed"])
                 db.session.commit()
                 self.assertEqual(match_snapshot(self.matches[key]), corrected_snapshot(correction))
+                participant = db.session.get(MatchParticipant, correction["related_before"]["participants"][1]["id"])
+                self.assertEqual(participant.player_id, correction["corrected_player"]["id"])
+                self.assertEqual(participant.side, 2)
+                self.assertFalse(participant.is_winner)
                 self.assertFalse(reviewed_correction(key, operation="apply")["changed"])
                 self.assertEqual(self.reviews[key].match_id, correction["before"]["id"])
                 self.assertEqual(self.reviews[key].body, "Keep history diary")
@@ -155,6 +165,7 @@ class ExistingProfileCorrectionTests(unittest.TestCase):
                 self.assertTrue(reviewed_correction(key, operation="rollback")["changed"])
                 db.session.commit()
                 self.assertEqual(match_snapshot(self.matches[key]), correction["before"])
+                self.assertEqual(participant.player_id, correction["before"]["loser"]["id"])
                 self.assertIsNone(correction_for_match(self.matches[key]))
                 self.assertFalse(reviewed_correction(key, operation="rollback")["changed"])
         self.assertEqual(db.session.scalar(select(func.count(Player.id))), players)
@@ -188,7 +199,26 @@ class ExistingProfileCorrectionTests(unittest.TestCase):
         key = self.keys[0]
         match = self.matches[key]
         db.session.add(MatchStatistic(match_id=match.id, player_id=match.loser_id, aces=2)); db.session.commit()
-        with self.assertRaisesRegex(ValueError, "additional review"):
+        with self.assertRaisesRegex(ValueError, "Related rows changed"):
             reviewed_correction(key, operation="apply")
         db.session.rollback()
         self.assertEqual(match_snapshot(match), definitions()[key]["before"])
+
+    def test_related_drift_and_partial_repairs_are_refused_in_both_directions(self):
+        key = self.keys[0]
+        correction = definitions()[key]
+        participant = db.session.get(MatchParticipant, correction["related_before"]["participants"][1]["id"])
+        participant.seed = "17"; db.session.commit()
+        with self.assertRaisesRegex(ValueError, "Related rows changed"):
+            reviewed_correction(key, operation="apply")
+        db.session.rollback(); participant.seed = None; db.session.commit()
+        participant.player_id = correction["corrected_player"]["id"]; db.session.commit()
+        with self.assertRaisesRegex(ValueError, "Related rows changed"):
+            reviewed_correction(key, operation="apply")
+        db.session.rollback(); participant.player_id = correction["before"]["loser"]["id"]; db.session.commit()
+        reviewed_correction(key, operation="apply"); db.session.commit()
+        participant.player_id = correction["before"]["loser"]["id"]; db.session.commit()
+        with self.assertRaisesRegex(ValueError, "Related rows changed"):
+            reviewed_correction(key, operation="rollback")
+        db.session.rollback()
+        self.assertEqual(self.matches[key].loser_id, correction["corrected_player"]["id"])

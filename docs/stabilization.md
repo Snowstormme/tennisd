@@ -120,6 +120,11 @@ ATP media notes corroborate the original dates. These repairs reuse exact
 existing profiles and refuse a missing profile or name/tour/country drift,
 including during the read-only preview. They never create a substitute profile
 or change the WTA profiles/external mappings that the retired importer used.
+Each legacy result has two participant rows and no set/statistic rows. Their
+exact original snapshots are recorded: the loser participant reference changes
+alongside `match.loser_id` in one transaction, while IDs, sides, winner flags,
+seeds and entries stay intact. Rollback restores both references. Unexpected
+related rows or partial repairs stop the operation rather than being overwritten.
 
 ```sh
 # Default operation is a database-enforced read-only preview.
@@ -133,8 +138,10 @@ python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operat
 Replace the correction argument to select another reviewed row. The **Correct
 a reviewed result** workflow exposes the same selection and operations and
 stores a journal containing public result fields only. Apply/rollback lock the
-permanent match, check all reviewed identity/result fields for drift, and stop
-if participant/statistic rows need a broader review. They preserve the match ID,
+permanent match and related rows, check all reviewed identity/result fields for
+drift, and stop if participant/statistic rows need a broader review. A blocked
+preview reports public related rows for inspection without writing to the database.
+They preserve the match ID,
 all diary entries, and existing external mappings. The Yi Yuan exception gets a
 separate ITF identity; its WTA profile is never renamed or reassigned. Repeating
 an operation is a no-op. Rollback does not delete the newly created profile.

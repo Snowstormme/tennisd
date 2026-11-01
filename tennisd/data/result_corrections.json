@@ -79,7 +79,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "7-5 6-1 6-3"
+    "corrected_score": "7-5 6-1 6-3",
+    "related_before": {
+      "participants": [
+        {
+          "id": 669719,
+          "match_id": "ta-atp-1104557",
+          "player_id": "atp-207830",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 669720,
+          "match_id": "ta-atp-1104557",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "us-open-2024-humbert-monteiro",
@@ -122,6 +146,30 @@
       "tour": "ATP",
       "country": "BRA"
     },
-    "corrected_score": "6-3 6-4 6-4"
+    "corrected_score": "6-3 6-4 6-4",
+    "related_before": {
+      "participants": [
+        {
+          "id": 671237,
+          "match_id": "ta-atp-1104579",
+          "player_id": "atp-200005",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 671238,
+          "match_id": "ta-atp-1104579",
+          "player_id": "wta-211279",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   }
 ]
