@@ -4,6 +4,13 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-11-02
+
+- Add 27 remaining source-reviewed Paris 2024 main-draw round repairs in two
+  atomic groups: three R128 to R64, sixteen R64 to R32 and eight R32 to R16.
+  Preserve participants, results, dates and permanent diary links. Corrected
+  R64 rows become discoverable under the existing public visibility policy.
+
 ## [0.11.2] - 2026-11-01
 
 - Add nineteen individually source-reviewed Paris 2024 qualifying round repairs:

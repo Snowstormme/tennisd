@@ -16,6 +16,7 @@ from .models import IngestionRun, Match, MatchParticipant, MatchSet, MatchStatis
 def definitions():
     rows = json.loads((Path(__file__).parent / "data" / "result_corrections.json").read_text())
     rows += json.loads((Path(__file__).parent / "data" / "paris_qualifying_corrections.json").read_text())
+    rows += json.loads((Path(__file__).parent / "data" / "paris_main_remaining_corrections.json").read_text())
     return {row["id"]: row for row in rows}
 
 

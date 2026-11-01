@@ -29,7 +29,11 @@ class RoundRecoveryTests(unittest.TestCase):
             correction = definitions()[key]; before = correction["before"]
             for data in (before["winner"], before["loser"]):
                 if data["id"] not in players:
-                    players[data["id"]] = Player(**data)
+                    players[data["id"]] = db.session.get(Player, data["id"]) or Player(**data)
+                    # Some reviewed groups include built-in seed players. Reuse
+                    # them and set the exact source snapshot in this test DB.
+                    players[data["id"]].name = data["name"]
+                    players[data["id"]].tour = data["tour"]
                     db.session.add(players[data["id"]])
             match = Match(id=before["id"], provider=before["provider"], provider_id=before["provider_id"],
                 tour=before["tour"], tournament=before["tournament"], status=before["status"],
