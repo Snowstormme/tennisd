@@ -14,6 +14,7 @@ on:
           - fognini-2024-archive
           - fognini-2024-rounds
           - paris-2024-main-r64
+          - paris-2024-qualifying-rounds
         required: true
       operation:
         description: Preview first; apply or roll back the selected reviewed correction

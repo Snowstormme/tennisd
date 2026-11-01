@@ -1,0 +1,743 @@
+[
+  {
+    "id": "ta-atp-1105544-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        26
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105544",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105544",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-1 6-7(5) 6-1",
+      "winner": {
+        "id": "atp-209070",
+        "name": "Arthur Cazaux",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-105676",
+        "name": "David Goffin",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105545-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        5,
+        6
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105545",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105545",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-7(2) 7-6(5) 6-4",
+      "winner": {
+        "id": "atp-209992",
+        "name": "Juncheng Shang",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-105902",
+        "name": "James Duckworth",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105547-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        17,
+        18
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105547",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105547",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "7-6(4) 1-6 6-4",
+      "winner": {
+        "id": "atp-210150",
+        "name": "Jakub Mensik",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-105583",
+        "name": "Dusan Lajovic",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105551-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        13,
+        16
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105551",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105551",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "6-3 7-6(4)",
+      "winner": {
+        "id": "atp-132283",
+        "name": "Lorenzo Sonego",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-106148",
+        "name": "Roberto Carballes Baena",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  },
+  {
+    "id": "ta-atp-1105556-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        13,
+        14
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105556",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105556",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-3 5-7 7-5",
+      "winner": {
+        "id": "atp-132283",
+        "name": "Lorenzo Sonego",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-122298",
+        "name": "Botic Van De Zandschulp",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105558-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        1,
+        4
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105558",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105558",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "6-3 4-6 6-3",
+      "winner": {
+        "id": "atp-200221",
+        "name": "Alejandro Davidovich Fokina",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-f260f6bc69e0257f",
+        "name": "Christopher O'Connell",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  },
+  {
+    "id": "ta-atp-1105563-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        1,
+        2
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105563",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105563",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-4 7-6(3)",
+      "winner": {
+        "id": "ta-f260f6bc69e0257f",
+        "name": "Christopher O'Connell",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-111576",
+        "name": "Sumit Nagal",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105566-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        21,
+        22
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105566",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105566",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "atp-111460",
+        "name": "Quentin Halys",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-111815",
+        "name": "Cameron Norrie",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105567-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        15,
+        16
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105567",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105567",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-4 7-5",
+      "winner": {
+        "id": "atp-106148",
+        "name": "Roberto Carballes Baena",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-124186",
+        "name": "Alexandre Muller",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105576-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        19,
+        20
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105576",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105576",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "7-5 ret.",
+      "winner": {
+        "id": "atp-144895",
+        "name": "Corentin Moutet",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-683924e58401e8dc",
+        "name": "Jaume Antoni Munar Clar",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105582-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        9,
+        12
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105582",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105582",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "6-7(10) 7-6(2) 6-3",
+      "winner": {
+        "id": "atp-106218",
+        "name": "Marcos Giron",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200175",
+        "name": "Miomir Kecmanovic",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  },
+  {
+    "id": "ta-atp-1105587-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        5,
+        8
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105587",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105587",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "6-4 3-6 7-6(2)",
+      "winner": {
+        "id": "atp-209992",
+        "name": "Juncheng Shang",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200267",
+        "name": "Zizou Bergs",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  },
+  {
+    "id": "ta-atp-1105594-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        11,
+        12
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105594",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105594",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-4 6-3",
+      "winner": {
+        "id": "atp-200175",
+        "name": "Miomir Kecmanovic",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200303",
+        "name": "Pavel Kotov",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105595-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        9,
+        10
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105595",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105595",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-2 6-2",
+      "winner": {
+        "id": "atp-106218",
+        "name": "Marcos Giron",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200384",
+        "name": "Hugo Gaston",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105601-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        7,
+        8
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105601",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105601",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "7-6(4) 6-4",
+      "winner": {
+        "id": "atp-200267",
+        "name": "Zizou Bergs",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-208004",
+        "name": "Harold Mayot",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105602-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        21,
+        24
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105602",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105602",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "3-6 7-6(4) 6-3",
+      "winner": {
+        "id": "atp-111460",
+        "name": "Quentin Halys",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207352",
+        "name": "Bu Yunchaokete",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  },
+  {
+    "id": "ta-atp-1105606-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        3,
+        4
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105606",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105606",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-3 6-2",
+      "winner": {
+        "id": "atp-200221",
+        "name": "Alejandro Davidovich Fokina",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207680",
+        "name": "Facundo Diaz Acosta",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105607-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        23,
+        24
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105607",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105607",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-4 7-6(5)",
+      "winner": {
+        "id": "atp-207352",
+        "name": "Bu Yunchaokete",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207686",
+        "name": "Alexander Shevchenko",
+        "tour": "ATP"
+      },
+      "round": "Q2"
+    },
+    "corrected_round": "Q1"
+  },
+  {
+    "id": "ta-atp-1105625-paris-qualifying-round",
+    "batch": "paris-2024-qualifying-rounds",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "Official qualifying draw reviewed visually: preserve participants, result, date and permanent diary links; correct only this exact round.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        17,
+        20
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105625",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105625",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "7-6(3) ret.",
+      "winner": {
+        "id": "atp-144895",
+        "name": "Corentin Moutet",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-210150",
+        "name": "Jakub Mensik",
+        "tour": "ATP"
+      },
+      "round": "Q4"
+    },
+    "corrected_round": "Q2"
+  }
+]
