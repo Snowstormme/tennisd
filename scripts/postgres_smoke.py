@@ -9,11 +9,12 @@ from sqlalchemy.exc import DBAPIError
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
-from tennisd.models import IngestionRun, LiveMatch, Match, MatchParticipant, Player, Review, User
+from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Player, Review, User
 from tennisd.identities import catalog_is_visible
 from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
 from tennisd.pagination import bounded_page
-from tennisd.stats import diary_statistics, player_match_scope, player_statistics
+from tennisd.discussions import discussion_previews
+from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
 
 
@@ -223,6 +224,22 @@ def main():
         reviewed_correction(existing_key, operation="rollback"); db.session.commit()
         if historical.loser_id != original["loser"]["id"] or participant.player_id != original["loser"]["id"]:
             raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
+
+        public_review = Review(user=member, match=historical, watched_on=date(2026,10,31),
+            is_public=True, rating_half=8, body="PostgreSQL public review")
+        db.session.add(public_review); db.session.flush()
+        replies = [Comment(review_id=public_review.id,user_id=member.id,body=f"PG reply {i}",
+            created_at=datetime(2026,10,31,tzinfo=timezone.utc)) for i in range(25)]
+        db.session.add_all(replies);db.session.commit()
+        previews, totals = discussion_previews([public_review.id])
+        if [c.id for c in previews[public_review.id]] != [c.id for c in reversed(replies[-3:])] or totals[public_review.id] != 25:
+            raise RuntimeError("PostgreSQL discussion preview window was not bounded or stable.")
+        reply_page = bounded_page(select(Comment).where(Comment.review_id == public_review.id)
+            .order_by(Comment.created_at.desc(),Comment.id.desc()),page=10**100,per_page=20)
+        if reply_page.page != 2 or len(reply_page.items) != 5:
+            raise RuntimeError("PostgreSQL reply pages did not clamp oversized requests.")
+        if community_statistics(historical)["average"] != 8:
+            raise RuntimeError("PostgreSQL public community summary was incorrect.")
 
         check_reviewed_batch()
         check_reviewed_rounds()

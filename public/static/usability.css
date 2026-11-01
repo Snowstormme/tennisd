@@ -74,3 +74,5 @@
 .profile-pagination a { display: inline-flex; align-items: center; min-height: 44px; }
 .profile-pagination span { color: var(--muted); font-size: 13px; }
 .profile-stat-feature a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
+
+.discussion-page { max-width: 900px; }

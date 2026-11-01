@@ -88,15 +88,17 @@ def player_statistics(player):
 
 
 def community_statistics(match):
-    reviews = db.session.scalars(
-        select(Review).where(Review.match_id == match.id, Review.is_public.is_(True))
-    ).all()
-    ratings = [review.rating_half for review in reviews if review.rating_half is not None]
+    rows = db.session.execute(select(Review.rating_half, func.count(Review.id))
+        .where(Review.match_id == match.id, Review.is_public.is_(True))
+        .group_by(Review.rating_half)).all()
+    counts = dict(rows)
+    rated = sum(count for rating, count in rows if rating is not None)
+    total = sum(rating * count for rating, count in rows if rating is not None)
     return {
-        "average": round(sum(ratings) / len(ratings), 1) if ratings else None,
-        "count": len(ratings),
-        "logs": len(reviews),
-        "distribution": {score: sum(rating == score for rating in ratings) for score in range(10, 0, -1)},
+        "average": round(total / rated, 1) if rated else None,
+        "count": rated,
+        "logs": sum(counts.values()),
+        "distribution": {score: counts.get(score, 0) for score in range(10, 0, -1)},
     }
 
 

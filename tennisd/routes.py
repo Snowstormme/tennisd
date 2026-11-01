@@ -25,6 +25,7 @@ from .security import client_ip, limit_action
 from .identities import catalog_is_visible, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_match_scope, player_statistics
 from .pagination import bounded_page
+from .discussions import discussion_previews
 from .snapshot_policy import current_snapshot_condition
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
@@ -722,11 +723,14 @@ def top_rated_matches():
 @site.get("/matches/<path:match_id>")
 def match_detail(match_id):
     match = db.get_or_404(Match, match_id)
-    reviews = db.session.scalars(
+    review_page = bounded_page(
         select(Review).where(Review.match_id == match_id, Review.is_public.is_(True))
-        .options(joinedload(Review.user), joinedload(Review.comments).joinedload(Comment.user))
-        .order_by(Review.created_at.desc())
-    ).unique().all()
+        .options(joinedload(Review.user))
+        .order_by(Review.created_at.desc(), Review.id.desc()),
+        page=request.args.get("page", 1, type=int),
+    )
+    reviews = review_page.items
+    comment_previews, comment_totals = discussion_previews([review.id for review in reviews])
     own_review = None
     on_watchlist = False
     if current_user.is_authenticated:
@@ -755,6 +759,7 @@ def match_detail(match_id):
         ))
     return render_template(
         "match.html", match=match, reviews=reviews, own_review=own_review,
+        review_page=review_page, comment_previews=comment_previews, comment_totals=comment_totals,
         community=community_statistics(match), serve_stats=serve_stats,
         today=date.today(), on_watchlist=on_watchlist, match_location=match_location,
         data_warning=not match_identity_is_valid(match),
