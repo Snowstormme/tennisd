@@ -974,5 +974,1265 @@
       "statistics": [],
       "sets": []
     }
+  },
+  {
+    "id": "ta-atp-1105540-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        53,
+        54
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105540",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105540",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "atp-200267",
+        "name": "Zizou Bergs",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-104755",
+        "name": "Richard Gasquet",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627495,
+          "match_id": "ta-atp-1105540",
+          "player_id": "atp-200267",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627496,
+          "match_id": "ta-atp-1105540",
+          "player_id": "atp-104755",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105542-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        21,
+        22
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105542",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105542",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-6(5) 6-4",
+      "winner": {
+        "id": "atp-209950",
+        "name": "Arthur Fils",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-105227",
+        "name": "Marin Cilic",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627497,
+          "match_id": "ta-atp-1105542",
+          "player_id": "atp-209950",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627498,
+          "match_id": "ta-atp-1105542",
+          "player_id": "atp-105227",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105552-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        26
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105552",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105552",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "4-6 6-3 6-3",
+      "winner": {
+        "id": "atp-126774",
+        "name": "Stefanos Tsitsipas",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-106148",
+        "name": "Roberto Carballes Baena",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627851,
+          "match_id": "ta-atp-1105552",
+          "player_id": "atp-126774",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627852,
+          "match_id": "ta-atp-1105552",
+          "player_id": "atp-106148",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105557-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        43,
+        44
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105557",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105557",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-4 3-6 7-6(6)",
+      "winner": {
+        "id": "atp-111575",
+        "name": "Karen Khachanov",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-f260f6bc69e0257f",
+        "name": "Christopher O'Connell",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627499,
+          "match_id": "ta-atp-1105557",
+          "player_id": "atp-111575",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627500,
+          "match_id": "ta-atp-1105557",
+          "player_id": "ta-f260f6bc69e0257f",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105559-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        29,
+        30
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105559",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105559",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "7-6(5) 6-3",
+      "winner": {
+        "id": "atp-202103",
+        "name": "Francisco Cerundolo",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-111460",
+        "name": "Quentin Halys",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627853,
+          "match_id": "ta-atp-1105559",
+          "player_id": "atp-202103",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627854,
+          "match_id": "ta-atp-1105559",
+          "player_id": "atp-111460",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105561-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        35,
+        36
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105561",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105561",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-3 7-6(6)",
+      "winner": {
+        "id": "atp-144869",
+        "name": "Tomas Martin Etcheverry",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-111190",
+        "name": "Zhizhen Zhang",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627855,
+          "match_id": "ta-atp-1105561",
+          "player_id": "atp-144869",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627856,
+          "match_id": "ta-atp-1105561",
+          "player_id": "atp-111190",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105562-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        39,
+        40
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105562",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105562",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-1 6-3",
+      "winner": {
+        "id": "atp-210506",
+        "name": "Alex Michelsen",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-128034",
+        "name": "Hubert Hurkacz",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627501,
+          "match_id": "ta-atp-1105562",
+          "player_id": "atp-210506",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627502,
+          "match_id": "ta-atp-1105562",
+          "player_id": "atp-128034",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105564-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        51,
+        52
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105564",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105564",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-4 6-4",
+      "winner": {
+        "id": "atp-111442",
+        "name": "Jordan Thompson",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-47fdaceafc6de317",
+        "name": "Pedro Martinez Portero",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627857,
+          "match_id": "ta-atp-1105564",
+          "player_id": "atp-111442",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627858,
+          "match_id": "ta-atp-1105564",
+          "player_id": "ta-47fdaceafc6de317",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105570-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        45,
+        46
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105570",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105570",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-5 7-6(2)",
+      "winner": {
+        "id": "atp-200615",
+        "name": "Alexei Popyrin",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126610",
+        "name": "Matteo Berrettini",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627507,
+          "match_id": "ta-atp-1105570",
+          "player_id": "atp-200615",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627508,
+          "match_id": "ta-atp-1105570",
+          "player_id": "atp-126610",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105572-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        55,
+        56
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105572",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105572",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-3 7-5",
+      "winner": {
+        "id": "atp-105173",
+        "name": "Adrian Mannarino",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126205",
+        "name": "Tommy Paul",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627859,
+          "match_id": "ta-atp-1105572",
+          "player_id": "atp-105173",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627860,
+          "match_id": "ta-atp-1105572",
+          "player_id": "atp-126205",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105573-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        41,
+        42
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105573",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105573",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-7(5) 7-6(4) 6-3",
+      "winner": {
+        "id": "atp-208659",
+        "name": "Giovanni Mpetshi Perricard",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126207",
+        "name": "Frances Tiafoe",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627509,
+          "match_id": "ta-atp-1105573",
+          "player_id": "atp-208659",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627510,
+          "match_id": "ta-atp-1105573",
+          "player_id": "atp-126207",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105577-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        61,
+        62
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105577",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105577",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "7-6(4) 6-3",
+      "winner": {
+        "id": "atp-111797",
+        "name": "Nicolas Jarry",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-132283",
+        "name": "Lorenzo Sonego",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627861,
+          "match_id": "ta-atp-1105577",
+          "player_id": "atp-111797",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627862,
+          "match_id": "ta-atp-1105577",
+          "player_id": "atp-132283",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105578-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        27,
+        28
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105578",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105578",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "3-6 7-6(5) 6-3",
+      "winner": {
+        "id": "atp-126214",
+        "name": "Alejandro Tabilo",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-132686",
+        "name": "Nuno Borges",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627863,
+          "match_id": "ta-atp-1105578",
+          "player_id": "atp-126214",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627864,
+          "match_id": "ta-atp-1105578",
+          "player_id": "atp-132686",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105585-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        3,
+        4
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105585",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105585",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-3 6-7(8) 6-3",
+      "winner": {
+        "id": "atp-210097",
+        "name": "Ben Shelton",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-144895",
+        "name": "Corentin Moutet",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627515,
+          "match_id": "ta-atp-1105585",
+          "player_id": "atp-210097",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627516,
+          "match_id": "ta-atp-1105585",
+          "player_id": "atp-144895",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105598-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        11,
+        12
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105598",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105598",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-4 6-7(6) 7-5",
+      "winner": {
+        "id": "atp-200175",
+        "name": "Miomir Kecmanovic",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-202104",
+        "name": "Sebastian Baez",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627865,
+          "match_id": "ta-atp-1105598",
+          "player_id": "atp-200175",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627866,
+          "match_id": "ta-atp-1105598",
+          "player_id": "atp-202104",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105599-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        57,
+        58
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105599",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105599",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-3 4-6 6-4",
+      "winner": {
+        "id": "atp-200005",
+        "name": "Ugo Humbert",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-206909",
+        "name": "Brandon Nakashima",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627867,
+          "match_id": "ta-atp-1105599",
+          "player_id": "atp-200005",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627868,
+          "match_id": "ta-atp-1105599",
+          "player_id": "atp-206909",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105600-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        37,
+        38
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105600",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105600",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-7(3) 5-3 ret.",
+      "winner": {
+        "id": "atp-126239",
+        "name": "Arthur Rinderknech",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207830",
+        "name": "Tomas Machac",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627869,
+          "match_id": "ta-atp-1105600",
+          "player_id": "atp-126239",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627870,
+          "match_id": "ta-atp-1105600",
+          "player_id": "atp-207830",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105603-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        13,
+        14
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105603",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105603",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-5 6-2",
+      "winner": {
+        "id": "atp-207733",
+        "name": "Jack Draper",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-208103",
+        "name": "Jiri Lehecka",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627517,
+          "match_id": "ta-atp-1105603",
+          "player_id": "atp-207733",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627518,
+          "match_id": "ta-atp-1105603",
+          "player_id": "atp-208103",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105605-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        23,
+        24
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105605",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105605",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-4 6-2",
+      "winner": {
+        "id": "lt-7272cfdcae0efd6f",
+        "name": "Jan-Lennard Struff",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207518",
+        "name": "Lorenzo Musetti",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627519,
+          "match_id": "ta-atp-1105605",
+          "player_id": "lt-7272cfdcae0efd6f",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627520,
+          "match_id": "ta-atp-1105605",
+          "player_id": "atp-207518",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105609-paris-round",
+    "batch": "paris-2024-main-r64",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-01",
+    "reason": "The official Paris 2024 main draw has 64 positions. This exact pairing and result appear in its opening round; the retired importer labelled it R128. Preserve participants and result.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        9,
+        10
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105609",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105609",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-5 6-1",
+      "winner": {
+        "id": "atp-200282",
+        "name": "Alex De Minaur",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-208363",
+        "name": "Mariano Navone",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627521,
+          "match_id": "ta-atp-1105609",
+          "player_id": "atp-200282",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627522,
+          "match_id": "ta-atp-1105609",
+          "player_id": "atp-208363",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   }
 ]

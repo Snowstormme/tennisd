@@ -248,3 +248,13 @@ The watchlist and friends remain owner-only. Account export is not paginated.
 
 No schema migration or production data repair is needed for this release. A
 rollback of the app deployment restores the previous view of the same records.
+
+## Paris opening-round review (0.3.4)
+
+`paris-2024-main-r64` selects twenty explicit results from the complete 2024
+Paris cohort. Each pairing/result was checked against its adjacent positions in
+the official 64-position main draw. Source positions and exact match/participant
+snapshots are recorded individually. Only R128 → R64 is changed; no global round
+substitution is performed. Use the existing read-only preview, atomic apply and
+rollback operations. This group reaches the existing 20-record limit and does
+not include the three other opening-round results still awaiting review.
