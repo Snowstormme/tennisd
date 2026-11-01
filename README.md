@@ -214,3 +214,12 @@ wildcard instructions. Global search and the existing directories share this
 behavior. Public member search displays names/profiles, never email or password
 fields; result pages remain noindex. R128 and invalid match identities remain
 excluded from match and tournament search.
+
+Notifications have separate paginated updates, pending-request and reply tabs
+(30 records each), an unread filter and a CSRF-protected mark-all-updates-read
+action scoped to the signed-in member. Reads preserve the first timestamp.
+Legacy review alert links resolve to the discussion when still accessible;
+unsafe/missing/private destinations are disabled. Comment permalinks resolve
+the exact discussion page rather than assuming the comment is on page one.
+Notification pages remain private, no-store and noindex. No stored history is
+truncated or rewritten by browsing it.

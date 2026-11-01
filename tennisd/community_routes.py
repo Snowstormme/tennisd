@@ -4,9 +4,10 @@ from datetime import date, datetime, timedelta, timezone
 
 from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.orm import joinedload
 from .pagination import bounded_page
+from .discussions import REPLY_PAGE_SIZE
 
 from . import db
 from .models import Comment, Match, Report, Review, WatchlistItem
@@ -71,8 +72,22 @@ def register_community_routes(site):
             abort(404)
         pagination = bounded_page(select(Comment).where(Comment.review_id == review.id)
             .options(joinedload(Comment.user)).order_by(Comment.created_at.desc(), Comment.id.desc()),
-            page=request.args.get("page", 1, type=int), per_page=20)
+            page=request.args.get("page", 1, type=int), per_page=REPLY_PAGE_SIZE)
         return render_template("review.html", review=review, pagination=pagination)
+
+    @site.get("/comments/<int:comment_id>")
+    def comment_detail(comment_id):
+        if comment_id > 2147483647:
+            abort(404)
+        comment = db.get_or_404(Comment, comment_id)
+        review = comment.review
+        if not review.is_public and (not current_user.is_authenticated or current_user.id != review.user_id):
+            abort(404)
+        newer = db.session.scalar(select(func.count(Comment.id)).where(Comment.review_id == review.id,
+            or_(Comment.created_at > comment.created_at,
+                and_(Comment.created_at == comment.created_at, Comment.id > comment.id))))
+        return redirect(url_for("site.review_detail", review_id=review.id,
+            page=newer // REPLY_PAGE_SIZE + 1, _anchor=f"comment-{comment.id}"))
 
     @site.post("/reviews/<int:review_id>/delete")
     @login_required

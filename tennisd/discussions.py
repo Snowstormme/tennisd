@@ -4,6 +4,8 @@ from sqlalchemy.orm import joinedload
 from . import db
 from .models import Comment
 
+REPLY_PAGE_SIZE = 20
+
 
 def discussion_previews(review_ids):
     if not review_ids:
