@@ -86,3 +86,6 @@
 .notification-history .notification-list article > div:first-child { display: block; margin-top: 0; }
 .notification-history .notification-list article > div:first-child strong { display: block; }
 .notification-history .notification-list article p { margin: 8px 0; }
+.following-page .directory-tabs { flex-wrap: wrap; gap: 4px 24px; }
+.following-page .account-tools { overflow-wrap: anywhere; }
+.following-page .result-line { flex-wrap: wrap; gap: 12px; }

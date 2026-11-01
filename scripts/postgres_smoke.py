@@ -3,7 +3,7 @@
 import os
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import DBAPIError
 
 from tennisd import create_app, db
@@ -18,6 +18,7 @@ from tennisd.pagination import bounded_page
 from tennisd.tournament_directory import tournament_directory
 from tennisd.moderation_queries import moderation_context
 from tennisd.models import FeedbackSubmission, Poll, PollOption, PollVote
+from tennisd.models import TournamentSubscription
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -150,6 +151,9 @@ def main():
     })
     run_migrations(app)
     with app.app_context():
+        # This test app starts before its schema exists, unlike production.
+        # Refresh capabilities from the actual migrated database, not guesses.
+        app.extensions["schema_capabilities"] = frozenset(inspect(db.engine).get_table_names())
         db.session.execute(text("SELECT 1"))
         user_tables = db.session.execute(text(
             "SELECT COUNT(*) FROM information_schema.tables "
@@ -377,6 +381,18 @@ def main():
             private_client = app.test_client()
             with private_client.session_transaction() as session:
                 session["_user_id"] = f"{member.id}:0"; session["_fresh"] = True; session["csrf_token"] = "pg-csrf"
+            subscriptions=[TournamentSubscription(user_id=member.id,tour="ATP",tournament=f"PG followed {i}") for i in range(55)]
+            foreign_subscription=TournamentSubscription(user_id=other_inbox.id,tour="ATP",tournament="PG private other")
+            db.session.add_all(subscriptions+[foreign_subscription]);db.session.commit()
+            response=private_client.get("/settings/following?tab=tournaments&page="+str(10**100))
+            if response.status_code!=200 or "Page 2 of 2" not in response.get_data(as_text=True):
+                raise RuntimeError("PostgreSQL complete follow list did not bound pages.")
+            response=private_client.post(f"/settings/following/tournaments/{foreign_subscription.id}/remove",data={"csrf_token":"pg-csrf"})
+            if response.status_code!=404:
+                raise RuntimeError("PostgreSQL subscription removal crossed account boundaries.")
+            response=private_client.post(f"/settings/following/tournaments/{subscriptions[0].id}/remove",data={"csrf_token":"pg-csrf"})
+            if response.status_code!=302 or db.session.get(TournamentSubscription,foreign_subscription.id) is None:
+                raise RuntimeError("PostgreSQL explicit subscription removal failed.")
             response = private_client.get("/notifications?page="+str(10**100))
             if response.status_code != 200 or "Page 2 of 2" not in response.get_data(as_text=True):
                 raise RuntimeError("PostgreSQL notification history did not bound the full inbox.")
