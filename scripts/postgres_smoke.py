@@ -317,6 +317,16 @@ def main():
             if app.test_client().get(path).status_code != 200:
                 raise RuntimeError("PostgreSQL public directory did not bound an oversized page.")
 
+        response = app.test_client().get("/tournaments/atp/pg-summary?page=" + str(10**100))
+        if response.status_code != 200 or "Page 2 of 2" not in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL tournament archive did not paginate the full exact collection.")
+        response = app.test_client().get("/tournaments/atp/pg-summary/2024?round=R32&page=" + str(10**100))
+        body = response.get_data(as_text=True)
+        if response.status_code != 200 or "Page 2 of 2" not in body or "21 in this selection" not in body:
+            raise RuntimeError("PostgreSQL edition filter/window counts disagreed.")
+        if "Multiple finals are recorded" not in body or "1/64" in body:
+            raise RuntimeError("PostgreSQL edition inferred a unique champion or exposed R128.")
+
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":
         raise RuntimeError("Health check failed after PostgreSQL initialization.")

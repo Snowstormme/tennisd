@@ -196,3 +196,11 @@ imports. Recorded rankings and player cards use the latest **positive singles**
 position in loaded history, skipping doubles and invalid ranks. A later invalid
 position does not erase an earlier valid observation. Dates remain visible in
 the recorded-ranking directory; these are not current ATP/WTA tour standings.
+
+Tournament profiles page the exact tournament/tour archive by 18 results, compute
+title leaders in SQL and expose every loaded season. Calendar-year pages also
+page by 18, support round filters and retain nonstandard/unknown round codes.
+Counters cover the complete selection. A champion is shown only when exactly
+one visible final is recorded in that year; multiple finals are described
+explicitly. A calendar year can contain multiple events or incomplete coverage,
+so the page is a result collection, not a claim of a complete tournament draw.

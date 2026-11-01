@@ -1,21 +1,22 @@
 {% extends 'base.html' %}
-{% from '_macros.html' import archive_match_card, match_round_name %}
+{% from '_macros.html' import archive_match_card, match_round_name, directory_pagination %}
 {% block title %}{{ tournament }} {{ season }} · {{ tour }}{% endblock %}
-{% block meta_description %}{{ tournament }} {{ season }} results, rounds, scores and champion{% if final %} {{ final.winner.name }}{% endif %}. Explore the complete tournament edition on Tennisd.{% endblock %}
+{% block meta_description %}{{ tournament }} {{ season }} results, rounds, scores and champion{% if final %} {{ final.winner.name }}{% endif %}. Explore the recorded tournament edition on Tennisd.{% endblock %}
 {% block structured_data %}<script type="application/ld+json">{{ {
   "@context": "https://schema.org",
-  "@type": "SportsEvent",
+  "@type": "CollectionPage",
   "name": tournament ~ " " ~ season|string,
-  "sport": "Tennis",
-  "eventStatus": "https://schema.org/EventCompleted",
-  "startDate": matches[0].week_start.isoformat(),
-  "location": {"@type": "Place", "name": profile.location},
+  "about": {"@type": "SportsOrganization", "name": tournament, "sport": "Tennis"},
   "description": tournament ~ " " ~ season|string ~ " tournament results and draw",
   "url": config.PUBLIC_BASE_URL.rstrip('/') ~ request.path
 }|tojson }}</script>{% endblock %}
 {% block content %}
-<section class="page-banner"><div class="container"><a class="back-link" href="{{ url_for('site.tournament_detail', tour=tour|lower, slug=slug) }}">{{ tournament|upper }}</a><p class="eyebrow">{{ tour }} · {{ surface }} · TOURNAMENT EDITION</p><h1>{{ tournament }} <em>{{ season }}</em></h1>{% if final %}<p>Champion: {{ final.winner.name }} · Final score {{ final.score }}</p>{% else %}<p>{{ matches|length }} recorded matches.</p>{% endif %}</div></section>
-<main class="container page-section">
-  {% for round_name, round_matches in rounds.items() %}<section class="page-section compact"><div class="section-head"><div><p class="eyebrow">DRAW</p><h2>{{ match_round_name(round_name) }}<span>.</span></h2></div><span>{{ round_matches|length }} matches</span></div><div class="archive-match-grid">{% for match in round_matches %}{{ archive_match_card(match, match_location) }}{% endfor %}</div></section>{% endfor %}
-</main>
+<section class="page-banner"><div class="container"><a class="back-link" href="{{ url_for('site.tournament_detail', tour=tour|lower, slug=slug) }}">{{ tournament|upper }}</a><p class="eyebrow">{{ tour }} · {{ surface }} · TOURNAMENT EDITION</p><h1>{{ tournament }} <em>{{ season }}</em></h1>{% if final %}<p>Recorded champion: {{ final.winner.name }} · Final score {{ final.score }}</p>{% else %}<p>{{ total_matches }} recorded matches.{% if round_counts.get('F', 0) > 1 %} Multiple finals are recorded in this calendar year; no single edition champion is inferred.{% endif %}</p>{% endif %}</div></section>
+<div class="container page-section" id="results">
+  <p>{{ total_matches }} recorded matches · {{ match_page.total }} in this selection. Coverage reflects the loaded catalog.</p>
+  <form class="inline-filters" method="get"><label for="edition-round">Round</label><select name="round" id="edition-round"><option value="">All rounds</option>{% for code, count in round_counts.items() %}<option value="{{ code or '__unavailable__' }}"{% if (code or '__unavailable__') == selected_round %} selected{% endif %}>{{ match_round_name(code) or 'Round unavailable' }} ({{ count }})</option>{% endfor %}</select><button class="button" type="submit">Show results</button></form>
+  {{ directory_pagination(match_page, 'site.tournament_edition_detail', dict(tour=tour|lower, slug=slug, season=season, round=selected_round)) }}
+  {% for round_name, round_matches in rounds.items() %}<section class="page-section compact"><div class="section-head"><div><p class="eyebrow">DRAW</p><h2>{{ match_round_name(round_name) or 'Round unavailable' }}<span>.</span></h2></div><span>{{ round_matches|length }} on this page · {{ round_counts[round_name] }} recorded</span></div><div class="archive-match-grid">{% for match in round_matches %}{{ archive_match_card(match, match_location) }}{% endfor %}</div></section>{% endfor %}
+  {{ directory_pagination(match_page, 'site.tournament_edition_detail', dict(tour=tour|lower, slug=slug, season=season, round=selected_round)) }}
+</div>
 {% endblock %}
