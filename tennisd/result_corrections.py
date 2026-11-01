@@ -5,11 +5,11 @@ from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 
 from . import db
 from .catalog_audit import match_snapshot
-from .models import IngestionRun, Match, MatchParticipant, MatchStatistic, Player, PlayerExternalId, utcnow
+from .models import IngestionRun, Match, MatchParticipant, MatchSet, MatchStatistic, Player, PlayerExternalId, utcnow
 
 
 @lru_cache(maxsize=1)
@@ -50,6 +50,27 @@ def _reviewed_player(correction, *, lock=False):
     return player, mapping
 
 
+def _related_rows(match_id, *, lock=False):
+    rows, snapshot = {}, {}
+    for name, model in (("participants", MatchParticipant), ("statistics", MatchStatistic), ("sets", MatchSet)):
+        statement = select(model).where(model.match_id == match_id).order_by(model.id)
+        if lock:
+            statement = statement.with_for_update()
+        rows[name] = db.session.scalars(statement).all()
+        snapshot[name] = [{column.name: getattr(row, column.name) for column in model.__table__.columns}
+                          for row in rows[name]]
+    return rows, snapshot
+
+
+def _corrected_related(correction):
+    result = deepcopy(correction["related_before"])
+    for name in ("participants", "statistics"):
+        for row in result[name]:
+            if row["player_id"] == correction["before"]["loser"]["id"]:
+                row["player_id"] = correction["corrected_player"]["id"]
+    return result
+
+
 def reviewed_correction(correction_id, *, operation="preview"):
     """Change only reviewed result fields under a lock, with exact drift guards.
 
@@ -69,13 +90,24 @@ def reviewed_correction(correction_id, *, operation="preview"):
     current = match_snapshot(match)
     if current not in (before, after):
         raise ValueError("Result fields changed since review; refuse to overwrite the newer record.")
-    for model in (MatchParticipant, MatchStatistic):
-        if db.session.scalar(select(func.count(model.id)).where(model.match_id == match.id)):
-            raise ValueError("Related participant/statistic rows require an additional review.")
+    related_rows, related = _related_rows(match.id, lock=operation != "preview")
+    reviewed_related = correction.get("related_before")
+    blocked = None
+    if reviewed_related is None:
+        if related["participants"] or related["statistics"]:
+            blocked = "Related participant/statistic rows require an additional review."
+    elif related != (reviewed_related if current == before else _corrected_related(correction)):
+        raise ValueError("Related rows changed since review; refuse to overwrite newer data.")
+    if blocked and operation != "preview":
+        raise ValueError(blocked)
     wanted = before if operation == "rollback" else after
     # Preview must validate the target too, without creating a profile/mapping.
     if operation != "rollback":
         player, mapping = _reviewed_player(correction, lock=operation == "apply")
+    if blocked:
+        return {"correction": correction_id, "operation": operation, "changed": False,
+                "blocked": blocked, "before": current, "after": after, "related_before": related,
+                "evidence": correction["evidence"], "verified_on": correction["verified_on"]}
     changed = operation != "preview" and current != wanted
     if changed:
         if operation == "apply":
@@ -91,6 +123,12 @@ def reviewed_correction(correction_id, *, operation="preview"):
                 raise ValueError("The original profile changed; refuse an unsafe rollback.")
         match.loser = player
         match.score = wanted["score"]
+        if reviewed_related is not None:
+            wanted_related = reviewed_related if operation == "rollback" else _corrected_related(correction)
+            for name in ("participants", "statistics"):
+                expected_by_id = {row["id"]: row for row in wanted_related[name]}
+                for row in related_rows[name]:
+                    row.player_id = expected_by_id[row.id]["player_id"]
         db.session.add(IngestionRun(
             provider="catalog:curation", status="success", finished_at=utcnow(), records_seen=1, records_written=1,
         ))
@@ -99,4 +137,7 @@ def reviewed_correction(correction_id, *, operation="preview"):
         "correction": correction_id, "operation": operation, "changed": changed,
         "before": current, "after": wanted if operation != "preview" else after,
         "evidence": correction["evidence"], "verified_on": correction["verified_on"],
+        "related_before": related,
+        "related_after": (reviewed_related if operation == "rollback" else _corrected_related(correction))
+                         if reviewed_related is not None else related,
     }
