@@ -3,7 +3,7 @@
 import os
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import DBAPIError
 
 from tennisd import create_app, db
@@ -151,6 +151,9 @@ def main():
     })
     run_migrations(app)
     with app.app_context():
+        # This test app starts before its schema exists, unlike production.
+        # Refresh capabilities from the actual migrated database, not guesses.
+        app.extensions["schema_capabilities"] = frozenset(inspect(db.engine).get_table_names())
         db.session.execute(text("SELECT 1"))
         user_tables = db.session.execute(text(
             "SELECT COUNT(*) FROM information_schema.tables "
