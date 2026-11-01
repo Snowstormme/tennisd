@@ -82,6 +82,28 @@ def main():
             raise RuntimeError("PostgreSQL correction could not restore the original result.")
         db.session.commit()
 
+        # Reuse a reviewed existing profile without creating an external mapping.
+        existing_key = "us-open-2024-machac-fognini"
+        definition = definitions()[existing_key]
+        original = definition["before"]
+        winner, loser = Player(**original["winner"]), Player(**original["loser"])
+        target = Player(**definition["corrected_player"])
+        historical = Match(
+            id=original["id"], provider=original["provider"], provider_id=original["provider_id"],
+            tour=original["tour"], tournament=original["tournament"], status=original["status"],
+            week_start=date.fromisoformat(original["date"]), score=original["score"],
+            winner=winner, loser=loser, level="G", round="R128", surface="Hard",
+        )
+        db.session.add_all((winner, loser, target, historical)); db.session.commit()
+        with readonly_catalog_session():
+            reviewed_correction(existing_key)
+        reviewed_correction(existing_key, operation="apply"); db.session.commit()
+        if historical.loser_id != target.id:
+            raise RuntimeError("PostgreSQL correction did not reuse the reviewed existing profile.")
+        reviewed_correction(existing_key, operation="rollback"); db.session.commit()
+        if historical.loser_id != original["loser"]["id"]:
+            raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
+
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":
         raise RuntimeError("Health check failed after PostgreSQL initialization.")

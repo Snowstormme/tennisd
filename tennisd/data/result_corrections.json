@@ -37,5 +37,91 @@
       "itf_id": "800526975"
     },
     "corrected_score": "6–1 6–2"
+  },
+  {
+    "id": "us-open-2024-machac-fognini",
+    "verified_on": "2026-11-01",
+    "source_label": "US Open",
+    "reason": "The retired importer assigned a WTA opponent to an ATP singles result. The official 2024 US Open men's draw confirms the winner, opponent and score. Reuse the reviewed existing ATP profile; do not rename the WTA player or reassign any provider mapping.",
+    "evidence": {
+      "draw_url": "https://www.usopen.org/en_US/scores/draws/2024_MS_draw.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        45,
+        46
+      ],
+      "schedule_or_report_url": "https://www.atptour.com/-/media/5de35f9d690448499b6eb7e5803a974f.pdf"
+    },
+    "before": {
+      "id": "ta-atp-1104557",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1104557",
+      "tour": "ATP",
+      "tournament": "U.S. Open - New York",
+      "status": "finished",
+      "date": "2024-08-27",
+      "score": "7-5 6-1 6-3",
+      "winner": {
+        "id": "atp-207830",
+        "name": "Tomas Machac",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "7-5 6-1 6-3"
+  },
+  {
+    "id": "us-open-2024-humbert-monteiro",
+    "verified_on": "2026-11-01",
+    "source_label": "US Open",
+    "reason": "The retired importer assigned a WTA opponent to an ATP singles result. The official 2024 US Open men's draw confirms the winner, opponent and score. Reuse the reviewed existing ATP profile; do not rename the WTA player or reassign any provider mapping.",
+    "evidence": {
+      "draw_url": "https://www.usopen.org/en_US/scores/draws/2024_MS_draw.pdf",
+      "draw_page": 2,
+      "draw_positions": [
+        73,
+        74
+      ],
+      "schedule_or_report_url": "https://www.atptour.com/-/media/9f2a2661eef8400584b542a14b7b7a5d.pdf"
+    },
+    "before": {
+      "id": "ta-atp-1104579",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1104579",
+      "tour": "ATP",
+      "tournament": "U.S. Open - New York",
+      "status": "finished",
+      "date": "2024-08-26",
+      "score": "6-3 6-4 6-4",
+      "winner": {
+        "id": "atp-200005",
+        "name": "Ugo Humbert",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "wta-211279",
+        "name": "Harriet Dart",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_player": {
+      "id": "atp-106329",
+      "name": "Thiago Monteiro",
+      "tour": "ATP",
+      "country": "BRA"
+    },
+    "corrected_score": "6-3 6-4 6-4"
   }
 ]

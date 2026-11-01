@@ -32,6 +32,24 @@ def correction_for_match(match):
     return None
 
 
+def _reviewed_player(correction, *, lock=False):
+    """Validate a reviewed target without merging or guessing by name."""
+    data = correction["corrected_player"]
+    player = db.session.get(Player, data["id"], with_for_update=lock)
+    if player is not None and any(getattr(player, key) != data[key] for key in ("name", "tour", "country")):
+        raise ValueError("The verified player ID already identifies a different profile.")
+    if correction.get("use_existing_player"):
+        if player is None:
+            raise ValueError("The reviewed existing player profile is missing.")
+        return player, None
+    mapping = db.session.scalar(select(PlayerExternalId).where(
+        PlayerExternalId.provider == "itf", PlayerExternalId.external_id == data["itf_id"],
+    ))
+    if mapping is not None and mapping.player_id != data["id"]:
+        raise ValueError("The official ITF ID already identifies another profile.")
+    return player, mapping
+
+
 def reviewed_correction(correction_id, *, operation="preview"):
     """Change only reviewed result fields under a lock, with exact drift guards.
 
@@ -55,22 +73,17 @@ def reviewed_correction(correction_id, *, operation="preview"):
         if db.session.scalar(select(func.count(model.id)).where(model.match_id == match.id)):
             raise ValueError("Related participant/statistic rows require an additional review.")
     wanted = before if operation == "rollback" else after
+    # Preview must validate the target too, without creating a profile/mapping.
+    if operation != "rollback":
+        player, mapping = _reviewed_player(correction, lock=operation == "apply")
     changed = operation != "preview" and current != wanted
     if changed:
         if operation == "apply":
             data = correction["corrected_player"]
-            player = db.session.get(Player, data["id"])
-            if player is not None and any(getattr(player, key) != data[key] for key in ("name", "tour", "country")):
-                raise ValueError("The verified player ID already identifies a different profile.")
-            mapping = db.session.scalar(select(PlayerExternalId).where(
-                PlayerExternalId.provider == "itf", PlayerExternalId.external_id == data["itf_id"],
-            ))
-            if mapping is not None and mapping.player_id != data["id"]:
-                raise ValueError("The official ITF ID already identifies another profile.")
             if player is None:
                 player = Player(**{key: data[key] for key in ("id", "name", "tour", "country")})
                 db.session.add(player)
-            if mapping is None:
+            if not correction.get("use_existing_player") and mapping is None:
                 db.session.add(PlayerExternalId(player=player, provider="itf", external_id=data["itf_id"]))
         else:
             player = db.session.get(Player, before["loser"]["id"])
