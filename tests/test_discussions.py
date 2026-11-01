@@ -86,6 +86,8 @@ class DiscussionTests(unittest.TestCase):
         self.assertEqual(seen,list(reversed(self.reply_ids)))
 
     def test_invalid_pages_clamp_and_empty_threads_render(self):
+        self.assertEqual(self.client.get('/reviews/' + str(10**100)).status_code,404)
+        self.assertEqual(self.client.get('/reviews/2147483647').status_code,404)
         for raw,expected in [('nonsense',1),('-4',1),(str(10**100),3)]:
             _,c,_=self.render(f'/reviews/{self.ids[39]}?page={raw}');self.assertEqual(c['pagination'].page,expected)
             _,c,_=self.render(f'/matches/{self.match_id}?page={raw}');self.assertEqual(c['review_page'].page,expected)

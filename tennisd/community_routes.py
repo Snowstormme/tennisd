@@ -64,6 +64,8 @@ def register_community_routes(site):
 
     @site.get("/reviews/<int:review_id>")
     def review_detail(review_id):
+        if review_id > 2147483647:
+            abort(404)
         review = db.get_or_404(Review, review_id)
         if not review.is_public and (not current_user.is_authenticated or current_user.id != review.user_id):
             abort(404)
