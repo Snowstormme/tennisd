@@ -1,8 +1,7 @@
 """Small, transparent summaries calculated from the matches loaded into the catalog."""
 
-from collections import Counter, defaultdict
+from collections import Counter
 from sqlalchemy import and_, case, func, or_, select, union_all
-from sqlalchemy.orm import joinedload
 
 from . import db
 from .models import Match, Player, Review
@@ -13,73 +12,79 @@ def percent(part, total):
     return round(part / total * 100) if total else None
 
 
+def player_match_scope(player_id):
+    return and_(catalog_is_visible(), or_(Match.winner_id == player_id, Match.loser_id == player_id))
+
+
 def player_statistics(player):
-    matches = db.session.scalars(
-        select(Match)
-        .where(catalog_is_visible(), or_(Match.winner_id == player.id, Match.loser_id == player.id))
-        .options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start.desc())
-    ).all()
-    wins = sum(match.winner_id == player.id for match in matches)
-    surfaces = defaultdict(lambda: {"wins": 0, "losses": 0})
-    seasons = defaultdict(lambda: {"wins": 0, "losses": 0})
-    opponents = {}
-    titles = []
-    aces = 0
-    ace_matches = 0
-    first_in = 0
-    serve_points = 0
-    first_won = 0
-    break_saved = 0
-    break_faced = 0
-    recent_rank = None
-
-    for match in matches:
-        won = match.winner_id == player.id
-        result = "wins" if won else "losses"
-        surfaces[match.surface][result] += 1
-        seasons[match.week_start.year][result] += 1
-        opponent = match.loser if won else match.winner
-        if opponent.id not in opponents:
-            opponents[opponent.id] = {"player": opponent, "wins": 0, "losses": 0}
-        opponents[opponent.id][result] += 1
-        # Team ties and legends events have a final round but are not singles titles.
-        if won and match.round == "F" and match.level in {"G", "M", "PM", "P", "A", "I", "F"}:
-            titles.append(match)
-
-        prefix = "w" if won else "l"
-        ace = getattr(match, f"{prefix}_ace")
-        if ace is not None:
-            aces += ace
-            ace_matches += 1
-        first_in += getattr(match, f"{prefix}_first_in") or 0
-        serve_points += getattr(match, f"{prefix}_svpt") or 0
-        first_won += getattr(match, f"{prefix}_first_won") or 0
-        break_saved += getattr(match, f"{prefix}_bp_saved") or 0
-        break_faced += getattr(match, f"{prefix}_bp_faced") or 0
-        rank = match.winner_rank if won else match.loser_rank
-        if recent_rank is None and rank is not None:
-            recent_rank = {"rank": rank, "week": match.week_start}
-
-    head_to_head = sorted(
-        opponents.values(), key=lambda item: item["wins"] + item["losses"], reverse=True
-    )[:5]
-    return {
-        "matches": matches,
-        "wins": wins,
-        "losses": len(matches) - wins,
-        "win_pct": percent(wins, len(matches)),
-        "surfaces": surfaces,
-        "seasons": sorted(seasons.items(), reverse=True)[:8],
-        "titles": titles,
-        "slam_titles": sum(match.level == "G" for match in titles),
-        "head_to_head": head_to_head,
-        "aces_per_match": round(aces / ace_matches, 1) if ace_matches else None,
-        "first_serve_pct": percent(first_in, serve_points),
-        "first_serve_won_pct": percent(first_won, first_in),
-        "break_saved_pct": percent(break_saved, break_faced),
-        "recent_rank": recent_rank,
+    """Summarize the whole visible catalog; hydrate at most twelve titles."""
+    won = Match.winner_id == player.id
+    scope = player_match_scope(player.id)
+    title = and_(won, Match.round == "F", Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")))
+    def own(winner, loser):
+        return case((won, winner), else_=loser)
+    base = select(
+        Match.id, Match.week_start, Match.surface, Match.level,
+        case((won, 1), else_=0).label("won"),
+        case((title, 1), else_=0).label("title"),
+        own(Match.loser_id, Match.winner_id).label("opponent_id"),
+        own(Match.winner_rank, Match.loser_rank).label("rank"),
+        *(own(getattr(Match, "w_" + name), getattr(Match, "l_" + name)).label(name)
+          for name in ("ace", "first_in", "svpt", "first_won", "bp_saved", "bp_faced")),
+    ).where(scope).subquery()
+    c = base.c
+    def total(value):
+        return func.coalesce(func.sum(value), 0)
+    ace_ok = c.ace >= 0
+    metrics = {
+        "first_serve": (c.first_in, c.svpt),
+        "first_serve_won": (c.first_won, c.first_in),
+        "break_saved": (c.bp_saved, c.bp_faced),
     }
+    values = [func.count().label("match_count"), total(c.won).label("wins"),
+              total(c.title).label("title_count"),
+              total(case((and_(c.title == 1, c.level == "G"), 1), else_=0)).label("slam_titles"),
+              total(case((ace_ok, c.ace), else_=0)).label("aces"),
+              total(case((ace_ok, 1), else_=0)).label("ace_matches")]
+    for name, (numerator, denominator) in metrics.items():
+        valid = and_(numerator >= 0, denominator > 0, numerator <= denominator)
+        values.extend((total(case((valid, numerator), else_=0)).label(name + "_num"),
+                       total(case((valid, denominator), else_=0)).label(name + "_den"),
+                       total(case((valid, 1), else_=0)).label(name + "_matches")))
+    summary = dict(db.session.execute(select(*values).select_from(base)).one()._mapping)
+    count, wins = summary["match_count"], summary["wins"]
+    result = {
+        "match_count": count, "wins": wins, "losses": count - wins,
+        "win_pct": percent(wins, count), "title_count": summary["title_count"],
+        "slam_titles": summary["slam_titles"], "titles": [], "surfaces": {}, "seasons": [],
+        "head_to_head": [], "recent_rank": None,
+        "aces_per_match": round(summary["aces"] / summary["ace_matches"], 1) if summary["ace_matches"] else None,
+        "ace_matches": summary["ace_matches"],
+    }
+    for name in metrics:
+        result[name + "_pct"] = percent(summary[name + "_num"], summary[name + "_den"])
+        result[name + "_matches"] = summary[name + "_matches"]
+    if not count:
+        return result
+    def record(n, w):
+        return {"wins": w, "losses": n - w}
+    result["surfaces"] = {surface: record(n, w) for surface,n,w in db.session.execute(
+        select(c.surface, func.count(), total(c.won)).group_by(c.surface).order_by(c.surface))}
+    year = func.extract("year", c.week_start)
+    result["seasons"] = [(int(y), record(n,w)) for y,n,w in db.session.execute(
+        select(year, func.count(), total(c.won)).group_by(year).order_by(year.desc()).limit(8))]
+    opponent_count = func.count()
+    result["head_to_head"] = [{"player": opponent, **record(n,w)} for opponent,n,w in db.session.execute(
+        select(Player, opponent_count, total(c.won)).join(base, c.opponent_id == Player.id)
+        .group_by(Player.id).order_by(opponent_count.desc(), Player.name, Player.id).limit(5))]
+    rank = db.session.execute(select(c.rank, c.week_start).where(c.rank.is_not(None), c.rank > 0)
+        .order_by(c.week_start.desc(), c.id.desc()).limit(1)).first()
+    if rank:
+        result["recent_rank"] = {"rank": rank[0], "week": rank[1]}
+    if result["title_count"]:
+        result["titles"] = db.session.scalars(select(Match).where(scope, title)
+            .order_by(Match.week_start.desc(), Match.id.desc()).limit(12)).all()
+    return result
 
 
 def community_statistics(match):

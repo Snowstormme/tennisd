@@ -23,7 +23,8 @@ from .prize_money import update_prize_money
 from .result_corrections import correction_for_match
 from .security import client_ip, limit_action
 from .identities import catalog_is_visible, match_identity_is_valid, profiles_for_matches
-from .stats import community_statistics, percent, player_statistics
+from .stats import community_statistics, percent, player_match_scope, player_statistics
+from .pagination import bounded_page
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
@@ -1107,15 +1108,21 @@ def player_detail(player_id):
     player = db.get_or_404(Player, player_id)
     update_prize_money(player)
     stats = player_statistics(player)
+    match_page = bounded_page(select(Match).where(player_match_scope(player.id))
+        .options(joinedload(Match.winner), joinedload(Match.loser))
+        .order_by(Match.week_start.desc(), Match.id.desc()),
+        page=request.args.get("page", 1, type=int))
     ranking_history = db.session.scalars(
         select(RankingSnapshot).where(
             RankingSnapshot.player_id == player.id,
             RankingSnapshot.ranking_type == "singles",
-        ).order_by(RankingSnapshot.ranked_on.desc()).limit(12)
+            RankingSnapshot.rank > 0,
+        ).order_by(RankingSnapshot.ranked_on.desc(), RankingSnapshot.id.desc()).limit(12)
     ).all()
     best_rank = db.session.scalar(select(func.min(RankingSnapshot.rank)).where(
         RankingSnapshot.player_id == player.id,
         RankingSnapshot.ranking_type == "singles",
+        RankingSnapshot.rank > 0,
     ))
     live_matches = player_live_matches(player)
     following = False
@@ -1129,7 +1136,7 @@ def player_detail(player_id):
     return render_template(
         "player.html", player=player, stats=stats, following=following,
         live_matches=live_matches, live_players=current_match_players(live_matches),
-        match_location=match_location, ranking_history=ranking_history, best_rank=best_rank,
+        match_location=match_location, ranking_history=ranking_history, best_rank=best_rank, match_page=match_page,
     )
 
 
