@@ -9,22 +9,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tennisd import create_app, db
 from tennisd.catalog_audit import readonly_catalog_session
-from tennisd.result_corrections import definitions, reviewed_correction
+from tennisd.result_corrections import batches, definitions, reviewed_batch, reviewed_correction
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("correction", choices=tuple(definitions()))
+    parser.add_argument("correction", choices=tuple(definitions()) + tuple(batches()))
     parser.add_argument("--operation", choices=("preview", "apply", "rollback"), default="preview")
     args = parser.parse_args()
     app = create_app({"AUTO_CREATE_DB": False})
+    operate = reviewed_batch if args.correction in batches() else reviewed_correction
     with app.app_context():
         if args.operation == "preview":
             with readonly_catalog_session():
-                result = reviewed_correction(args.correction)
+                result = operate(args.correction)
         else:
             try:
-                result = reviewed_correction(args.correction, operation=args.operation)
+                result = operate(args.correction, operation=args.operation)
                 db.session.commit()
             except Exception:
                 db.session.rollback()

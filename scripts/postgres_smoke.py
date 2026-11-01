@@ -3,16 +3,82 @@
 import os
 from datetime import date
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
-from tennisd.catalog_audit import catalog_report, readonly_catalog_session
-from tennisd.models import Match, MatchParticipant, Player, Review, User
+from tennisd.catalog_audit import catalog_report, match_snapshot, readonly_catalog_session
+from tennisd.models import IngestionRun, Match, MatchParticipant, Player, Review, User
 from tennisd.pagination import bounded_page
 from tennisd.stats import diary_statistics
-from tennisd.result_corrections import definitions, reviewed_correction
+from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
+
+
+def check_reviewed_batch():
+    batch = "fognini-2024-archive"
+    keys = batches()[batch]
+    matches = {}
+    for key in keys:
+        correction = definitions()[key]; before = correction["before"]
+        for data in (before["winner"], before["loser"], correction["corrected_player"]):
+            if db.session.get(Player, data["id"]) is None:
+                db.session.add(Player(**data))
+        match = Match(id=before["id"], provider=before["provider"], provider_id=before["provider_id"],
+            tour=before["tour"], tournament=before["tournament"], status=before["status"],
+            week_start=date.fromisoformat(before["date"]), score=before["score"],
+            winner_id=before["winner"]["id"], loser_id=before["loser"]["id"],
+            surface="Hard", level="M", round="R?")
+        matches[key] = match
+        db.session.add(match)
+        db.session.add_all(MatchParticipant(**row) for row in correction["related_before"]["participants"])
+    db.session.commit()
+    with readonly_catalog_session():
+        preview = reviewed_batch(batch)
+        if preview["blocked"] or preview["changed"] or len(preview["results"]) != 7:
+            raise RuntimeError("PostgreSQL reviewed batch preview did not remain read-only.")
+    original_runs = db.session.scalar(select(func.count(IngestionRun.id)))
+    last = keys[-1]
+    matches[last].score = "unreviewed score"; db.session.commit()
+    try:
+        reviewed_batch(batch, operation="apply")
+    except ValueError as error:
+        if "changed since review" not in str(error):
+            raise
+    else:
+        raise RuntimeError("PostgreSQL batch unexpectedly accepted a changed final result.")
+    # Deliberately commit after catching: the savepoint must already undo all
+    # earlier matches, participants and journals in this failed batch.
+    db.session.commit()
+    for key in keys[:-1]:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL left a partially applied reviewed batch.")
+    if db.session.scalar(select(func.count(IngestionRun.id))) != original_runs:
+        raise RuntimeError("PostgreSQL left journals from a failed batch.")
+    matches[last].score = definitions()[last]["before"]["score"]; db.session.commit()
+    reviewed_batch(batch, operation="apply"); db.session.rollback()
+    for key in keys:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL committed a successful batch before its caller.")
+    if reviewed_batch(batch, operation="apply")["changed"] != 7:
+        raise RuntimeError("PostgreSQL did not apply the complete reviewed batch.")
+    db.session.commit()
+    for key in keys:
+        correction = definitions()[key]
+        if match_snapshot(matches[key]) != corrected_snapshot(correction):
+            raise RuntimeError("PostgreSQL repaired the wrong winner/loser side.")
+        for row in correction["related_before"]["participants"]:
+            expected = row["player_id"]
+            if expected == correction["before"][correction["corrected_side"]]["id"]:
+                expected = correction["corrected_player"]["id"]
+            if db.session.get(MatchParticipant, row["id"]).player_id != expected:
+                raise RuntimeError("PostgreSQL did not repair a related participant.")
+    if reviewed_batch(batch, operation="apply")["changed"]:
+        raise RuntimeError("PostgreSQL reviewed batch was not idempotent.")
+    reviewed_batch(batch, operation="rollback"); db.session.commit()
+    for key in keys:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL reviewed batch rollback was incomplete.")
 
 
 def main():
@@ -107,6 +173,8 @@ def main():
         reviewed_correction(existing_key, operation="rollback"); db.session.commit()
         if historical.loser_id != original["loser"]["id"] or participant.player_id != original["loser"]["id"]:
             raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
+
+        check_reviewed_batch()
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

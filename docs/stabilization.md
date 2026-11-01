@@ -150,6 +150,40 @@ This is a narrow correction with a known original row and reversible field
 changes. It does not enable bulk historical repair. A verified production backup
 and independently checked source evidence remain prerequisites for that work.
 
+### Bounded reviewed groups
+
+`fognini-2024-archive` contains exactly seven version-controlled corrections:
+
+| Correction | Corrected side | Official draw |
+| --- | --- | --- |
+| `chengdu-2024-safiullin-fognini` | loser | Chengdu, positions 25–26 |
+| `beijing-2024-rinderknech-fognini` | loser | Beijing qualifying, 13–14 |
+| `shanghai-2024-paul-fognini` | loser | Shanghai, round two, 49–52 |
+| `shanghai-2024-fognini-darderi` | winner | Shanghai, 51–52 |
+| `paris-2024-bublik-fognini` | loser | Paris main draw, 5–6 |
+| `paris-2024-fognini-marozsan` | winner | Paris qualifying, 27–28 |
+| `paris-2024-fognini-cazaux` | winner | Paris qualifying final, 25–28 |
+
+Each reuses existing ATP profile `atp-104926`. Source PDFs were visually checked;
+their SHA-256 digests and URLs are stored in the correction definitions. Scores
+and dates are preserved. The sources verify event, participants, winner and score;
+the PDF draw alone does not independently verify each existing calendar date.
+Each result has two reviewed participant rows and no separate sets/statistics.
+
+```sh
+python scripts/correct_reviewed_result.py fognini-2024-archive
+python scripts/correct_reviewed_result.py fognini-2024-archive --operation apply
+python scripts/correct_reviewed_result.py fognini-2024-archive --operation rollback
+```
+
+The workflow offers this fixed group alongside the existing single-result
+corrections. Groups are declared in version-controlled definitions, capped at 20
+records and locked in permanent-match-ID order. The CLI commits once after the
+complete group succeeds. A savepoint rolls back all group changes and journals
+if any record fails its exact match/related-row guard. Read-only preview reports
+unreviewed public related rows; apply cannot bypass that review. Existing player
+provider mappings and WTA profiles remain unchanged.
+
 The auto sync guard allows one refresh per UTC calendar day. It does not require
 24 elapsed hours: schedule jitter or moving the cron earlier must not skip the
 next day. Explicit manual `live`/`upcoming` modes still request a refresh.

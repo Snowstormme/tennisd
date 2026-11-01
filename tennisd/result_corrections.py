@@ -20,7 +20,14 @@ def definitions():
 
 def corrected_snapshot(correction):
     result = deepcopy(correction["before"])
-    result["loser"] = {key: correction["corrected_player"][key] for key in ("id", "name", "tour")}
+    side = correction.get("corrected_side", "loser")
+    if side not in ("winner", "loser"):
+        raise ValueError("The reviewed correction must identify a winner or loser side.")
+    other = "winner" if side == "loser" else "loser"
+    player = correction["corrected_player"]
+    if player["tour"] != result["tour"] or player["id"] == result[other]["id"]:
+        raise ValueError("The corrected result must identify distinct players in the same tour.")
+    result[side] = {key: player[key] for key in ("id", "name", "tour")}
     result["score"] = correction["corrected_score"]
     return result
 
@@ -66,7 +73,7 @@ def _corrected_related(correction):
     result = deepcopy(correction["related_before"])
     for name in ("participants", "statistics"):
         for row in result[name]:
-            if row["player_id"] == correction["before"]["loser"]["id"]:
+            if row["player_id"] == correction["before"][correction.get("corrected_side", "loser")]["id"]:
                 row["player_id"] = correction["corrected_player"]["id"]
     return result
 
@@ -83,6 +90,7 @@ def reviewed_correction(correction_id, *, operation="preview"):
     correction = definitions().get(correction_id)
     if correction is None:
         raise ValueError("Unknown reviewed correction.")
+    side = correction.get("corrected_side", "loser")
     match = db.session.get(Match, correction["before"]["id"], with_for_update=operation != "preview")
     if match is None:
         raise ValueError("The reviewed permanent match does not exist.")
@@ -118,10 +126,10 @@ def reviewed_correction(correction_id, *, operation="preview"):
             if not correction.get("use_existing_player") and mapping is None:
                 db.session.add(PlayerExternalId(player=player, provider="itf", external_id=data["itf_id"]))
         else:
-            player = db.session.get(Player, before["loser"]["id"])
-            if player is None or any(getattr(player, key) != before["loser"][key] for key in ("name", "tour")):
+            player = db.session.get(Player, before[side]["id"])
+            if player is None or any(getattr(player, key) != before[side][key] for key in ("name", "tour")):
                 raise ValueError("The original profile changed; refuse an unsafe rollback.")
-        match.loser = player
+        setattr(match, side, player)
         match.score = wanted["score"]
         if reviewed_related is not None:
             wanted_related = reviewed_related if operation == "rollback" else _corrected_related(correction)
@@ -141,3 +149,37 @@ def reviewed_correction(correction_id, *, operation="preview"):
         "related_after": (reviewed_related if operation == "rollback" else _corrected_related(correction))
                          if reviewed_related is not None else related,
     }
+
+
+def batches():
+    """Version-controlled groups only; callers cannot submit arbitrary match IDs."""
+    result = {}
+    for key, correction in definitions().items():
+        if correction.get("batch"):
+            result.setdefault(correction["batch"], []).append(key)
+    return {name: sorted(keys, key=lambda key: definitions()[key]["before"]["id"])
+            for name, keys in result.items()}
+
+
+def reviewed_batch(batch_id, *, operation="preview"):
+    """Apply a bounded reviewed group atomically; the caller commits once.
+
+    All matches are locked in permanent-ID order. A savepoint rolls back this
+    entire group on error, even if a caller catches it. No commit happens here.
+    """
+    keys = batches().get(batch_id)
+    if not keys or len(keys) > 20:
+        raise ValueError("Unknown or oversized reviewed correction batch.")
+    if db.session.new or db.session.dirty or db.session.deleted:
+        raise RuntimeError("Start a reviewed batch without pending database changes.")
+    connection = db.session.connection()
+    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
+        # sqlite3 legacy transaction control does not BEGIN for SAVEPOINT.
+        # Explicitly anchor it so releasing the savepoint cannot commit the
+        # group before the caller's outer transaction is committed.
+        connection.exec_driver_sql("BEGIN")
+    with db.session.begin_nested():
+        results = [reviewed_correction(key, operation=operation) for key in keys]
+    return {"batch": batch_id, "operation": operation,
+            "changed": sum(result["changed"] for result in results),
+            "blocked": any(result.get("blocked") for result in results), "results": results}
