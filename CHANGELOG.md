@@ -4,6 +4,14 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-01
+
+- Public discovery starts at R64 (1/32 final). Hide R128 in archive searches,
+  home feeds, player statistics, tournament editions, live slates and sitemaps.
+  Preserve database rows, direct result pages, account exports and diaries.
+- Use fractional main-draw round labels consistently across match cards, detail
+  pages and tournament headings. Identity audits still inspect hidden results.
+
 ## [0.3.4] - 2026-11-01
 
 - Correct twenty individually reviewed Paris 2024 opening-round results from

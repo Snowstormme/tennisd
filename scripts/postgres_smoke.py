@@ -10,6 +10,7 @@ from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
 from tennisd.models import IngestionRun, Match, MatchParticipant, Player, Review, User
+from tennisd.identities import catalog_is_visible
 from tennisd.pagination import bounded_page
 from tennisd.stats import diary_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -224,6 +225,11 @@ def main():
 
         check_reviewed_batch()
         check_reviewed_rounds()
+        hidden = db.session.get(Match, "ta-atp-1105541")
+        if hidden is None or hidden.round != "R128":
+            raise RuntimeError("The hidden round fixture was not preserved.")
+        if db.session.scalar(select(Match.id).where(Match.id == hidden.id, catalog_is_visible())) is not None:
+            raise RuntimeError("PostgreSQL public discovery exposed a hidden R128 result.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

@@ -1,7 +1,7 @@
 {% macro match_card(match, review=None) %}
 <a class="match-card" href="{{ url_for('site.match_detail', match_id=match.id) }}">
   <div class="match-card-top"><span class="pill pill-{{ match.tour|lower }}">{{ match.tour }}</span><span>{{ match.week_start.year }} · {{ match.surface }}</span></div>
-  <div class="match-card-event">{{ match.tournament }} <span>· {{ match.round }}</span></div>
+  <div class="match-card-event">{{ match.tournament }} <span>· {{ match_round_name(match.round) }}</span></div>
   <div class="match-card-players"><span class="winner"><span class="winner-dot"></span>{{ match.winner.name }}</span><span>{{ match.loser.name }}</span></div>
   <div class="match-card-bottom"><span>{{ match.score }}</span>{% if review %}<span class="card-rating">{% if review.rating_half %}★ {{ review.rating_half }}/10{% else %}Logged{% endif %}</span>{% endif %}</div>
 </a>
@@ -23,7 +23,7 @@
 <span class="showcase-event">{{ event }}</span>
 {% endmacro %}
 
-{% macro match_round_name(round_name) %}{% set labels = {'F': 'Final', 'SF': 'Semifinal', 'QF': 'Quarterfinal', 'R16': 'Round of 16', 'R32': 'Round of 32', 'R64': 'Round of 64', 'R128': 'Round of 128', 'RR': 'Round robin', 'Q1': 'Qualifying 1', 'Q2': 'Qualifying 2', 'Q3': 'Qualifying 3'} %}{{ labels.get(round_name, round_name or 'Round TBC') }}{% endmacro %}
+{% macro match_round_name(round_name) %}{% set labels = {'F': 'Final', 'SF': 'Semifinal', 'QF': 'Quarterfinal', 'R16': '1/8', 'R32': '1/16', 'R64': '1/32', 'R128': '1/64', 'RR': 'Round robin', 'Q1': 'Qualifying 1', 'Q2': 'Qualifying 2', 'Q3': 'Qualifying 3'} %}{{ labels.get(round_name, round_name or 'Round TBC') }}{% endmacro %}
 
 {% macro showcase_match_card(match, match_location, featured=false, active=false, scoreboard=false, review=none) %}
 <a class="{{ 'featured-board featured-slide' if featured else 'home-match-card' }} surface-{{ match.surface|lower }} scoreboard-match-card{% if active %} is-active{% endif %}" href="{{ url_for('site.match_detail', match_id=match.id) }}"{% if featured %} data-featured-slide{% if not active %} aria-hidden="true" tabindex="-1"{% else %} aria-hidden="false"{% endif %}{% endif %}>

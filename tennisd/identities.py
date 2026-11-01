@@ -110,6 +110,11 @@ def catalog_identity_is_valid(*, include_status=True):
     )
 
 
+def catalog_is_visible():
+    """Public discovery starts at R64; preserve R128 results and diaries."""
+    return and_(catalog_identity_is_valid(), Match.round != "R128")
+
+
 def match_identity_is_valid(match):
     return bool(
         match.winner_id != match.loser_id
