@@ -4,6 +4,12 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-11-01
+
+- Add nineteen individually source-reviewed Paris 2024 qualifying round repairs:
+  thirteen Q2 to Q1 and six Q4 to Q2. Preserve results, dates, participants and
+  diary IDs with exact related-row guards and atomic apply/rollback.
+
 ## [0.11.1] - 2026-11-01
 
 - Consume verification and password-reset tokens with a conditional database
