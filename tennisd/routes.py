@@ -28,6 +28,7 @@ from .pagination import bounded_page
 from .discussions import discussion_previews
 from .snapshot_policy import current_snapshot_condition
 from .rankings import latest_singles_dates, valid_singles_ranking
+from .search_queries import contains_text, search_statements
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
@@ -680,9 +681,9 @@ def matches():
         loser = aliased(Player)
         statement = statement.join(winner, Match.winner).join(loser, Match.loser).where(
             or_(
-                Match.tournament.ilike(f"%{query}%"),
-                winner.name.ilike(f"%{query}%"),
-                loser.name.ilike(f"%{query}%"),
+                contains_text(Match.tournament, query),
+                contains_text(winner.name, query),
+                contains_text(loser.name, query),
             )
         )
     if tour in ("ATP", "WTA"):
@@ -811,7 +812,7 @@ def players():
             RankingSnapshot.ranked_on == latest_dates.c.ranked_on, valid_singles_ranking(),
         )
         if query:
-            statement = statement.where(Player.name.ilike(f"%{query}%"))
+            statement = statement.where(contains_text(Player.name, query))
         if tour in ("ATP", "WTA"):
             statement = statement.where(Player.tour == tour)
         statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name, Player.id)
@@ -822,7 +823,7 @@ def players():
             .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
         )
         if query:
-            statement = statement.where(Player.name.ilike(f"%{query}%"))
+            statement = statement.where(contains_text(Player.name, query))
         if tour in ("ATP", "WTA"):
             statement = statement.where(Player.tour == tour)
         statement = statement.order_by(
@@ -889,7 +890,7 @@ def tournaments():
         func.max(Match.week_start).label("latest"),
     )
     if query:
-        statement = statement.where(Match.tournament.ilike(f"%{query}%"))
+        statement = statement.where(contains_text(Match.tournament, query))
     if tour in ("ATP", "WTA"):
         statement = statement.where(Match.tour == tour)
     if surface in ("Hard", "Clay", "Grass", "Carpet"):
@@ -1068,30 +1069,31 @@ def toggle_tournament_subscription(tour, slug):
 @site.get("/search")
 def search():
     query = request.args.get("q", "").strip()[:80]
-    players_found, matches_found, members, tournaments_found = [], [], [], []
+    categories = ("players", "matches", "tournaments", "members")
+    category = request.args.get("category", "all")
+    if category not in ("all", *categories):
+        category = "all"
+    results = {key: [] for key in categories}
+    totals = {key: 0 for key in categories}
+    pagination = None
     if query:
-        players_found = db.session.scalars(
-            select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name, Player.id).limit(15)
-        ).all()
-        winner, loser = aliased(Player), aliased(Player)
-        matches_found = db.session.scalars(
-            select(Match).join(winner, Match.winner).join(loser, Match.loser).where(catalog_is_visible()).where(or_(
-                Match.tournament.ilike(f"%{query}%"), winner.name.ilike(f"%{query}%"),
-                loser.name.ilike(f"%{query}%"),
-            )).order_by(Match.week_start.desc(), Match.id).limit(9)
-        ).all()
-        tournaments_found = db.session.execute(
-            select(Match.tour, Match.tournament).where(
-                catalog_is_visible(), Match.tournament.ilike(f"%{query}%"),
-            ).distinct().order_by(Match.tournament, Match.tour).limit(12)
-        ).all()
-        members = db.session.scalars(
-            select(User).where(or_(User.username.ilike(f"%{query}%"), User.display_name.ilike(f"%{query}%")))
-            .order_by(User.username, User.id).limit(15)
-        ).all()
+        statements = search_statements(query)
+        for key, statement in statements.items():
+            if key == category:
+                pagination = bounded_page(statement, page=request.args.get("page", 1, type=int),
+                    per_page=18 if key == "matches" else 30, rows=key == "tournaments")
+                results[key], totals[key] = pagination.items, pagination.total
+            else:
+                totals[key] = db.session.scalar(select(func.count()).select_from(statement.order_by(None).subquery()))
+                if category == "all":
+                    limit = {"players": 15, "matches": 9, "tournaments": 12, "members": 15}[key]
+                    limited = statement.limit(limit)
+                    results[key] = db.session.execute(limited).all() if key == "tournaments" else db.session.scalars(limited).all()
     return render_template(
-        "search.html", query=query, players=players_found, matches=matches_found,
-        members=members, tournaments_found=tournaments_found, tournament_slug=tournament_slug, match_location=match_location,
+        "search.html", query=query, category=category, categories=categories, totals=totals,
+        results=results, pagination=pagination, players=results["players"], matches=results["matches"],
+        members=results["members"], tournaments_found=results["tournaments"],
+        tournament_slug=tournament_slug, match_location=match_location,
     )
 
 

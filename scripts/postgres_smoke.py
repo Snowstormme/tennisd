@@ -12,6 +12,7 @@ from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_s
 from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Player, RankingSnapshot, Review, User
 from tennisd.identities import catalog_is_visible
 from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
+from tennisd.search_queries import search_statements
 from tennisd.rankings import latest_singles_dates, valid_singles_ranking
 from tennisd.pagination import bounded_page
 from tennisd.discussions import discussion_previews
@@ -326,6 +327,20 @@ def main():
             raise RuntimeError("PostgreSQL edition filter/window counts disagreed.")
         if "Multiple finals are recorded" not in body or "1/64" in body:
             raise RuntimeError("PostgreSQL edition inferred a unique champion or exposed R128.")
+
+        db.session.add_all([
+            Match(id="pg-search-literal",winner=stats_player,loser=opponents[0],tour="ATP",tournament="PG_50%! Open",
+                surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4"),
+            Match(id="pg-search-control",winner=stats_player,loser=opponents[0],tour="ATP",tournament="PGX50Y! Open",
+                surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4"),
+        ])
+        db.session.commit()
+        search_page = bounded_page(search_statements("PG_50%!")["tournaments"],page=10**100,per_page=30,rows=True)
+        if search_page.total != 1 or search_page.items[0].tournament != "PG_50%! Open":
+            raise RuntimeError("PostgreSQL literal search or distinct row pagination disagreed.")
+        response = app.test_client().get("/search?q=PG_50%25%21&category=tournaments&page=" + str(10**100))
+        if response.status_code != 200 or "PGX50Y! Open" in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL complete search did not preserve literal text.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

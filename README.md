@@ -204,3 +204,13 @@ Counters cover the complete selection. A champion is shown only when exactly
 one visible final is recorded in that year; multiple finals are described
 explicitly. A calendar year can contain multiple events or incomplete coverage,
 so the page is a result collection, not a claim of a complete tournament draw.
+
+Global search offers a counted overview and complete `category=players`,
+`matches`, `tournaments` and `members` pages. Match pages contain 18 results;
+other categories contain 30. The overview keeps its short previews and links to
+all remaining results. Queries are trimmed and limited to 80 characters. Search
+is case-insensitive literal substring matching: `%`, `_` and `!` are text, not
+wildcard instructions. Global search and the existing directories share this
+behavior. Public member search displays names/profiles, never email or password
+fields; result pages remain noindex. R128 and invalid match identities remain
+excluded from match and tournament search.
