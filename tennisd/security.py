@@ -70,6 +70,21 @@ def valid_token(raw, purpose):
     return None
 
 
+def consume_token(token):
+    """Claim a still-valid token once, in the caller's account transaction.
+
+    A prior lookup is only a preview: another request may consume or replace
+    the token before the form is submitted. The conditional delete arbitrates
+    concurrent submissions without committing the account change separately.
+    """
+    result = db.session.execute(delete(AuthToken).where(
+        AuthToken.digest == token.digest,
+        AuthToken.purpose == token.purpose,
+        AuthToken.expires_at > int(time.time()),
+    ).execution_options(synchronize_session=False))
+    return result.rowcount == 1
+
+
 def _verification_digest(user_id, code):
     return hmac.new(
         current_app.secret_key.encode(), f"verify:{user_id}:{code}".encode(), hashlib.sha256

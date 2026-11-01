@@ -4,6 +4,14 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-11-01
+
+- Consume verification and password-reset tokens with a conditional database
+  delete in the same transaction as the account update. Reject used, replaced
+  or newly expired tokens at submission time.
+- Limit reset emails per address as well as per IP, and prevent browser storage
+  of account forms and token redirects.
+
 ## [0.11.0] - 2026-11-01
 
 - Add complete 30-item notification, pending-request and reply histories with
