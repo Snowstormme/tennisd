@@ -171,5 +171,323 @@
       "statistics": [],
       "sets": []
     }
+  },
+  {
+    "id": "chengdu-2024-safiullin-fognini",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/7581/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        26
+      ],
+      "source_pdf_sha256": "4713b89c4a386b9da3cff23e2abb21c72a0c807640537ac4bcb660315b11b812"
+    },
+    "before": {
+      "id": "ta-atp-1104918",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1104918",
+      "tour": "ATP",
+      "tournament": "Chengdu Open - Chengdu",
+      "status": "finished",
+      "date": "2024-09-19",
+      "score": "6-3 4-6 6-4",
+      "winner": {
+        "id": "atp-126128",
+        "name": "Roman Safiullin",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "loser",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "6-3 4-6 6-4"
+  },
+  {
+    "id": "beijing-2024-rinderknech-fognini",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/747/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        13,
+        14
+      ],
+      "source_pdf_sha256": "4b81b749f6a5544b4c01c7c2731cae4c25ecb49c174914cf64783cb08a9c8075"
+    },
+    "before": {
+      "id": "ta-atp-1105098",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105098",
+      "tour": "ATP",
+      "tournament": "China Open - Beijing",
+      "status": "finished",
+      "date": "2024-09-24",
+      "score": "3-6 6-2 6-3",
+      "winner": {
+        "id": "atp-126239",
+        "name": "Arthur Rinderknech",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "loser",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "3-6 6-2 6-3"
+  },
+  {
+    "id": "shanghai-2024-paul-fognini",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/5014/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        49,
+        51,
+        52
+      ],
+      "source_pdf_sha256": "864abc7424179928db2bcf40010796e75d17873b432feb109c4d07db6f996677"
+    },
+    "before": {
+      "id": "ta-atp-1105156",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105156",
+      "tour": "ATP",
+      "tournament": "Shanghai Rolex Masters - Shanghai",
+      "status": "finished",
+      "date": "2024-10-04",
+      "score": "6-1 6-3",
+      "winner": {
+        "id": "atp-126205",
+        "name": "Tommy Paul",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "loser",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "6-1 6-3"
+  },
+  {
+    "id": "shanghai-2024-fognini-darderi",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/5014/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        51,
+        52
+      ],
+      "source_pdf_sha256": "864abc7424179928db2bcf40010796e75d17873b432feb109c4d07db6f996677"
+    },
+    "before": {
+      "id": "ta-atp-1105286",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105286",
+      "tour": "ATP",
+      "tournament": "Shanghai Rolex Masters - Shanghai",
+      "status": "finished",
+      "date": "2024-10-02",
+      "score": "6-4 6-7(5) 6-4",
+      "winner": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      },
+      "loser": {
+        "id": "atp-209260",
+        "name": "Luciano Darderi",
+        "tour": "ATP"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "winner",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "6-4 6-7(5) 6-4"
+  },
+  {
+    "id": "paris-2024-bublik-fognini",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        5,
+        6
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105541",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105541",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "7-5 7-5",
+      "winner": {
+        "id": "atp-122330",
+        "name": "Alexander Bublik",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "loser",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "7-5 7-5"
+  },
+  {
+    "id": "paris-2024-fognini-marozsan",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        27,
+        28
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105596",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105596",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-26",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      },
+      "loser": {
+        "id": "atp-206681",
+        "name": "Fabian Marozsan",
+        "tour": "ATP"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "winner",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "6-3 6-4"
+  },
+  {
+    "id": "paris-2024-fognini-cazaux",
+    "batch": "fognini-2024-archive",
+    "verified_on": "2026-11-01",
+    "source_label": "ATP",
+    "reason": "The retired importer assigned a WTA profile to Fabio Fognini in this ATP singles result. The official ATP draw confirms the event, players, winner and score. Correct only the reviewed match and associated participant reference; preserve dates, score and existing external mappings.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/qs.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "source_pdf_sha256": "b826123e87258a18c1e2cefa3d6362ee177addc9a6dab072474d2d05d11dfe10"
+    },
+    "before": {
+      "id": "ta-atp-1105613",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105613",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-27",
+      "score": "7-6(4) 4-6 6-2",
+      "winner": {
+        "id": "ta-1a2c875fb1604950",
+        "name": "Anna Korzeniak",
+        "tour": "WTA"
+      },
+      "loser": {
+        "id": "atp-209070",
+        "name": "Arthur Cazaux",
+        "tour": "ATP"
+      }
+    },
+    "use_existing_player": true,
+    "corrected_side": "winner",
+    "corrected_player": {
+      "id": "atp-104926",
+      "name": "Fabio Fognini",
+      "tour": "ATP",
+      "country": "ITA"
+    },
+    "corrected_score": "7-6(4) 4-6 6-2"
   }
 ]

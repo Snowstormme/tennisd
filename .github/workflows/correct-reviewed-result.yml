@@ -4,16 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       correction:
-        description: Select exactly one version-controlled, source-reviewed result
+        description: Select a version-controlled reviewed result or bounded group
         type: choice
         default: itf-sharm-2026-030-kirci-yuan
         options:
           - itf-sharm-2026-030-kirci-yuan
           - us-open-2024-machac-fognini
           - us-open-2024-humbert-monteiro
+          - fognini-2024-archive
         required: true
       operation:
-        description: Preview first; apply or roll back the reviewed single-match correction
+        description: Preview first; apply or roll back the selected reviewed correction
         type: choice
         default: preview
         options: [preview, apply, rollback]
