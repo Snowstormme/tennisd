@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-02
+
+- Page the tournament directory in SQL before loading card metadata, preserving
+  full counts and value/date/name/tour ordering. Fetch only selected surface and
+  level metadata; avoid loading the complete summary catalog into Python.
+- Bound the first-page major preview to eight cards with a link to every major.
+  Add filter-preserving pagination above and below results, clamp huge page
+  requests, normalize invalid filters and retain literal wildcard searches.
+
 ## [0.11.3] - 2026-11-02
 
 - Add 27 remaining source-reviewed Paris 2024 main-draw round repairs in two

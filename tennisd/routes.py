@@ -30,6 +30,8 @@ from .snapshot_policy import current_snapshot_condition
 from .rankings import latest_singles_dates, valid_singles_ranking
 from .search_queries import contains_text, search_statements
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
+from .tournament_catalog import LEVEL_DETAILS
+from .tournament_directory import tournament_directory
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
 from .auth_routes import register_auth_routes
@@ -883,60 +885,16 @@ def tournaments():
     tour = request.args.get("tour", "")
     surface = request.args.get("surface", "")
     level = request.args.get("level", "")
-    statement = select(
-        Match.tournament, Match.surface, Match.tour, Match.level,
-        func.count(Match.id).label("matches"),
-        func.min(Match.week_start).label("earliest"),
-        func.max(Match.week_start).label("latest"),
-    )
-    if query:
-        statement = statement.where(contains_text(Match.tournament, query))
-    if tour in ("ATP", "WTA"):
-        statement = statement.where(Match.tour == tour)
-    if surface in ("Hard", "Clay", "Grass", "Carpet"):
-        statement = statement.where(Match.surface == surface)
-    if level in ("G", "M", "PM", "P", "A", "I", "F", "O", "D"):
-        statement = statement.where(Match.level == level)
-    rows = db.session.execute(
-        statement.where(catalog_is_visible()).group_by(Match.tournament, Match.surface, Match.tour, Match.level)
-        .order_by(func.max(Match.week_start).desc(), Match.tournament, Match.tour)
-    ).all()
-    grouped = {}
-    for row in rows:
-        key = (row.tour, row.tournament)
-        item = grouped.setdefault(key, {
-            "tournament": row.tournament, "tour": row.tour, "matches": 0,
-            "earliest": row.earliest, "latest": row.latest, "surfaces": set(),
-            "levels": set(), "slug": tournament_slug(row.tournament),
-        })
-        item["matches"] += row.matches
-        item["earliest"] = min(item["earliest"], row.earliest)
-        item["latest"] = max(item["latest"], row.latest)
-        item["surfaces"].add(row.surface)
-        item["levels"].add(row.level)
-    tournament_rows = list(grouped.values())
-    for item in tournament_rows:
-        priority, value_label, value_group = tournament_level(item["levels"])
-        item.update({
-            "priority": priority, "value_label": value_label, "value_group": value_group,
-            "profile": tournament_profile(item["tournament"]),
-        })
-    tournament_rows.sort(key=lambda item: (
-        item["priority"], -item["latest"].toordinal(), item["tournament"], item["tour"],
-    ))
-    filtered = bool(query or tour or surface or level)
-    featured = [] if filtered else [item for item in tournament_rows if item["priority"] == 0]
-    all_remaining = tournament_rows if filtered else [item for item in tournament_rows if item["priority"] != 0]
-    page = max(1, request.args.get("page", 1, type=int))
-    per_page = 36
-    total = len(all_remaining)
-    pages = max(1, ceil(total / per_page))
-    if page > pages:
-        page = pages
-    remaining = all_remaining[(page - 1) * per_page:page * per_page]
+    tour = tour if tour in ("ATP", "WTA") else ""
+    surface = surface if surface in ("Hard", "Clay", "Grass", "Carpet") else ""
+    level = level if level in LEVEL_DETAILS else ""
+    pagination, remaining, featured, featured_count = tournament_directory(
+        query=query, tour=tour, surface=surface, level=level,
+        page=request.args.get("page", 1, type=int))
     return render_template(
         "tournaments.html", tournaments=remaining, featured=featured,
-        tournament_total=total, page=page, pages=pages,
+        featured_count=featured_count, pagination=pagination,
+        tournament_total=pagination.total, page=pagination.page, pages=pagination.pages,
         query=query, tour=tour, surface=surface, level=level,
         tournament_slug=tournament_slug,
     )
