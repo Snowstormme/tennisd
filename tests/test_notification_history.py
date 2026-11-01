@@ -110,9 +110,11 @@ class NotificationHistoryTests(unittest.TestCase):
             missing=db.session.get(Notification,self.notes[-2]);missing.url='/reviews/2147483647#comments'
             private=db.session.get(Notification,self.notes[-3]);private.url=f'/reviews/{self.private}#comments'
             unsafe=db.session.get(Notification,self.notes[-4]);unsafe.url='//example.test'
+            friend=db.session.get(Notification,self.notes[-5]);friend.kind='friend_request';friend.url='/notifications'
             db.session.commit()
         response,c,_=self.render('/notifications')
         self.assertEqual(c['targets'][self.notes[-1]],f'/reviews/{self.review}#comments')
+        self.assertEqual(c['targets'][self.notes[-5]],'/notifications?tab=requests#results')
         for key in self.notes[-4:-1]:self.assertIsNone(c['targets'][key])
         self.assertNotIn(b'href="//example.test',response.data)
         self.assertIn(b'Link unavailable',response.data)

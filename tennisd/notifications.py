@@ -56,6 +56,8 @@ def notification_targets(items, user_id):
         targets[item.id] = target
         if target is None:
             continue
+        if item.kind == "friend_request" and target == "/notifications":
+            targets[item.id] = url_for("site.notifications", tab="requests", _anchor="results")
         legacy = re.fullmatch(r"/matches/[^?#]+#review-([0-9]+)", target)
         direct = re.fullmatch(r"/reviews/([0-9]+)(?:[?#].*)?", target)
         match = legacy or direct

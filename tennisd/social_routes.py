@@ -88,7 +88,7 @@ def register_social_routes(site):
             create_notification(
                 other.id, kind="friend_request", title="New friend request",
                 body=f"{current_user.display_name} sent you a friend request.",
-                url=url_for("site.notifications"),
+                url=url_for("site.notifications", tab="requests", _anchor="results"),
             )
             db.session.commit()
             flash("Friend request sent.", "success")
