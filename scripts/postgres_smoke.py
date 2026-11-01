@@ -9,9 +9,10 @@ from sqlalchemy.exc import DBAPIError
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
-from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Player, Review, User
+from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Player, RankingSnapshot, Review, User
 from tennisd.identities import catalog_is_visible
 from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
+from tennisd.rankings import latest_singles_dates, valid_singles_ranking
 from tennisd.pagination import bounded_page
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
@@ -297,6 +298,24 @@ def main():
         page = bounded_page(select(Match).where(player_match_scope(stats_player.id)).order_by(Match.id), page=10**100)
         if page.page != 2 or page.total != 23 or len(page.items) != 5:
             raise RuntimeError("PostgreSQL player history pagination was not bounded.")
+
+        db.session.add_all([
+            RankingSnapshot(player=stats_player, ranked_on=date(2024,1,1),ranking_type="singles",rank=8),
+            RankingSnapshot(player=stats_player, ranked_on=date(2024,1,1),ranking_type="doubles",rank=1),
+            RankingSnapshot(player=stats_player, ranked_on=date(2025,1,1),ranking_type="doubles",rank=2),
+            RankingSnapshot(player=stats_player, ranked_on=date(2025,2,1),ranking_type="singles",rank=0),
+        ])
+        db.session.commit()
+        latest = latest_singles_dates([stats_player.id])
+        ranks = db.session.scalars(select(RankingSnapshot.rank).join(latest,
+            (latest.c.player_id == RankingSnapshot.player_id) &
+            (latest.c.ranked_on == RankingSnapshot.ranked_on)).where(valid_singles_ranking())).all()
+        if ranks != [8]:
+            raise RuntimeError("PostgreSQL recorded singles ranks included invalid/mixed types.")
+        for path in ("/players?q=Postgres+Summary&view=rankings&page=" + str(10**100),
+                     "/matches?q=PG+Summary&page=" + str(10**100)):
+            if app.test_client().get(path).status_code != 200:
+                raise RuntimeError("PostgreSQL public directory did not bound an oversized page.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

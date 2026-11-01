@@ -27,6 +27,7 @@ from .stats import community_statistics, percent, player_match_scope, player_sta
 from .pagination import bounded_page
 from .discussions import discussion_previews
 from .snapshot_policy import current_snapshot_condition
+from .rankings import latest_singles_dates, valid_singles_ranking
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
@@ -690,14 +691,13 @@ def matches():
         statement = statement.where(Match.surface == surface)
     if level in ("G", "M", "PM", "P", "A", "I", "F", "O", "D"):
         statement = statement.where(Match.level == level)
-    if year.isdigit() and 1968 <= int(year) <= date.today().year:
+    if len(year) == 4 and year.isascii() and year.isdigit() and 1968 <= int(year) <= date.today().year:
         statement = statement.where(func.extract("year", Match.week_start) == int(year))
     statement = statement.order_by(
         Match.week_start.asc() if order == "oldest" else Match.week_start.desc(),
-        Match.tournament,
+        Match.tournament, Match.id,
     )
-    page = max(1, request.args.get("page", 1, type=int))
-    pagination = db.paginate(statement, page=page, per_page=18, error_out=False)
+    pagination = bounded_page(statement, page=request.args.get("page", 1, type=int), per_page=18)
     return render_template(
         "matches.html", view=view, pagination=pagination, current_matches=current_matches,
         live_players=live_players, query=query, tour=tour,
@@ -804,20 +804,17 @@ def players():
         FollowedPlayer.player_id, func.count().label("follower_count")
     ).group_by(FollowedPlayer.player_id).subquery()
     if view == "rankings":
-        latest_dates = select(
-            RankingSnapshot.player_id,
-            func.max(RankingSnapshot.ranked_on).label("ranked_on"),
-        ).group_by(RankingSnapshot.player_id).subquery()
+        latest_dates = latest_singles_dates()
         statement = select(RankingSnapshot).options(joinedload(RankingSnapshot.player)).join(
             latest_dates, latest_dates.c.player_id == RankingSnapshot.player_id
         ).join(Player, Player.id == RankingSnapshot.player_id).where(
-            RankingSnapshot.ranked_on == latest_dates.c.ranked_on,
+            RankingSnapshot.ranked_on == latest_dates.c.ranked_on, valid_singles_ranking(),
         )
         if query:
             statement = statement.where(Player.name.ilike(f"%{query}%"))
         if tour in ("ATP", "WTA"):
             statement = statement.where(Player.tour == tour)
-        statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name)
+        statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name, Player.id)
     else:
         statement = (
             select(Player).where(func.lower(Player.name).not_in(("unknown player", "unknown", "tbd", "tba")))
@@ -831,12 +828,9 @@ def players():
         statement = statement.order_by(
             func.coalesce(follower_counts.c.follower_count, 0).desc(),
             func.coalesce(match_counts.c.match_count, 0).desc(),
-            Player.wikidata_id.is_(None), Player.name,
+            Player.wikidata_id.is_(None), Player.name, Player.id,
         )
-    pagination = db.paginate(
-        statement, page=max(1, request.args.get("page", 1, type=int)),
-        per_page=30, error_out=False,
-    )
+    pagination = bounded_page(statement, page=request.args.get("page", 1, type=int), per_page=30)
     player_ids = [
         item.player_id if view == "rankings" else item.id
         for item in pagination.items
@@ -853,18 +847,13 @@ def players():
             .where(follower_counts.c.player_id.in_(player_ids))
         ):
             metrics[player_id]["followers"] = count
-        latest_dates = select(
-            RankingSnapshot.player_id,
-            func.max(RankingSnapshot.ranked_on).label("ranked_on"),
-        ).where(RankingSnapshot.player_id.in_(player_ids)).group_by(
-            RankingSnapshot.player_id
-        ).subquery()
+        latest_dates = latest_singles_dates(player_ids)
         for player_id, rank in db.session.execute(
             select(RankingSnapshot.player_id, RankingSnapshot.rank).join(
                 latest_dates,
                 (latest_dates.c.player_id == RankingSnapshot.player_id)
                 & (latest_dates.c.ranked_on == RankingSnapshot.ranked_on),
-            )
+            ).where(valid_singles_ranking())
         ):
             metrics[player_id]["rank"] = rank
     return render_template(
@@ -1079,14 +1068,14 @@ def search():
     players_found, matches_found, members, tournaments_found = [], [], [], []
     if query:
         players_found = db.session.scalars(
-            select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name).limit(15)
+            select(Player).where(Player.name.ilike(f"%{query}%")).order_by(Player.name, Player.id).limit(15)
         ).all()
         winner, loser = aliased(Player), aliased(Player)
         matches_found = db.session.scalars(
             select(Match).join(winner, Match.winner).join(loser, Match.loser).where(catalog_is_visible()).where(or_(
                 Match.tournament.ilike(f"%{query}%"), winner.name.ilike(f"%{query}%"),
                 loser.name.ilike(f"%{query}%"),
-            )).order_by(Match.week_start.desc()).limit(9)
+            )).order_by(Match.week_start.desc(), Match.id).limit(9)
         ).all()
         tournaments_found = db.session.execute(
             select(Match.tour, Match.tournament).where(
@@ -1095,7 +1084,7 @@ def search():
         ).all()
         members = db.session.scalars(
             select(User).where(or_(User.username.ilike(f"%{query}%"), User.display_name.ilike(f"%{query}%")))
-            .order_by(User.username).limit(15)
+            .order_by(User.username, User.id).limit(15)
         ).all()
     return render_template(
         "search.html", query=query, players=players_found, matches=matches_found,

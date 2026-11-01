@@ -4,6 +4,16 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-01
+
+- Bound archive, player and recorded-ranking page requests before computing SQL
+  offsets. Preserve filter parameters and add accessible page links above/below
+  results with explicit page counts and section anchors.
+- Select only the latest positive singles rank in directory cards and recorded
+  rankings; doubles and invalid ranks cannot override a valid singles snapshot.
+- Add unique ID tie breakers to archive/directory/search result orderings. Ignore
+  malformed or oversized archive years instead of raising integer errors.
+
 ## [0.7.0] - 2026-11-01
 
 - Page match discussions by 18 public reviews, with three latest reply previews
