@@ -15,6 +15,7 @@ from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts,
 from tennisd.search_queries import search_statements
 from tennisd.rankings import latest_singles_dates, valid_singles_ranking
 from tennisd.pagination import bounded_page
+from tennisd.tournament_directory import tournament_directory
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -341,6 +342,15 @@ def main():
         response = app.test_client().get("/search?q=PG_50%25%21&category=tournaments&page=" + str(10**100))
         if response.status_code != 200 or "PGX50Y! Open" in response.get_data(as_text=True):
             raise RuntimeError("PostgreSQL complete search did not preserve literal text.")
+        page, cards, featured, major_count = tournament_directory(query="PG Summary",page=10**100)
+        if page.page != 1 or page.total != 1 or cards[0]["matches"] != 23 or cards[0]["levels"] != {"G","A"}:
+            raise RuntimeError("PostgreSQL tournament summary lost levels, counts or bounded pages.")
+        page, cards, _, _ = tournament_directory(query="PG_50%!",page=10**100)
+        if page.total != 1 or cards[0]["tournament"] != "PG_50%! Open":
+            raise RuntimeError("PostgreSQL tournament directory did not preserve literal search.")
+        response = app.test_client().get("/tournaments?q=PG+Summary&page=" + str(10**100))
+        if response.status_code != 200 or "23 matches" not in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL tournament directory HTTP rendering disagreed.")
 
         other_inbox = User(username="pg-other-inbox",email="other-inbox@example.test",display_name="Other inbox",password_hash="unused")
         db.session.add(other_inbox); db.session.flush()
