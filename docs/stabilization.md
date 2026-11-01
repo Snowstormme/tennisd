@@ -102,11 +102,29 @@ These are planned validation steps, not claims of finished features:
 
 ## Reviewed single-result correction
 
-The version-controlled record in `tennisd/data/result_corrections.json` documents
-one independently verified exception: `lt-211673` is Koray Kirci versus **Yi Yuan
+The version-controlled records in `tennisd/data/result_corrections.json` document
+independently verified exceptions. `lt-211673` is Koray Kirci versus **Yi Yuan
 (HKG)**, not Yue Yuan (CHN). The official ITF draw and player IDs are linked in the
 record. The active provider still returns the wrong opponent identity, so its
 response alone is insufficient evidence for this repair.
+
+Two legacy results are verified against the official 2024 US Open men's draw:
+
+| Correction | Permanent match | Correct opponent | Score |
+| --- | --- | --- | --- |
+| `us-open-2024-machac-fognini` | `ta-atp-1104557` | Fabio Fognini, existing `atp-104926` | 7-5 6-1 6-3 |
+| `us-open-2024-humbert-monteiro` | `ta-atp-1104579` | Thiago Monteiro, existing `atp-106329` | 6-3 6-4 6-4 |
+
+The source URL, draw page and positions are recorded with each correction. The
+ATP media notes corroborate the original dates. These repairs reuse exact
+existing profiles and refuse a missing profile or name/tour/country drift,
+including during the read-only preview. They never create a substitute profile
+or change the WTA profiles/external mappings that the retired importer used.
+Each legacy result has two participant rows and no set/statistic rows. Their
+exact original snapshots are recorded: the loser participant reference changes
+alongside `match.loser_id` in one transaction, while IDs, sides, winner flags,
+seeds and entries stay intact. Rollback restores both references. Unexpected
+related rows or partial repairs stop the operation rather than being overwritten.
 
 ```sh
 # Default operation is a database-enforced read-only preview.
@@ -117,12 +135,15 @@ python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operat
 python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operation rollback
 ```
 
-The **Correct a reviewed result** workflow exposes those same operations and
+Replace the correction argument to select another reviewed row. The **Correct
+a reviewed result** workflow exposes the same selection and operations and
 stores a journal containing public result fields only. Apply/rollback lock the
-permanent match, check all reviewed identity/result fields for drift, and stop
-if participant/statistic rows need a broader review. They preserve the match ID,
-all diary entries, and existing external mappings. The verified player gets a
-separate ITF identity; the WTA profile is never renamed or reassigned. Repeating
+permanent match and related rows, check all reviewed identity/result fields for
+drift, and stop if participant/statistic rows need a broader review. A blocked
+preview reports public related rows for inspection without writing to the database.
+They preserve the match ID,
+all diary entries, and existing external mappings. The Yi Yuan exception gets a
+separate ITF identity; its WTA profile is never renamed or reassigned. Repeating
 an operation is a no-op. Rollback does not delete the newly created profile.
 
 This is a narrow correction with a known original row and reversible field

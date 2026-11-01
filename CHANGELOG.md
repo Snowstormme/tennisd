@@ -4,6 +4,23 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-01
+
+### Data corrections
+
+- Add individually reviewed US Open 2024 corrections: Tomas Machac defeated
+  Fabio Fognini 7-5 6-1 6-3; Ugo Humbert defeated Thiago Monteiro 6-3 6-4 6-4.
+  The legacy importer incorrectly assigned WTA opponents to both results.
+- Reuse exact existing ATP profiles with name/tour/country guards. Preview now
+  validates the target identity too and exposes public related rows when review
+  is incomplete. Guard the exact participant/statistic/set snapshots; update the
+  two reviewed loser participant references in the same transaction as their
+  matches. Keep permanent match and diary IDs and preserve external mappings.
+- Support idempotent apply/rollback for one selected result, refusing added,
+  changed or partially repaired related records.
+- Link each corrected result to the appropriate official draw. The manual
+  workflow accepts only the three version-controlled reviewed corrections.
+
 ## [0.3.0] - 2026-11-01
 
 ### Added

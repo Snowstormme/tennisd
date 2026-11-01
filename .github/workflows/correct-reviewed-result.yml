@@ -3,6 +3,15 @@ name: Correct a reviewed result
 on:
   workflow_dispatch:
     inputs:
+      correction:
+        description: Select exactly one version-controlled, source-reviewed result
+        type: choice
+        default: itf-sharm-2026-030-kirci-yuan
+        options:
+          - itf-sharm-2026-030-kirci-yuan
+          - us-open-2024-machac-fognini
+          - us-open-2024-humbert-monteiro
+        required: true
       operation:
         description: Preview first; apply or roll back the reviewed single-match correction
         type: choice
@@ -33,7 +42,8 @@ jobs:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           AUTO_CREATE_DB: 'false'
           CORRECTION_OPERATION: ${{ inputs.operation }}
-        run: python scripts/correct_reviewed_result.py itf-sharm-2026-030-kirci-yuan --operation "$CORRECTION_OPERATION" > reviewed-result-correction.json
+          CORRECTION_ID: ${{ inputs.correction }}
+        run: python scripts/correct_reviewed_result.py "$CORRECTION_ID" --operation "$CORRECTION_OPERATION" > reviewed-result-correction.json
       - uses: actions/upload-artifact@v7
         with:
           name: reviewed-result-correction-${{ github.run_id }}
