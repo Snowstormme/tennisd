@@ -155,7 +155,7 @@ class TennisdFlows(unittest.TestCase):
         tournament = self.client.get(tournament_path)
         self.assertEqual(tournament.status_code, 200)
         self.assertIn(b"tournament-hero", tournament.data)
-        self.assertIn(b"TITLE LEADERS", tournament.data)
+        self.assertIn(b"TITLES IN THE LOADED CATALOG", tournament.data)
         self.assertIn(b"Image:", tournament.data)
         self.assertIn(b'data-tournament-theme="court"', tournament.data)
         self.assertIn(b"+ Follow tournament", tournament.data)

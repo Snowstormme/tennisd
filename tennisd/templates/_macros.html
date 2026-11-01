@@ -88,10 +88,10 @@
 </nav>{% endif %}
 {%- endmacro %}
 
-{% macro directory_pagination(page, endpoint, filters) -%}
+{% macro directory_pagination(page, endpoint, filters, anchor='results') -%}
 {% if page.pages > 1 %}<nav class="pagination profile-pagination" aria-label="Result pages">
-{% if page.has_prev %}<a rel="prev" href="{{ url_for(endpoint, page=page.prev_num, _anchor='results', **filters) }}">Previous</a>{% endif %}
+{% if page.has_prev %}<a rel="prev" href="{{ url_for(endpoint, page=page.prev_num, _anchor=anchor, **filters) }}">Previous</a>{% endif %}
 <span>Page {{ page.page }} of {{ page.pages }}</span>
-{% if page.has_next %}<a rel="next" href="{{ url_for(endpoint, page=page.next_num, _anchor='results', **filters) }}">Next</a>{% endif %}
+{% if page.has_next %}<a rel="next" href="{{ url_for(endpoint, page=page.next_num, _anchor=anchor, **filters) }}">Next</a>{% endif %}
 </nav>{% endif %}
 {%- endmacro %}

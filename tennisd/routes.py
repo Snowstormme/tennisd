@@ -948,31 +948,17 @@ def tournament_detail(tour, slug):
     if tournament_name is None:
         abort(404)
     condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible())
-    match_rows = db.session.scalars(
-        select(Match).where(*condition)
+    match_page = bounded_page(select(Match).where(*condition)
         .options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start.desc(), Match.round.desc()).limit(12)
-    ).all()
-    finals = db.session.scalars(
-        select(Match).where(*condition, Match.round == "F")
-        .options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start.desc())
-    ).all()
-    total_matches, earliest, latest = db.session.execute(
-        select(func.count(Match.id), func.min(Match.week_start), func.max(Match.week_start))
-        .where(*condition)
-    ).one()
-    title_counts = {}
-    for final in finals:
-        title_counts.setdefault(final.winner_id, {"player": final.winner, "titles": 0})
-        title_counts[final.winner_id]["titles"] += 1
-    champions = sorted(
-        title_counts.values(), key=lambda item: (-item["titles"], item["player"].name)
-    )[:8]
-    tournament_dates = db.session.scalars(
-        select(Match.week_start).where(*condition).distinct()
-    ).all()
-    years = sorted({value.year for value in tournament_dates}, reverse=True)
+        .order_by(Match.week_start.desc(), Match.id.desc()),
+        page=request.args.get("page", 1, type=int))
+    title_counts = (select(Match.winner_id.label("player_id"), func.count().label("titles"))
+        .where(*condition, Match.round == "F").group_by(Match.winner_id).subquery())
+    champions = [{"player": player, "titles": count} for player, count in db.session.execute(
+        select(Player, title_counts.c.titles).join(title_counts, title_counts.c.player_id == Player.id)
+        .order_by(title_counts.c.titles.desc(), Player.name, Player.id).limit(8))]
+    years = [int(year) for year in db.session.scalars(select(func.extract("year", Match.week_start))
+        .where(*condition).distinct().order_by(func.extract("year", Match.week_start).desc()))]
     surfaces = db.session.scalars(
         select(Match.surface).where(*condition).distinct().order_by(Match.surface)
     ).all()
@@ -994,14 +980,14 @@ def tournament_detail(tour, slug):
                 TournamentSubscription.tour == tour,
                 TournamentSubscription.tournament == tournament_name,
             )) is not None
-    live_matches = [
-        match for match in current_match_rows("live") + current_match_rows("upcoming")
-        if match.tour == tour and match.tournament.casefold() == tournament_name.casefold()
-    ]
+    live_matches = db.session.scalars(select(LiveMatch).where(
+        LiveMatch.tour == tour, func.lower(LiveMatch.tournament) == tournament_name.lower(),
+        LiveMatch.status.in_(("live", "upcoming")), current_snapshot_condition(),
+    ).order_by(case((LiveMatch.status == "live", 0), else_=1), LiveMatch.starts_at, LiveMatch.provider_id)).all() if schema_table_exists(LiveMatch.__tablename__) else []
     return render_template(
         "tournament.html", tournament=tournament_name, tour=tour,
-        profile=tournament_profile(tournament_name), matches=match_rows,
-        total_matches=total_matches, total_finals=len(finals), finals=finals[:12],
+        profile=tournament_profile(tournament_name), matches=match_page.items, match_page=match_page,
+        total_matches=match_page.total,
         champions=champions, years=years, surfaces=surfaces,
         levels=levels, value_label=value_label, value_group=value_group,
         live_matches=live_matches, match_location=match_location,
@@ -1016,22 +1002,39 @@ def tournament_edition_detail(tour, slug, season):
     tournament_name = resolve_tournament_name(tour, slug)
     if tournament_name is None or not 1968 <= season <= date.today().year + 1:
         abort(404)
-    matches = db.session.scalars(
-        select(Match).where(
-            Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible(),
-            func.extract("year", Match.week_start) == season,
-        ).options(joinedload(Match.winner), joinedload(Match.loser))
-        .order_by(Match.week_start, Match.round, Match.id)
-    ).all()
-    if not matches:
+    condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible(),
+                 func.extract("year", Match.week_start) == season)
+    round_counts = dict(db.session.execute(select(Match.round, func.count(Match.id))
+        .where(*condition).group_by(Match.round)).all())
+    if not round_counts:
         abort(404)
-    round_order = ("Q1", "Q2", "Q3", "R64", "R32", "R16", "QF", "SF", "F")
-    rounds = {round_name: [match for match in matches if match.round == round_name]
-              for round_name in round_order if any(match.round == round_name for match in matches)}
-    final = next((match for match in matches if match.round == "F"), None)
+    round_order = ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "RR", "R64", "R32", "R16", "QF", "SF", "BR", "F")
+    round_counts = dict(sorted(round_counts.items(), key=lambda item:
+        (round_order.index(item[0]) if item[0] in round_order else 99, item[0] or "")))
+    selected_round = request.args.get("round", "")[:16]
+    if selected_round == "__unavailable__" and "" in round_counts:
+        round_filter = ""
+    elif selected_round and selected_round in round_counts:
+        round_filter = selected_round
+    else:
+        selected_round = ""
+        round_filter = None
+    statement = select(Match).where(*condition)
+    if round_filter is not None:
+        statement = statement.where(Match.round == round_filter)
+    match_page = bounded_page(statement.options(joinedload(Match.winner), joinedload(Match.loser))
+        .order_by(case({r: i for i, r in enumerate(round_order)}, value=Match.round, else_=99),
+                  Match.round, Match.week_start, Match.id),page=request.args.get("page", 1, type=int))
+    rounds = {r: [m for m in match_page.items if m.round == r]
+              for r in round_counts if any(m.round == r for m in match_page.items)}
+    final = db.session.scalar(select(Match).where(*condition, Match.round == "F")
+        .options(joinedload(Match.winner),joinedload(Match.loser)).limit(1)) if round_counts.get("F") == 1 else None
+    surfaces = db.session.scalars(select(Match.surface).where(*condition).distinct().order_by(Match.surface)).all()
     return render_template(
         "tournament_edition.html", tournament=tournament_name, tour=tour, season=season,
-        matches=matches, rounds=rounds, final=final, surface=matches[0].surface,
+        matches=match_page.items, rounds=rounds, round_counts=round_counts, selected_round=selected_round,
+        match_page=match_page, total_matches=sum(round_counts.values()),
+        final=final, surface=" / ".join(surfaces),
         profile=tournament_profile(tournament_name), slug=slug, match_location=match_location,
     )
 

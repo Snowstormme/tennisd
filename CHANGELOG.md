@@ -4,6 +4,17 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-01
+
+- Page exact tournament archives and season results by 18 matches. Expose all
+  loaded seasons, round filters, full selection counts and stable ordering.
+- Calculate title leaders and season lists in SQL without hydrating every final
+  or tournament date. Keep complete counts independent of the displayed page.
+- Retain every visible round, including RR, later qualifying, unknown and blank
+  codes. Distinguish multiple recorded finals from a uniquely recorded champion.
+- Describe calendar-year result pages as collections in structured metadata;
+  do not claim a complete draw or a single completed event.
+
 ## [0.8.0] - 2026-11-01
 
 - Bound archive, player and recorded-ranking page requests before computing SQL
