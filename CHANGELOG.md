@@ -4,6 +4,16 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-01
+
+- Apply a shared current-snapshot policy to match lists, player profiles, live
+  polling and follower notifications. Exclude stale checks and out-of-window
+  schedules without changing stored scores, statuses, winners or diary records.
+- Preserve direct saved reports with explicit freshness explanations. Expire
+  live cards during browser polling and avoid winner labels for ongoing matches.
+- Report eligible/excluded observation counts separately from feed job health;
+  select the latest live/upcoming run independently of historical import volume.
+
 ## [0.5.0] - 2026-11-01
 
 - Aggregate player wins/losses, titles, surfaces, seasons, opponents and service

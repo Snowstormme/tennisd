@@ -96,6 +96,19 @@ Tennisd mirrors ATP and WTA singles at Grand Slams, tour events, Challenger and 
 
 The Live Tennis API refresh is a daily snapshot rather than point-by-point streaming. Every snapshot card shows when its data was checked and warns when the daily refresh is overdue. Browser polling only reads the stored snapshot; it does not make the provider feed real time. API keys are used only by GitHub Actions and must not be placed in Render or sent to the browser.
 
+Current browsing requires a check within 30 hours (at most five minutes of future
+clock skew). A known live start must be within the last 72 hours or next six
+hours; a freshly checked live report with no start time is allowed. Upcoming
+reports require a start between six hours ago and seven days ahead. Finished
+reports require a finish/start within the last seven days, allowing five minutes
+of clock skew. R128 remains hidden. The same policy governs profiles, lists,
+polling and new follower alerts. Exclusion preserves the provider's saved data:
+a direct report explains why it is outside the current feed and never infers a
+winner or cancellation. `/api/sync-status` separates latest feed job health from
+current/excluded snapshot counts; a successful job does not imply complete or
+current coverage of all tennis matches.
+
+
 The checked-in [Render Blueprint](render.yaml) is the production web-service configuration. Neon free compute sleeps while idle, so the first request after inactivity can be slower. Free plans suit an early public preview and are not an uptime guarantee.
 
 ## Backups and recovery

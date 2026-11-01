@@ -44,12 +44,12 @@
 {% endmacro %}
 
 {% macro current_match_card(match, player_pair=none, match_location=none, featured=false, active=false) %}
-<a class="{{ 'featured-board featured-slide' if featured else 'home-match-card' }} live-feed-match-card scoreboard-match-card surface-{{ match.surface|lower }}{% if active %} is-active{% endif %}" href="{{ url_for('site.live_match_detail', provider_id=match.provider_id) }}" data-live-match="{{ match.provider_id }}"{% if featured %} data-featured-slide{% if not active %} aria-hidden="true" tabindex="-1"{% else %} aria-hidden="false"{% endif %}{% endif %}>
+<a class="{{ 'featured-board featured-slide' if featured else 'home-match-card' }} live-feed-match-card scoreboard-match-card surface-{{ match.surface|lower }}{% if active %} is-active{% endif %}" href="{{ url_for('site.live_match_detail', provider_id=match.provider_id) }}" data-live-match="{{ match.provider_id }}" data-snapshot-status="{{ match.status }}"{% if featured %} data-featured-slide{% if not active %} aria-hidden="true" tabindex="-1"{% else %} aria-hidden="false"{% endif %}{% endif %}>
   <span class="showcase-wash" aria-hidden="true"></span>
   <span class="match-portrait match-portrait-left"><img src="{{ (player_pair[0].primary_photo_url or url_for('site.player_photo', player_id=player_pair[0].id, v=6)) if player_pair and player_pair[0] else url_for('site.live_player_photo', provider_id=match.provider_id, side=1, v=2) }}" alt="{{ match.player1_name }}" loading="lazy" referrerpolicy="no-referrer"><strong>{{ match.player1_name }}</strong></span>
   <span class="showcase-center">
     {{ match_center_header(match.tour, match.surface, match.tournament) }}
-    {{ match_score_rows(match.score, match.winner_side or 0, true, ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed')) }}
+    {{ match_score_rows(match.score, (match.winner_side or 0) if match.status == 'finished' else 0, true, ('Starts ' ~ match.starts_at.strftime('%d %b · %H:%M UTC') if match.starts_at else 'Time to be confirmed')) }}
 
     <span class="snapshot-age">Daily snapshot · {{ match.synced_at|freshness }}{% if match.synced_at|snapshot_is_stale %} · Refresh overdue{% endif %}</span>
     <span class="featured-facts"><b>{{ match.starts_at.strftime('%d %b %Y') if match.starts_at else 'DATE TBC' }}</b><i>·</i><b>{{ match_round_name(match.round) if match.round else match.status|upper }}</b>{% if match_location %}<i>·</i><b class="featured-location">{{ match_location(match) }}</b>{% endif %}</span>

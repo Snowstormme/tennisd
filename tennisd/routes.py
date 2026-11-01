@@ -25,6 +25,7 @@ from .security import client_ip, limit_action
 from .identities import catalog_is_visible, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_match_scope, player_statistics
 from .pagination import bounded_page
+from .snapshot_policy import current_snapshot_condition
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
@@ -57,16 +58,11 @@ def resolve_tournament_name(tour, slug):
     return next((name for name in names if tournament_slug(name) == slug), None)
 
 
-def current_match_rows(status):
+def current_match_rows(status, *, now=None):
     """Return an empty slate while a new deployment is waiting for its migration."""
     if not schema_table_exists(LiveMatch.__tablename__):
         return []
-    statement = select(LiveMatch).where(LiveMatch.status == status, or_(LiveMatch.round.is_(None), LiveMatch.round != "R128"))
-    if status == "upcoming":
-        statement = statement.where(
-            LiveMatch.starts_at >= utcnow() - timedelta(hours=6),
-            LiveMatch.starts_at <= utcnow() + timedelta(days=7),
-        )
+    statement = select(LiveMatch).where(LiveMatch.status == status, current_snapshot_condition(now))
     if status in ("finished", "cancelled"):
         statement = statement.order_by(LiveMatch.finished_at.desc(), LiveMatch.starts_at.desc()).limit(24)
     else:
@@ -135,8 +131,7 @@ def player_live_matches(player, limit=12):
         .where(
             LiveMatch.is_doubles.is_(False),
             LiveMatch.tour == player.tour,
-            LiveMatch.status != "cancelled",
-            or_(LiveMatch.round.is_(None), LiveMatch.round != "R128"),
+            current_snapshot_condition(),
             or_(*conditions),
         )
         .order_by(status_order, LiveMatch.starts_at.desc())
