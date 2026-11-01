@@ -8,7 +8,7 @@ from sqlalchemy.exc import DBAPIError
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
-from tennisd.catalog_audit import catalog_report, match_snapshot, readonly_catalog_session
+from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
 from tennisd.models import IngestionRun, Match, MatchParticipant, Player, Review, User
 from tennisd.pagination import bounded_page
 from tennisd.stats import diary_statistics
@@ -79,6 +79,54 @@ def check_reviewed_batch():
     for key in keys:
         if match_snapshot(matches[key]) != definitions()[key]["before"]:
             raise RuntimeError("PostgreSQL reviewed batch rollback was incomplete.")
+
+
+def check_reviewed_rounds():
+    reviewed_batch("fognini-2024-archive", operation="apply"); db.session.commit()
+    batch = "fognini-2024-rounds"
+    keys = batches()[batch]
+    matches = {key: db.session.get(Match, definitions()[key]["before"]["id"]) for key in keys}
+    for key, match in matches.items():
+        match.round = definitions()[key]["before"]["round"]
+    db.session.commit()
+    with readonly_catalog_session():
+        report = catalog_cohort_report(tour="ATP", year=2024, provider="tennis_api",
+            tournament="Rolex Paris Masters - Paris", limit=2)
+        if report["counts"] != {"matches": 3, "identity_conflicts": 0} or not report["has_more"]:
+            raise RuntimeError("PostgreSQL cohort audit did not scope totals and bound samples.")
+        preview = reviewed_batch(batch)
+        if preview["changed"] or preview["blocked"] or len(preview["results"]) != 5:
+            raise RuntimeError("PostgreSQL round preview was not read-only.")
+    reviewed_batch(batch, operation="apply"); db.session.rollback()
+    for key, match in matches.items():
+        if match.round != definitions()[key]["before"]["round"]:
+            raise RuntimeError("PostgreSQL round repair committed before its caller.")
+    if reviewed_batch(batch, operation="apply")["changed"] != 5:
+        raise RuntimeError("PostgreSQL round group did not apply completely.")
+    db.session.commit()
+    for key, match in matches.items():
+        if match_snapshot(match, include_round=True) != corrected_snapshot(definitions()[key]):
+            raise RuntimeError("PostgreSQL round repair changed an unrelated result field.")
+    if reviewed_batch(batch, operation="apply")["changed"]:
+        raise RuntimeError("PostgreSQL round repair was not idempotent.")
+    last = keys[-1]
+    matches[last].round = "F"; db.session.commit()
+    try:
+        reviewed_batch(batch, operation="rollback")
+    except ValueError as error:
+        if "changed since review" not in str(error):
+            raise
+    else:
+        raise RuntimeError("PostgreSQL round rollback overwrote a later edit.")
+    db.session.commit()
+    for key in keys[:-1]:
+        if matches[key].round != definitions()[key]["corrected_round"]:
+            raise RuntimeError("PostgreSQL left a partially rolled-back round group.")
+    matches[last].round = definitions()[last]["corrected_round"]; db.session.commit()
+    reviewed_batch(batch, operation="rollback"); db.session.commit()
+    for key, match in matches.items():
+        if match_snapshot(match, include_round=True) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL round rollback was incomplete.")
 
 
 def main():
@@ -175,6 +223,7 @@ def main():
             raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
 
         check_reviewed_batch()
+        check_reviewed_rounds()
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

@@ -2,6 +2,31 @@ name: Audit catalog quality
 
 on:
   workflow_dispatch:
+    inputs:
+      tour:
+        description: Optional ATP or WTA filter (blank keeps both)
+        type: string
+        default: ''
+      year:
+        description: Optional calendar year (1968–2100)
+        type: string
+        default: ''
+      tournament:
+        description: Optional exact tournament name (case-insensitive)
+        type: string
+        default: ''
+      provider:
+        description: Optional exact provider (e.g. tennis_api)
+        type: string
+        default: ''
+      limit:
+        description: Maximum public samples (1–500)
+        type: string
+        default: '50'
+      after_id:
+        description: Optional sample cursor from the previous cohort report
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -9,6 +34,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -20,4 +46,18 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           AUTO_CREATE_DB: 'false'
-        run: python scripts/audit_catalog.py --limit 50
+          AUDIT_TOUR: ${{ inputs.tour }}
+          AUDIT_YEAR: ${{ inputs.year }}
+          AUDIT_TOURNAMENT: ${{ inputs.tournament }}
+          AUDIT_PROVIDER: ${{ inputs.provider }}
+          AUDIT_LIMIT: ${{ inputs.limit || '50' }}
+          AUDIT_AFTER_ID: ${{ inputs.after_id }}
+        run: |
+          python scripts/audit_catalog.py --limit "$AUDIT_LIMIT" --tour "$AUDIT_TOUR" --year "$AUDIT_YEAR" --tournament "$AUDIT_TOURNAMENT" --provider "$AUDIT_PROVIDER" --after-id "$AUDIT_AFTER_ID" > catalog-audit.json
+          cat catalog-audit.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: catalog-audit-${{ github.run_id }}
+          path: catalog-audit.json
+          if-no-files-found: error
+          retention-days: 14

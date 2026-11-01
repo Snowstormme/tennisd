@@ -20,6 +20,11 @@ def definitions():
 
 def corrected_snapshot(correction):
     result = deepcopy(correction["before"])
+    if correction.get("kind") == "round":
+        if correction["corrected_round"] not in ("F", "SF", "QF", "R16", "R32", "R64", "R128", "RR", "Q1", "Q2", "Q3"):
+            raise ValueError("The reviewed target round is not supported.")
+        result["round"] = correction["corrected_round"]
+        return result
     side = correction.get("corrected_side", "loser")
     if side not in ("winner", "loser"):
         raise ValueError("The reviewed correction must identify a winner or loser side.")
@@ -33,8 +38,11 @@ def corrected_snapshot(correction):
 
 
 def correction_for_match(match):
-    for correction in definitions().values():
-        if match.id == correction["before"]["id"] and match_snapshot(match) == corrected_snapshot(correction):
+    # Prefer a later, more specific metadata review when both still match.
+    for correction in reversed(tuple(definitions().values())):
+        if match.id == correction["before"]["id"] and match_snapshot(
+            match, include_round=correction.get("kind") == "round",
+        ) == corrected_snapshot(correction):
             return correction
     return None
 
@@ -71,6 +79,8 @@ def _related_rows(match_id, *, lock=False):
 
 def _corrected_related(correction):
     result = deepcopy(correction["related_before"])
+    if correction.get("kind") == "round":
+        return result
     for name in ("participants", "statistics"):
         for row in result[name]:
             if row["player_id"] == correction["before"][correction.get("corrected_side", "loser")]["id"]:
@@ -90,12 +100,13 @@ def reviewed_correction(correction_id, *, operation="preview"):
     correction = definitions().get(correction_id)
     if correction is None:
         raise ValueError("Unknown reviewed correction.")
+    round_only = correction.get("kind") == "round"
     side = correction.get("corrected_side", "loser")
     match = db.session.get(Match, correction["before"]["id"], with_for_update=operation != "preview")
     if match is None:
         raise ValueError("The reviewed permanent match does not exist.")
     before, after = correction["before"], corrected_snapshot(correction)
-    current = match_snapshot(match)
+    current = match_snapshot(match, include_round=round_only)
     if current not in (before, after):
         raise ValueError("Result fields changed since review; refuse to overwrite the newer record.")
     related_rows, related = _related_rows(match.id, lock=operation != "preview")
@@ -110,7 +121,7 @@ def reviewed_correction(correction_id, *, operation="preview"):
         raise ValueError(blocked)
     wanted = before if operation == "rollback" else after
     # Preview must validate the target too, without creating a profile/mapping.
-    if operation != "rollback":
+    if operation != "rollback" and not round_only:
         player, mapping = _reviewed_player(correction, lock=operation == "apply")
     if blocked:
         return {"correction": correction_id, "operation": operation, "changed": False,
@@ -118,7 +129,9 @@ def reviewed_correction(correction_id, *, operation="preview"):
                 "evidence": correction["evidence"], "verified_on": correction["verified_on"]}
     changed = operation != "preview" and current != wanted
     if changed:
-        if operation == "apply":
+        if round_only:
+            match.round = wanted["round"]
+        elif operation == "apply":
             data = correction["corrected_player"]
             if player is None:
                 player = Player(**{key: data[key] for key in ("id", "name", "tour", "country")})
@@ -129,9 +142,10 @@ def reviewed_correction(correction_id, *, operation="preview"):
             player = db.session.get(Player, before[side]["id"])
             if player is None or any(getattr(player, key) != before[side][key] for key in ("name", "tour")):
                 raise ValueError("The original profile changed; refuse an unsafe rollback.")
-        setattr(match, side, player)
-        match.score = wanted["score"]
-        if reviewed_related is not None:
+        if not round_only:
+            setattr(match, side, player)
+            match.score = wanted["score"]
+        if reviewed_related is not None and not round_only:
             wanted_related = reviewed_related if operation == "rollback" else _corrected_related(correction)
             for name in ("participants", "statistics"):
                 expected_by_id = {row["id"]: row for row in wanted_related[name]}
