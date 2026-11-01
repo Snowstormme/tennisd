@@ -1,6 +1,7 @@
 """Read-only catalog diagnostics. Reports never include account or diary data."""
 
 from contextlib import contextmanager
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
@@ -42,14 +43,64 @@ def identity_reasons(match):
     return reasons
 
 
-def match_snapshot(match):
+def match_snapshot(match, *, include_round=False):
     """Public result fields needed to compare a proposal with its original row."""
-    return {
+    result = {
         "id": match.id, "provider": match.provider, "provider_id": match.provider_id,
         "tour": match.tour, "tournament": match.tournament, "status": match.status,
         "date": match.week_start.isoformat(), "score": match.score,
         "winner": {"id": match.winner_id, "name": match.winner.name, "tour": match.winner.tour} if match.winner else None,
         "loser": {"id": match.loser_id, "name": match.loser.name, "tour": match.loser.tour} if match.loser else None,
+    }
+    if include_round:
+        result["round"] = match.round
+    return result
+
+
+def catalog_cohort_report(*, limit=50, tour="", year=None, tournament="", provider="", after_id=""):
+    """Inspect a bounded public cohort, including rows with valid identities.
+
+    Totals describe the entire selected cohort; only samples use the cursor.
+    Tournament names are exact, case-insensitive matches, not SQL patterns.
+    Round distributions are observations, never inferred correctness labels.
+    """
+    if not 1 <= limit <= 500:
+        raise ValueError("Sample limit must be between 1 and 500.")
+    if tour not in ("", "ATP", "WTA"):
+        raise ValueError("Tour must be ATP or WTA.")
+    if year is not None and (not isinstance(year, int) or not 1968 <= year <= 2100):
+        raise ValueError("Year must be between 1968 and 2100.")
+    tournament, provider, after_id = tournament.strip(), provider.strip(), after_id.strip()
+    if len(tournament) > 120 or len(provider) > 32 or len(after_id) > 100:
+        raise ValueError("Cohort filter exceeds its field length.")
+    filters = []
+    if tour:
+        filters.append(Match.tour == tour)
+    if year is not None:
+        filters.extend((Match.week_start >= date(year, 1, 1), Match.week_start < date(year + 1, 1, 1)))
+    if tournament:
+        filters.append(func.lower(Match.tournament) == tournament.lower())
+    if provider:
+        filters.append(Match.provider == provider)
+    total = db.session.scalar(select(func.count(Match.id)).where(*filters))
+    invalid = db.session.scalar(select(func.count(Match.id)).where(
+        *filters, ~catalog_identity_is_valid(include_status=False)))
+    statement = select(Match).where(*filters).options(joinedload(Match.winner), joinedload(Match.loser))
+    if after_id:
+        statement = statement.where(Match.id > after_id)
+    rows = db.session.scalars(statement.order_by(Match.id).limit(limit + 1)).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    rounds = db.session.execute(select(Match.round, func.count(Match.id)).where(*filters)
+        .group_by(Match.round).order_by(Match.round)).all()
+    return {
+        "schema_version": 1, "mode": "read_only_cohort",
+        "scope": {"tour": tour or None, "year": year, "tournament": tournament or None, "provider": provider or None},
+        "counts": {"matches": total, "identity_conflicts": invalid},
+        "round_distribution": [{"round": code, "count": count} for code, count in rounds],
+        "sample_limit": limit, "after_id": after_id or None, "sampled_matches": len(rows),
+        "has_more": has_more, "next_after_id": rows[-1].id if has_more else None,
+        "samples": [{**match_snapshot(row, include_round=True), "identity_reasons": identity_reasons(row)} for row in rows],
     }
 
 

@@ -12,6 +12,7 @@ on:
           - us-open-2024-machac-fognini
           - us-open-2024-humbert-monteiro
           - fognini-2024-archive
+          - fognini-2024-rounds
         required: true
       operation:
         description: Preview first; apply or roll back the selected reviewed correction
