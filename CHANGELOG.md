@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-02
+
+- Add private complete player/tournament subscription lists with 30-item pages,
+  full totals, literal name search and tour filters. Link them from settings and
+  the profile's bounded twelve-item previews.
+- Add owner-scoped explicit unfollow actions by subscription ID, including
+  tournaments no longer in the archive. Preserve filters and bound the return
+  page after removal; repeated stale actions cannot toggle a follow back on.
+
 ## [0.13.0] - 2026-11-02
 
 - Add complete 25-item moderator report, feedback, poll and audit histories,

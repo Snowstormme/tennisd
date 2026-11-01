@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import directory_pagination with context %}
+{% block title %}Your subscriptions{% endblock %}
+{% block robots %}noindex, nofollow{% endblock %}
+{% block content %}
+<div class="container narrow-page following-page">
+  <a class="back-link" href="{{ url_for('site.settings') }}">Account settings</a>
+  <p class="eyebrow">YOUR COURTSIDE FOLLOWS</p><h1>Your subscriptions<span>.</span></h1>
+  <nav class="directory-tabs" aria-label="Subscription lists">{% for key,label in [('players','Players'),('tournaments','Tournaments')] %}{% if key in totals %}<a href="{{ url_for('site.following',tab=key,_anchor='results') }}"{% if tab==key %} aria-current="page"{% endif %}>{{ label }} ({{ totals[key] }})</a>{% endif %}{% endfor %}</nav>
+  <form method="get" class="filter-form"><input type="hidden" name="tab" value="{{ tab }}"><label>Search<input type="search" name="q" value="{{ query }}" maxlength="80" placeholder="{{ 'Player name' if tab=='players' else 'Tournament name' }}"></label><label>Tour<select name="tour"><option value="">Both tours</option>{% for value in ('ATP','WTA') %}<option value="{{ value }}"{% if tour==value %} selected{% endif %}>{{ value }}</option>{% endfor %}</select></label><button class="button" type="submit">Apply filters</button><a href="{{ url_for('site.following',tab=tab) }}">Reset</a></form>
+  {% set filters=dict(tab=tab,q=query,tour=tour) %}
+  <section id="results" tabindex="-1"><div class="result-line"><h2>{{ pagination.total }} matching {{ tab }}</h2><span>Page {{ pagination.page }} of {{ pagination.pages }}</span></div>
+    {{ directory_pagination(pagination,'site.following',filters) }}
+    {% for item in pagination.items %}<article class="account-tools">
+      {% if tab=='players' %}<h3><a href="{{ url_for('site.player_detail',player_id=item.player_id) }}">{{ item.player.name }}</a></h3><p>{{ item.player.tour }}</p>
+      {% else %}<h3>{{ item.tournament }}</h3><p>{{ item.tour }} · <a href="{{ url_for('site.tournament_detail',tour=item.tour|lower,slug=tournament_slug(item.tournament)) }}">Open archive</a></p>{% endif %}
+      <form method="post" action="{{ url_for('site.remove_following',kind=tab,follow_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="q" value="{{ query }}"><input type="hidden" name="tour" value="{{ tour }}"><input type="hidden" name="page" value="{{ pagination.page }}"><button class="button button-outline" type="submit">Unfollow</button></form>
+    </article>{% else %}<div class="empty-state"><h3>No matching subscriptions.</h3><p>Try another filter or discover {{ tab }} to follow.</p><a class="text-link" href="{{ url_for('site.players') if tab=='players' else url_for('site.tournaments') }}">Explore {{ tab }}</a></div>{% endfor %}
+    {{ directory_pagination(pagination,'site.following',filters) }}
+  </section>
+</div>
+{% endblock %}

@@ -17,12 +17,14 @@ from .security import limit_action
 from .stats import diary_scope, diary_statistics
 from .pagination import bounded_page
 from .web import schema_table_exists
+from .following_routes import follow_totals, register_following_routes
 
 
 def register_profile_routes(
     site, *, match_location, tournament_slug, prepare_profile_image, sign_in_user,
 ):
     """Register profile and account routes on the shared site blueprint."""
+    register_following_routes(site,tournament_slug=tournament_slug)
 
     @site.get("/me")
     @login_required
@@ -51,11 +53,13 @@ def register_profile_routes(
         friend_state = None
         pagination = None
         stats = None
+        following_totals = {}
         if active_tab == "profile":
             reviews = db.session.scalars(cards.limit(5)).all()
             favorites = db.session.scalars(cards.where(Review.is_favorite.is_(True)).limit(4)).all()
             stats = diary_statistics(user.id, public_only=not own)
             if own:
+                following_totals = follow_totals(user.id)
                 followed = db.session.scalars(
                     select(FollowedPlayer).where(FollowedPlayer.user_id == user.id)
                     .options(joinedload(FollowedPlayer.player)).order_by(FollowedPlayer.id.desc()).limit(12)
@@ -64,6 +68,7 @@ def register_profile_routes(
                     tournament_subscriptions = db.session.scalars(
                         select(TournamentSubscription).where(TournamentSubscription.user_id == user.id)
                         .order_by(TournamentSubscription.created_at.desc(), TournamentSubscription.id.desc())
+                        .limit(12)
                     ).all()
         elif active_tab in {"diary", "likes"}:
             if active_tab == "likes":
@@ -97,6 +102,7 @@ def register_profile_routes(
             favorites=favorites, active_tab=active_tab, friends=friends, friend_state=friend_state,
             tournament_subscriptions=tournament_subscriptions, tournament_slug=tournament_slug,
             match_location=match_location, pagination=pagination,
+            following_totals=following_totals,
         )
 
     @site.route("/settings", methods=["GET", "POST"])
