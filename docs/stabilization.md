@@ -188,6 +188,50 @@ The auto sync guard allows one refresh per UTC calendar day. It does not require
 24 elapsed hours: schedule jitter or moving the cron earlier must not skip the
 next day. Explicit manual `live`/`upcoming` modes still request a refresh.
 
+### Reviewed rounds and cohort audits
+
+The retired importer used one numeric round table regardless of draw size or
+qualifying bracket. Do not repair all R128/Q4 rows by a global substitution.
+`fognini-2024-rounds` contains five independent round-only reviews against the
+same official ATP draws used for participant verification:
+
+| Match | Original round | Verified round |
+| --- | --- | --- |
+| Safiullin–Fognini, Chengdu | R128 | R32 |
+| Rinderknech–Fognini, Beijing qualifying | Q2 | Q1 |
+| Bublik–Fognini, Paris | R128 | R64 |
+| Fognini–Marozsan, Paris qualifying | Q2 | Q1 |
+| Fognini–Cazaux, Paris qualifying final | Q4 | Q2 |
+
+Preview/apply/rollback this fixed group with `scripts/correct_reviewed_result.py`
+or the existing workflow. Its guards include the round and the already verified
+participants; changing either stops the operation. Only `match.round` changes;
+related rows remain byte-for-byte equivalent. Participant and round reviews are
+independent. If reversing both, reverse rounds first; a subsequent participant
+change intentionally invalidates that round review's original snapshot.
+
+For the next review, select a complete tournament cohort, not only identity
+conflicts. This read-only report exposes public result fields and rounds:
+
+```sh
+python scripts/audit_catalog.py --tour ATP --year 2024 \
+  --tournament 'Rolex Paris Masters - Paris' --provider tennis_api --limit 100
+# Continue bounded samples using next_after_id from the previous report:
+python scripts/audit_catalog.py --tour ATP --year 2024 \
+  --tournament 'Rolex Paris Masters - Paris' --provider tennis_api \
+  --limit 100 --after-id 'PREVIOUS_LAST_ID'
+```
+
+Names are exact and case-insensitive, not prefix or SQL wildcard searches. Year
+means the stored match-date year. Limits are 1–500 and samples are ordered by
+permanent ID; full-cohort counts and round distributions ignore the sample cursor.
+`has_more`/`next_after_id` distinguish a truncated sample from a complete cohort.
+A round distribution is an observation, not proof that each round is correct.
+`--cohort` explicitly requests the public cohort format without filters. Running
+without filters retains the original global quality report format (schema 2).
+The **Audit catalog quality** workflow provides the same optional filters and
+keeps the JSON artifact for 14 days. No account or diary fields are selected.
+
 ## Bounded profile collections
 
 Diary, likes, watchlist and accepted friends use 18-item pages with previous/next

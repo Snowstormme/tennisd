@@ -4,6 +4,26 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-01
+
+### Verified rounds
+
+- Add five source-reviewed round-only repairs: Chengdu R128 → R32, Beijing
+  qualifying Q2 → Q1, Paris main draw R128 → R64, Paris qualifying Q2 → Q1 and
+  qualifying final Q4 → Q2. Preserve participants, scores, dates and diary IDs.
+- Guard exact result/round and related-row snapshots with the existing atomic
+  group apply/rollback. Keep participant and round reviews independent; indicate
+  when both are verified. Use readable round names on the match detail page.
+
+### Catalog review
+
+- Add database-enforced read-only cohort reports filtered by tour, calendar
+  year, exact tournament name and provider. Include valid identities as well as
+  conflicts, observed round distributions, bounded samples and ID cursors.
+- Keep totals scoped to the complete cohort across sample pages. Export public
+  match fields only and retain the original unfiltered quality report format.
+- Expose the filters and downloadable JSON reports in the manual audit workflow.
+
 ## [0.3.2] - 2026-11-01
 
 ### Data recovery

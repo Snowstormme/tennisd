@@ -39,7 +39,7 @@ jobs:
           python-version: '3.12'
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Guard and record the reviewed one-match correction
+      - name: Guard and record the reviewed result or group
         env:
           DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
           AUTO_CREATE_DB: 'false'
