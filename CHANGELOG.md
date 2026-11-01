@@ -4,6 +4,14 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-11-01
+
+- Correct twenty individually reviewed Paris 2024 opening-round results from
+  R128 to R64 using the official 64-position ATP main draw. Preserve every
+  participant, score, date and diary reference. Record exact participant snapshots
+  and source draw positions; retain atomic group apply/rollback.
+- Test the 20-record group boundary, idempotency and late-failure rollback.
+
 ## [0.3.3] - 2026-11-01
 
 ### Verified rounds
