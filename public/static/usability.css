@@ -76,3 +76,5 @@
 .profile-stat-feature a { color: inherit; text-decoration: underline; text-underline-offset: 4px; }
 
 .discussion-page { max-width: 900px; }
+.search-results .directory-tabs { flex-wrap: wrap; gap: 4px 24px; }
+.search-results .directory-tabs a { min-height: 44px; white-space: nowrap; }

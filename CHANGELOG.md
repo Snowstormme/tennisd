@@ -4,6 +4,17 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-01
+
+- Add full paginated search categories for players, matches, tournaments and
+  members. Show complete counts and explicit preview limits, with links to every
+  category, bounded page input and query/category-preserving navigation.
+- Search literal text consistently across global search, match archives, player
+  directories and tournament lists. Percent, underscore and the escape marker
+  no longer act as unintended SQL wildcards.
+- Eager-load match participants for search cards and wrap category tabs on small
+  screens. Preserve public visibility, R128 exclusion and noindex metadata.
+
 ## [0.9.0] - 2026-11-01
 
 - Page exact tournament archives and season results by 18 matches. Expose all
