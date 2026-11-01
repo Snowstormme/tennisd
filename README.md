@@ -182,3 +182,9 @@ tennisd/
 - Backup automation remains opt-in. Code changes do not configure production secrets or establish an offline age private key. Verify the configured backup workflow and a decrypt/restore drill before relying on it.
 
 See [the stabilization runbook](docs/stabilization.md) for rollout and the next product-validation steps.
+
+Match discussions show 18 public reviews per page, newest first (date and ID),
+with at most three reply previews each. A discussion has stable 20-reply pages.
+Ratings and counts cover all public entries, independently of the page. Private
+entries are accessible by direct discussion URL only to their owner; new replies
+require a public entry. New reply alerts link directly to the discussion.

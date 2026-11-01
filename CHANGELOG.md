@@ -4,6 +4,16 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-01
+
+- Page match discussions by 18 public reviews, with three latest reply previews
+  per review selected by a SQL window. Aggregate ratings over the full public
+  discussion without loading every review body.
+- Add stable 20-reply discussion pages, owner-only access to private entries,
+  spoiler protection and escaped content. Preserve comment deletion permissions.
+- Direct new reply notifications and comment action redirects to the discussion
+  so a reply remains reachable when its review leaves the first match page.
+
 ## [0.6.0] - 2026-11-01
 
 - Apply a shared current-snapshot policy to match lists, player profiles, live
