@@ -162,15 +162,24 @@ def batches():
 
 
 def reviewed_batch(batch_id, *, operation="preview"):
-    """Apply a bounded reviewed group; the caller commits/rolls back once.
+    """Apply a bounded reviewed group atomically; the caller commits once.
 
-    All matches are locked in permanent-ID order. No commit takes place here;
-    an error in any result must roll back the entire group at the call site.
+    All matches are locked in permanent-ID order. A savepoint rolls back this
+    entire group on error, even if a caller catches it. No commit happens here.
     """
     keys = batches().get(batch_id)
     if not keys or len(keys) > 20:
         raise ValueError("Unknown or oversized reviewed correction batch.")
-    results = [reviewed_correction(key, operation=operation) for key in keys]
+    if db.session.new or db.session.dirty or db.session.deleted:
+        raise RuntimeError("Start a reviewed batch without pending database changes.")
+    connection = db.session.connection()
+    if connection.dialect.name == "sqlite" and not connection.connection.driver_connection.in_transaction:
+        # sqlite3 legacy transaction control does not BEGIN for SAVEPOINT.
+        # Explicitly anchor it so releasing the savepoint cannot commit the
+        # group before the caller's outer transaction is committed.
+        connection.exec_driver_sql("BEGIN")
+    with db.session.begin_nested():
+        results = [reviewed_correction(key, operation=operation) for key in keys]
     return {"batch": batch_id, "operation": operation,
             "changed": sum(result["changed"] for result in results),
             "blocked": any(result.get("blocked") for result in results), "results": results}

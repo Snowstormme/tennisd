@@ -215,7 +215,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "6-3 4-6 6-4"
+    "corrected_score": "6-3 4-6 6-4",
+    "related_before": {
+      "participants": [
+        {
+          "id": 654943,
+          "match_id": "ta-atp-1104918",
+          "player_id": "atp-126128",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 654944,
+          "match_id": "ta-atp-1104918",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "beijing-2024-rinderknech-fognini",
@@ -260,7 +284,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "3-6 6-2 6-3"
+    "corrected_score": "3-6 6-2 6-3",
+    "related_before": {
+      "participants": [
+        {
+          "id": 650413,
+          "match_id": "ta-atp-1105098",
+          "player_id": "atp-126239",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 650414,
+          "match_id": "ta-atp-1105098",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "shanghai-2024-paul-fognini",
@@ -306,7 +354,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "6-1 6-3"
+    "corrected_score": "6-1 6-3",
+    "related_before": {
+      "participants": [
+        {
+          "id": 644543,
+          "match_id": "ta-atp-1105156",
+          "player_id": "atp-126205",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 644544,
+          "match_id": "ta-atp-1105156",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "shanghai-2024-fognini-darderi",
@@ -351,7 +423,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "6-4 6-7(5) 6-4"
+    "corrected_score": "6-4 6-7(5) 6-4",
+    "related_before": {
+      "participants": [
+        {
+          "id": 645977,
+          "match_id": "ta-atp-1105286",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 645978,
+          "match_id": "ta-atp-1105286",
+          "player_id": "atp-209260",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "paris-2024-bublik-fognini",
@@ -396,7 +492,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "7-5 7-5"
+    "corrected_score": "7-5 7-5",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627849,
+          "match_id": "ta-atp-1105541",
+          "player_id": "atp-122330",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627850,
+          "match_id": "ta-atp-1105541",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "paris-2024-fognini-marozsan",
@@ -441,7 +561,31 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "6-3 6-4"
+    "corrected_score": "6-3 6-4",
+    "related_before": {
+      "participants": [
+        {
+          "id": 629775,
+          "match_id": "ta-atp-1105596",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 629776,
+          "match_id": "ta-atp-1105596",
+          "player_id": "atp-206681",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   },
   {
     "id": "paris-2024-fognini-cazaux",
@@ -488,6 +632,30 @@
       "tour": "ATP",
       "country": "ITA"
     },
-    "corrected_score": "7-6(4) 4-6 6-2"
+    "corrected_score": "7-6(4) 4-6 6-2",
+    "related_before": {
+      "participants": [
+        {
+          "id": 629277,
+          "match_id": "ta-atp-1105613",
+          "player_id": "ta-1a2c875fb1604950",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 629278,
+          "match_id": "ta-atp-1105613",
+          "player_id": "atp-209070",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
   }
 ]

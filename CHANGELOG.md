@@ -4,6 +4,25 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-01
+
+### Data recovery
+
+- Restore Fabio Fognini's identity in seven individually verified 2024 results:
+  Chengdu, Beijing qualifying, two Shanghai matches, Paris main draw and two
+  Paris qualifying matches. Store official ATP draw URLs, positions and PDF
+  SHA-256 digests alongside exact original match/participant snapshots.
+- Support correcting the reviewed winner or loser while preserving score,
+  opponent, participant sides/winner flags, permanent IDs and diary entries.
+- Add one fixed seven-result recovery group with a read-only preview and atomic
+  apply/rollback. A database savepoint undoes the complete group on any error,
+  even if the caller catches it. Arbitrary match lists are not accepted.
+- Explicitly begin SQLite's outer transaction before creating the savepoint,
+  so releasing a successful group still allows the caller to roll it back.
+- Validate mixed winner/loser recovery, late failure, idempotency, private diary
+  preservation and rollback in SQLite; cover the same group and savepoint
+  failure behavior in PostgreSQL CI.
+
 ## [0.3.1] - 2026-11-01
 
 ### Data corrections
