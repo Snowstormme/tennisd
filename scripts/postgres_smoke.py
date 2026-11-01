@@ -16,6 +16,8 @@ from tennisd.search_queries import search_statements
 from tennisd.rankings import latest_singles_dates, valid_singles_ranking
 from tennisd.pagination import bounded_page
 from tennisd.tournament_directory import tournament_directory
+from tennisd.moderation_queries import moderation_context
+from tennisd.models import FeedbackSubmission, Poll, PollOption, PollVote
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -351,6 +353,18 @@ def main():
         response = app.test_client().get("/tournaments?q=PG+Summary&page=" + str(10**100))
         if response.status_code != 200 or "23 matches" not in response.get_data(as_text=True):
             raise RuntimeError("PostgreSQL tournament directory HTTP rendering disagreed.")
+
+        db.session.add_all(FeedbackSubmission(category="bug",message="PG moderation fixture",rating=3) for _ in range(55))
+        poll=Poll(question="PG aggregate votes",options=[PollOption(label="Answer")])
+        db.session.add(poll);db.session.flush()
+        db.session.add_all(PollVote(poll_id=poll.id,option_id=poll.options[0].id,visitor_key=f"pg-vote-{i}") for i in range(30))
+        db.session.commit()
+        moderation=moderation_context(ready=True,tab="feedback",page=10**100)
+        if moderation["pagination"].page != 3 or len(moderation["feedback_items"]) != 5 or moderation["feedback_summary"]["total"] != 55:
+            raise RuntimeError("PostgreSQL moderation history or complete summary disagreed.")
+        moderation=moderation_context(ready=True,tab="polls")
+        if moderation["poll_results"][poll.id][0].votes != 30:
+            raise RuntimeError("PostgreSQL poll vote aggregation disagreed.")
 
         other_inbox = User(username="pg-other-inbox",email="other-inbox@example.test",display_name="Other inbox",password_hash="unused")
         db.session.add(other_inbox); db.session.flush()

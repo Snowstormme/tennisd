@@ -1,35 +1,46 @@
 {% extends 'base.html' %}
+{% from '_macros.html' import directory_pagination with context %}
+{% block robots %}noindex, nofollow{% endblock %}
 {% block title %}Moderation{% endblock %}
 {% block content %}
 <div class="container narrow-page moderation-page">
   <p class="eyebrow">OWNER INSIGHTS</p><h1>Reports & feedback<span>.</span></h1>
   <p class="muted">Review community safety reports and turn product feedback into decisions.</p>
-  <section id="feedback" class="moderation-feedback">
+
+  <nav class="profile-tabs" aria-label="Moderation sections">{% for key,label in [('reports','Reports'),('feedback','Feedback'),('polls','Polls'),('audit','Action history')] %}{% if key in totals %}<a href="{{ url_for('site.moderation',tab=key,_anchor='results') }}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }} ({{ totals[key] }})</a>{% endif %}{% endfor %}</nav>
+  {% if tab in ('reports','feedback') %}<form method="get" class="filter-form"><input type="hidden" name="tab" value="{{ tab }}"><label>Status<select name="state">{% for value in (('open','dismissed','all') if tab == 'reports' else ('all','new','reviewed','planned','closed')) %}<option value="{{ value }}"{% if state == value %} selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}</select></label>{% if tab == 'feedback' %}<label>Category<select name="category"><option value="">All categories</option>{% for value in ('idea','bug','content','other') %}<option value="{{ value }}"{% if category == value %} selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}</select></label>{% endif %}<button class="button" type="submit">Apply filters</button></form>{% endif %}
+  {% set filters = dict(tab=tab,state=state,category=category) %}<section id="results" tabindex="-1"><p>{{ pagination.total }} matching records · Page {{ pagination.page }} of {{ pagination.pages }}</p>{{ directory_pagination(pagination,'site.moderation',filters) }}
+  {% if tab == "feedback" %}<section id="feedback" class="moderation-feedback">
     <div class="section-head"><div><p class="eyebrow">PRODUCT FEEDBACK</p><h2>What people are saying<span>.</span></h2></div></div>
-    <div class="feedback-summary"><span><small>RESPONSES</small><strong>{{ feedback_summary.total }}</strong></span><span><small>AVERAGE FEELING</small><strong>{{ '%.1f / 5'|format(feedback_summary.average) if feedback_summary.average is not none else '—' }}</strong></span>{% for category, count in feedback_summary.categories %}<span><small>{{ category|upper }}</small><strong>{{ count }}</strong></span>{% endfor %}</div>
-    {% for item in feedback_items %}<article class="account-tools moderation-item feedback-item"><p class="eyebrow">{{ item.category|upper }} · {{ item.status|upper }} · {{ item.created_at.strftime('%d %b %Y · %H:%M') }}</p><h3>{{ item.user.display_name if item.user else 'Anonymous visitor' }}{% if item.rating %} · {{ item.rating }}/5{% endif %}</h3><p>{{ item.message }}</p>{% if item.page_path %}<a class="text-link" href="{{ item.page_path }}">Page mentioned</a>{% endif %}<div class="moderation-actions">{% for status in ('reviewed', 'planned', 'closed') %}{% if item.status != status %}<form method="post" action="{{ url_for('site.moderate_feedback', feedback_id=item.id, status=status) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button button-outline" type="submit">{{ status|capitalize }}</button></form>{% endif %}{% endfor %}</div></article>{% else %}<div class="empty-state"><h3>No feedback yet.</h3><p>New responses will appear here.</p></div>{% endfor %}
-    {% for poll in polls %}<article class="poll-results"><p class="eyebrow">POLL RESULTS</p><h3>{{ poll.question }}</h3>{% for option in poll.options %}<div><span>{{ option.label }}</span><strong>{{ option.votes|length }}</strong></div>{% endfor %}</article>{% endfor %}
+    <div class="feedback-summary"><span><small>ALL RESPONSES</small><strong>{{ feedback_summary.total }}</strong></span><span><small>AVERAGE FEELING</small><strong>{{ '%.1f / 5'|format(feedback_summary.average) if feedback_summary.average is not none else '—' }}</strong></span>{% for category, count in feedback_summary.categories %}<span><small>{{ category|upper }}</small><strong>{{ count }}</strong></span>{% endfor %}</div>
+    {% for item in feedback_items %}<article class="account-tools moderation-item feedback-item"><p class="eyebrow">{{ item.category|upper }} · {{ item.status|upper }} · {{ item.created_at.strftime('%d %b %Y · %H:%M') }}</p><h3>{{ item.user.display_name if item.user else 'Anonymous visitor' }}{% if item.rating %} · {{ item.rating }}/5{% endif %}</h3><p>{{ item.message }}</p>{% if feedback_targets[item.id] %}<a class="text-link" href="{{ feedback_targets[item.id] }}">Page mentioned</a>{% endif %}<div class="moderation-actions">{% for status in ('new', 'reviewed', 'planned', 'closed') %}{% if item.status != status %}<form method="post" action="{{ url_for('site.moderate_feedback', feedback_id=item.id, status=status) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button button-outline" type="submit">{{ status|capitalize }}</button></form>{% endif %}{% endfor %}</div></article>{% else %}<div class="empty-state"><h3>No matching feedback.</h3><p>Try a different status or category.</p></div>{% endfor %}
+
   </section>
-  <div class="section-head"><div><p class="eyebrow">COMMUNITY SAFETY</p><h2>Open reports<span>.</span></h2></div></div>
+{% endif %}
+{% if tab == "polls" %}    {% for poll in polls %}<article class="poll-results"><p class="eyebrow">POLL RESULTS</p><h3>{{ poll.question }}</h3>{% for option in poll_results.get(poll.id,[]) %}<div><span>{{ option.label }}</span><strong>{{ option.votes }}</strong></div>{% endfor %}</article>{% else %}<div class="empty-state"><h3>No polls recorded.</h3></div>{% endfor %}{% endif %}
+{% if tab == "reports" %}
+  <div class="section-head"><div><p class="eyebrow">COMMUNITY SAFETY</p><h2>Reports<span>.</span></h2></div></div>
   {% for report in reports %}
     {% set item = report.review or report.comment %}
     {% set review = report.review or report.comment.review %}
     <article class="account-tools moderation-item">
-      <p class="eyebrow">{{ report.reason|upper }} · {{ report.created_at.strftime('%d %b %Y') }}</p>
+      <p class="eyebrow">{{ report.reason|upper }} · {{ report.status|upper }} · {{ report.created_at.strftime('%d %b %Y') }}</p>
       <h2>{{ 'Review' if report.review else 'Comment' }} by {{ item.user.display_name }}</h2>
       <p>{{ item.body }}</p>
-      <a class="text-link" href="{{ url_for('site.match_detail', match_id=review.match_id) }}#review-{{ review.id }}">Open match</a>
-      <div class="moderation-actions">
+      <a class="text-link" href="{{ url_for('site.review_detail', review_id=report.review_id) if report.review_id else url_for('site.comment_detail', comment_id=report.comment_id) }}">Open discussion</a>
+      {% if report.status == "open" %}<div class="moderation-actions">
         <form method="post" action="{{ url_for('site.moderate_report', report_id=report.id, action='dismiss') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button button-outline" type="submit">Dismiss</button></form>
         <form method="post" action="{{ url_for('site.moderate_report', report_id=report.id, action='remove') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button danger-button" type="submit">Remove content</button></form>
-      </div>
+      </div>{% endif %}
     </article>
   {% else %}
-    <div class="empty-state"><h3>No open reports.</h3><p>The queue is clear.</p></div>
+    <div class="empty-state"><h3>No matching reports.</h3><p>Try a different status filter.</p></div>
   {% endfor %}
-  <section class="moderation-feedback">
-    <div class="section-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Recent actions<span>.</span></h2></div></div>
+{% endif %}
+{% if tab == "audit" %}<section class="moderation-feedback">
+    <div class="section-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Action history<span>.</span></h2></div></div>
     {% for action in audit_actions %}<article class="moderation-item"><p class="eyebrow">{{ action.action|upper }} · {{ action.target_type }} {{ action.target_id }} · {{ action.created_at.strftime('%d %b %Y · %H:%M') }}</p><p>{{ action.details or 'No additional detail.' }}</p></article>{% else %}<div class="empty-state"><h3>No moderation actions yet.</h3></div>{% endfor %}
   </section>
+{% endif %}{{ directory_pagination(pagination,'site.moderation',filters) }}</section>
 </div>
 {% endblock %}
