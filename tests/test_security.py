@@ -163,6 +163,43 @@ class AccountSecurityFlows(unittest.TestCase):
             "csrf_token": self.token(), "identity": "alice", "password": "another-long-password",
         }).headers["Location"], "/me")
 
+    def test_account_forms_are_not_stored_by_browser(self):
+        for path in ("/login", "/register", "/check-email", "/forgot-password",
+                     "/resend-verification", "/reset-password/invalid"):
+            response = self.client.get(path)
+            self.assertIn("no-store", response.headers["Cache-Control"], path)
+            self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+
+    def test_reset_email_limit_applies_across_client_addresses(self):
+        self.register()
+        for index in range(4):
+            self.client.get("/forgot-password")
+            response = self.client.post("/forgot-password", data={
+                "csrf_token": self.token(), "email": "alice@example.com",
+            }, environ_overrides={"REMOTE_ADDR": f"192.0.2.{index + 1}"})
+            self.assertEqual(response.status_code, 302 if index < 3 else 429)
+        self.assertEqual(len(self.sent), 4)  # One verification, three resets.
+
+    def test_token_claim_is_single_use_expiring_and_transactional(self):
+        from tennisd.security import consume_token, issue_token, valid_token
+        self.register()
+        with self.app.app_context():
+            user = db.session.scalar(select(User).where(User.username == "alice"))
+            raw = issue_token(user, "reset", 1800)
+            saved = valid_token(raw, "reset")
+            self.assertIsNone(valid_token(raw, "verify"))
+            self.assertTrue(consume_token(saved))
+            self.assertFalse(consume_token(saved))
+            db.session.rollback()
+            self.assertTrue(consume_token(saved))
+            db.session.commit()
+            self.assertIsNone(valid_token(raw, "reset"))
+            raw = issue_token(user, "reset", 1800)
+            saved = valid_token(raw, "reset")
+            with patch("tennisd.security.time.time", return_value=saved.expires_at):
+                self.assertFalse(consume_token(saved))
+            db.session.rollback()
+
     def test_resend_replaces_the_previous_verification_code(self):
         self.register()
         first_code = re.search(r"\b\d{4}\b", self.sent[-1][2]).group()

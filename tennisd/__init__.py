@@ -292,7 +292,10 @@ def create_app(test_config=None):
             # current_user here: Flask would add `Vary: Cookie`, preventing Vercel
             # from sharing one cached response between visitors.
             session.accessed = False
-        elif current_user.is_authenticated:
+        elif request.endpoint in {
+            "site.login", "site.register", "site.check_email", "site.verify_email",
+            "site.resend_verification", "site.forgot_password", "site.reset_password",
+        } or current_user.is_authenticated:
             response.cache_control.no_store = True
             response.cache_control.private = True
         elif (
