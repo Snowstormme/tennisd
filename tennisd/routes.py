@@ -22,7 +22,7 @@ from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExt
 from .prize_money import update_prize_money
 from .result_corrections import correction_for_match
 from .security import client_ip, limit_action
-from .identities import catalog_identity_is_valid, match_identity_is_valid, profiles_for_matches
+from .identities import catalog_is_visible, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_statistics
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .web import public_url, schema_table_exists, shared_cache, xml_response
@@ -60,7 +60,7 @@ def current_match_rows(status):
     """Return an empty slate while a new deployment is waiting for its migration."""
     if not schema_table_exists(LiveMatch.__tablename__):
         return []
-    statement = select(LiveMatch).where(LiveMatch.status == status)
+    statement = select(LiveMatch).where(LiveMatch.status == status, or_(LiveMatch.round.is_(None), LiveMatch.round != "R128"))
     if status == "upcoming":
         statement = statement.where(
             LiveMatch.starts_at >= utcnow() - timedelta(hours=6),
@@ -95,7 +95,7 @@ def archived_match_id_for_live(match):
     )
     matches = db.session.scalars(
         select(Match.id).where(
-            catalog_identity_is_valid(),
+            catalog_is_visible(),
             Match.tour == match.tour,
             Match.week_start == match.starts_at.date(),
             func.lower(Match.tournament) == match.tournament.lower(),
@@ -135,6 +135,7 @@ def player_live_matches(player, limit=12):
             LiveMatch.is_doubles.is_(False),
             LiveMatch.tour == player.tour,
             LiveMatch.status != "cancelled",
+            or_(LiveMatch.round.is_(None), LiveMatch.round != "R128"),
             or_(*conditions),
         )
         .order_by(status_order, LiveMatch.starts_at.desc())
@@ -322,6 +323,7 @@ def sitemap_match_conditions():
     return (
         Match.week_start >= SITEMAP_START_DATE,
         Match.level.in_(SITEMAP_LEVELS),
+        catalog_is_visible(),
     )
 
 
@@ -563,7 +565,7 @@ def home():
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
-            catalog_identity_is_valid(),
+            catalog_is_visible(),
             Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
             winner_has_stored_photo,
             loser_has_stored_photo,
@@ -578,7 +580,7 @@ def home():
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
-            catalog_identity_is_valid(),
+            catalog_is_visible(),
             Match.level.in_(("G", "M", "PM", "P", "A", "I", "F")),
             or_(winner.wikidata_id.is_not(None), winner_has_stored_photo),
             or_(loser.wikidata_id.is_not(None), loser_has_stored_photo),
@@ -594,7 +596,7 @@ def home():
     featured_live_matches = []
     featured_live_pairs = {}
     recent_reviews = db.session.scalars(
-        select(Review).join(Match).where(Review.is_public.is_(True), catalog_identity_is_valid())
+        select(Review).join(Match).where(Review.is_public.is_(True), catalog_is_visible())
         .options(joinedload(Review.user), joinedload(Review.match))
         .order_by(Review.created_at.desc()).limit(4)
     ).all()
@@ -674,7 +676,7 @@ def matches():
             year=year, level=level, order=order, match_location=match_location,
         )
 
-    statement = select(Match).where(catalog_identity_is_valid()).options(joinedload(Match.winner), joinedload(Match.loser))
+    statement = select(Match).where(catalog_is_visible()).options(joinedload(Match.winner), joinedload(Match.loser))
     if query:
         winner = aliased(Player)
         loser = aliased(Player)
@@ -791,8 +793,8 @@ def players():
     if view not in ("players", "rankings"):
         view = "players"
     appearances = union_all(
-        select(Match.winner_id.label("player_id")).where(catalog_identity_is_valid()),
-        select(Match.loser_id.label("player_id")).where(catalog_identity_is_valid()),
+        select(Match.winner_id.label("player_id")).where(catalog_is_visible()),
+        select(Match.loser_id.label("player_id")).where(catalog_is_visible()),
     ).subquery()
     match_counts = select(
         appearances.c.player_id, func.count().label("match_count")
@@ -905,7 +907,7 @@ def tournaments():
     if level in ("G", "M", "PM", "P", "A", "I", "F", "O", "D"):
         statement = statement.where(Match.level == level)
     rows = db.session.execute(
-        statement.where(catalog_identity_is_valid()).group_by(Match.tournament, Match.surface, Match.tour, Match.level)
+        statement.where(catalog_is_visible()).group_by(Match.tournament, Match.surface, Match.tour, Match.level)
         .order_by(func.max(Match.week_start).desc(), Match.tournament, Match.tour)
     ).all()
     grouped = {}
@@ -955,7 +957,7 @@ def tournament_detail(tour, slug):
     tournament_name = resolve_tournament_name(tour, slug)
     if tournament_name is None:
         abort(404)
-    condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_identity_is_valid())
+    condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible())
     match_rows = db.session.scalars(
         select(Match).where(*condition)
         .options(joinedload(Match.winner), joinedload(Match.loser))
@@ -1026,14 +1028,14 @@ def tournament_edition_detail(tour, slug, season):
         abort(404)
     matches = db.session.scalars(
         select(Match).where(
-            Match.tour == tour, Match.tournament == tournament_name, catalog_identity_is_valid(),
+            Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible(),
             func.extract("year", Match.week_start) == season,
         ).options(joinedload(Match.winner), joinedload(Match.loser))
         .order_by(Match.week_start, Match.round, Match.id)
     ).all()
     if not matches:
         abort(404)
-    round_order = ("Q1", "Q2", "Q3", "R128", "R64", "R32", "R16", "QF", "SF", "F")
+    round_order = ("Q1", "Q2", "Q3", "R64", "R32", "R16", "QF", "SF", "F")
     rounds = {round_name: [match for match in matches if match.round == round_name]
               for round_name in round_order if any(match.round == round_name for match in matches)}
     final = next((match for match in matches if match.round == "F"), None)
@@ -1080,14 +1082,14 @@ def search():
         ).all()
         winner, loser = aliased(Player), aliased(Player)
         matches_found = db.session.scalars(
-            select(Match).join(winner, Match.winner).join(loser, Match.loser).where(catalog_identity_is_valid()).where(or_(
+            select(Match).join(winner, Match.winner).join(loser, Match.loser).where(catalog_is_visible()).where(or_(
                 Match.tournament.ilike(f"%{query}%"), winner.name.ilike(f"%{query}%"),
                 loser.name.ilike(f"%{query}%"),
             )).order_by(Match.week_start.desc()).limit(9)
         ).all()
         tournaments_found = db.session.execute(
             select(Match.tour, Match.tournament).where(
-                catalog_identity_is_valid(), Match.tournament.ilike(f"%{query}%"),
+                catalog_is_visible(), Match.tournament.ilike(f"%{query}%"),
             ).distinct().order_by(Match.tournament, Match.tour).limit(12)
         ).all()
         members = db.session.scalars(
