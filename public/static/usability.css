@@ -78,3 +78,11 @@
 .discussion-page { max-width: 900px; }
 .search-results .directory-tabs { flex-wrap: wrap; gap: 4px 24px; }
 .search-results .directory-tabs a { min-height: 44px; white-space: nowrap; }
+.notification-history { max-width: 1100px; }
+.notification-history .directory-tabs { flex-wrap: wrap; gap: 4px 24px; }
+.notification-history .notification-list time { display: block; color: var(--muted); font-size: 12px; }
+.notification-history .section-head { flex-wrap: wrap; gap: 12px; }
+.notification-history .notification-list article { overflow-wrap: anywhere; }
+.notification-history .notification-list article > div:first-child { display: block; margin-top: 0; }
+.notification-history .notification-list article > div:first-child strong { display: block; }
+.notification-history .notification-list article p { margin: 8px 0; }

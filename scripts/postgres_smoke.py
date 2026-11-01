@@ -9,7 +9,7 @@ from sqlalchemy.exc import DBAPIError
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
-from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Player, RankingSnapshot, Review, User
+from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Notification, Player, RankingSnapshot, Review, User
 from tennisd.identities import catalog_is_visible
 from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
 from tennisd.search_queries import search_statements
@@ -341,6 +341,29 @@ def main():
         response = app.test_client().get("/search?q=PG_50%25%21&category=tournaments&page=" + str(10**100))
         if response.status_code != 200 or "PGX50Y! Open" in response.get_data(as_text=True):
             raise RuntimeError("PostgreSQL complete search did not preserve literal text.")
+
+        other_inbox = User(username="pg-other-inbox",email="other-inbox@example.test",display_name="Other inbox",password_hash="unused")
+        db.session.add(other_inbox); db.session.flush()
+        db.session.add_all(Notification(user_id=member.id,kind="pg-test",title=f"PG update {i}",body="Private test",
+            url="/notifications",created_at=datetime(2024,1,1,tzinfo=timezone.utc)) for i in range(55))
+        db.session.add(Notification(user_id=other_inbox.id,kind="pg-test",title="Other private update",body="Other",url="/notifications"))
+        db.session.commit()
+        private_client = app.test_client()
+        with private_client.session_transaction() as session:
+            session["_user_id"] = f"{member.id}:0"; session["_fresh"] = True; session["csrf_token"] = "pg-csrf"
+        response = private_client.get("/notifications?page="+str(10**100))
+        if response.status_code != 200 or "Page 2 of 2" not in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL notification history did not bound the full inbox.")
+        response = private_client.post("/notifications/read-all",data={"csrf_token":"pg-csrf"})
+        if response.status_code != 302:
+            raise RuntimeError("PostgreSQL bulk-read action did not succeed.")
+        own_unread = db.session.scalar(select(func.count(Notification.id)).where(Notification.user_id==member.id,Notification.read_at.is_(None)))
+        other_unread = db.session.scalar(select(func.count(Notification.id)).where(Notification.user_id==other_inbox.id,Notification.read_at.is_(None)))
+        if (own_unread,other_unread) != (0,1):
+            raise RuntimeError("PostgreSQL bulk-read crossed account boundaries.")
+        response = private_client.get(f"/comments/{replies[0].id}")
+        if response.status_code != 302 or f"page=2#comment-{replies[0].id}" not in response.location:
+            raise RuntimeError("PostgreSQL comment jump did not locate the correct thread page.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

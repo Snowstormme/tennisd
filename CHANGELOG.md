@@ -4,6 +4,16 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-01
+
+- Add complete 30-item notification, pending-request and reply histories with
+  stable pages, unread counts/filter and an owner-scoped mark-all-read action.
+- Preserve the first read timestamp and validate stored destinations. Repair
+  legacy review links in the view; disable deleted/private/unsafe destinations
+  without rewriting stored notification URLs.
+- Add comment permalinks that locate the exact 20-reply discussion page, with
+  the same public/owner visibility checks. Keep all inboxes private and no-store.
+
 ## [0.10.0] - 2026-11-01
 
 - Add full paginated search categories for players, matches, tournaments and
