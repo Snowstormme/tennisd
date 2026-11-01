@@ -12,6 +12,7 @@ from tennisd.live_tennis import sync_matches
 from tennisd.models import IngestionCursor, IngestionRun, LiveMatch, Player, FollowedPlayer, TournamentSubscription
 from tennisd.notifications import create_notification
 from tennisd.identities import profiles_for_matches
+from tennisd.snapshot_policy import current_snapshot_condition
 from sqlalchemy import select
 
 
@@ -49,6 +50,7 @@ def notify_followers(now):
     matches = db.session.scalars(select(LiveMatch).where(
         LiveMatch.status.in_(("live", "upcoming")),
         LiveMatch.synced_at >= now - timedelta(minutes=10),
+        current_snapshot_condition(now),
     )).all()
     if not matches:
         return 0

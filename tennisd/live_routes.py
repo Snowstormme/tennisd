@@ -4,7 +4,8 @@ from flask import abort, jsonify, redirect, render_template, url_for
 from sqlalchemy import select
 
 from . import db, clean_score_text, snapshot_is_stale
-from .models import IngestionRun, LiveMatch
+from .models import IngestionRun, LiveMatch, utcnow
+from .snapshot_policy import snapshot_counts, snapshot_visibility_reason
 from .web import schema_table_exists, shared_cache
 
 
@@ -25,16 +26,18 @@ def register_live_routes(
         players = current_match_players([match]).get(match.provider_id, (None, None))
         return render_template(
             "live_match.html", match=match, players=players,
-            match_location=match_location,
+            match_location=match_location, snapshot_reason=snapshot_visibility_reason(match),
         )
 
     @site.get("/api/live-matches")
     def live_matches_api():
-        matches = current_match_rows("live")
+        now = utcnow()
+        matches = current_match_rows("live", now=now)
         response = jsonify({
+            "checked_at": now.isoformat(),
             "matches": [{
                 "id": match.provider_id, "score": clean_score_text(match.score),
-                "winner_side": match.winner_side, "server": match.server,
+                "status": match.status, "winner_side": None, "server": match.server,
                 "synced_at": match.synced_at.isoformat(),
             } for match in matches]
         })
@@ -47,16 +50,12 @@ def register_live_routes(
         """Expose provider freshness without returning operational secrets."""
         if not schema_table_exists(IngestionRun.__tablename__):
             return jsonify({"provider": "livetennisapi", "status": "unavailable", "feeds": {}})
-        runs = db.session.scalars(
-            select(IngestionRun)
-            .where(IngestionRun.provider.like("livetennisapi:%"))
-            .order_by(IngestionRun.started_at.desc())
-            .limit(20)
-        ).all()
         feeds = {}
-        for run in runs:
-            feed = run.provider.split(":", 1)[-1]
-            if feed in feeds:
+        for feed in ("live", "upcoming"):
+            run = db.session.scalar(select(IngestionRun)
+                .where(IngestionRun.provider == f"livetennisapi:{feed}")
+                .order_by(IngestionRun.started_at.desc(), IngestionRun.id.desc()).limit(1))
+            if run is None:
                 continue
             feeds[feed] = {
                 "status": run.status,
@@ -73,6 +72,7 @@ def register_live_routes(
             )
             else "degraded"
         )
-        response = jsonify({"provider": "livetennisapi", "status": overall, "feeds": feeds})
+        response = jsonify({"provider": "livetennisapi", "status": overall, "feeds": feeds,
+            "snapshots": snapshot_counts() if schema_table_exists(LiveMatch.__tablename__) else {}})
         response.headers["Cache-Control"] = "no-store"
         return response

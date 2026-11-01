@@ -55,7 +55,8 @@ def snapshot_is_stale(value):
         return True
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - value > timedelta(hours=30)
+    now = datetime.now(timezone.utc)
+    return now - value > timedelta(hours=30) or value > now + timedelta(minutes=5)
 
 
 @event.listens_for(Engine, "connect")

@@ -126,6 +126,7 @@ class LiveTennisTests(unittest.TestCase):
             "provider": "livetennisapi",
             "status": "degraded",
             "feeds": {},
+            "snapshots": {status: {"current": 0, "outside_current_window": 0} for status in ("live", "upcoming", "finished")},
         })
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
@@ -186,7 +187,7 @@ class LiveTennisTests(unittest.TestCase):
         self.assertNotIn("Cookie", api_response.headers.get("Vary", ""))
 
     def test_sync_creates_permanent_profiles_for_new_live_players(self):
-        now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         row = fixture("upcoming", now + timedelta(days=2))
         row["players"] = {
             "p1": {"id": 88001, "name": "New Tour Player"},

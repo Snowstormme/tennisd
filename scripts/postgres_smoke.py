@@ -1,7 +1,7 @@
 """Create the application schema and run a minimal PostgreSQL smoke check."""
 
 import os
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
@@ -9,8 +9,9 @@ from sqlalchemy.exc import DBAPIError
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
 from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
-from tennisd.models import IngestionRun, Match, MatchParticipant, Player, Review, User
+from tennisd.models import IngestionRun, LiveMatch, Match, MatchParticipant, Player, Review, User
 from tennisd.identities import catalog_is_visible
+from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
 from tennisd.pagination import bounded_page
 from tennisd.stats import diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -230,6 +231,29 @@ def main():
             raise RuntimeError("The hidden round fixture was not preserved.")
         if db.session.scalar(select(Match.id).where(Match.id == hidden.id, catalog_is_visible())) is not None:
             raise RuntimeError("PostgreSQL public discovery exposed a hidden R128 result.")
+
+        now = datetime.now(timezone.utc)
+        for key, status, checked, start in (
+            ("pg-current", "live", now, now),
+            ("pg-stale", "live", now - timedelta(days=2), now),
+            ("pg-old-schedule", "live", now, now - timedelta(days=20)),
+            ("pg-upcoming", "upcoming", now, now + timedelta(days=2)),
+            ("pg-distant", "upcoming", now, now + timedelta(days=8)),
+            ("pg-finished", "finished", now, now - timedelta(days=2)),
+        ):
+            db.session.add(LiveMatch(provider_id=key,status=status,tour="ATP",tournament="PG Snapshot",
+                draw="singles",round="R32",surface="Hard",player1_name="PG One",player2_name="PG Two",
+                synced_at=checked,starts_at=start,score="6-4 2-1"))
+        db.session.commit()
+        visible = set(db.session.scalars(select(LiveMatch.provider_id).where(current_snapshot_condition(now))))
+        if visible != {"pg-current", "pg-upcoming", "pg-finished"}:
+            raise RuntimeError("PostgreSQL snapshot freshness/schedule policy disagreed.")
+        counts = snapshot_counts(now)
+        if counts["live"] != {"current": 1, "outside_current_window": 2}:
+            raise RuntimeError("PostgreSQL snapshot diagnostic aggregation disagreed.")
+        saved = db.session.get(LiveMatch, "pg-old-schedule")
+        if snapshot_visibility_reason(saved, now) is None or saved.status != "live" or saved.score != "6-4 2-1":
+            raise RuntimeError("Snapshot exclusion changed the provider's saved report.")
 
         stats_player = Player(id="pg-stats",name="Postgres Summary",tour="ATP")
         opponents = [Player(id="pg-rival-a",name="Alex Same",tour="ATP"), Player(id="pg-rival-b",name="Alex Same",tour="ATP")]

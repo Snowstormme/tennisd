@@ -174,10 +174,39 @@ document.addEventListener("DOMContentLoaded", () => {
         const response = await fetch("/api/live-matches");
         if (!response.ok) return;
         const payload = await response.json();
+        if (!Array.isArray(payload.matches)) return;
+        const currentIds = new Set(payload.matches.map((match) => String(match.id)));
+        document.querySelectorAll('[data-snapshot-status="live"]').forEach((card) => {
+          if (currentIds.has(card.dataset.liveMatch)) return;
+          if (card.matches("a.live-feed-match-card")) {
+            const grid = card.parentElement;
+            card.remove();
+            if (grid && !grid.querySelector("[data-live-match]") && !grid.querySelector(".snapshot-empty-note")) {
+              const note = document.createElement("p");
+              note.className = "snapshot-empty-note feed-note";
+              note.textContent = "No current live snapshots. Reload to check the latest feed.";
+              grid.append(note);
+            }
+          } else {
+            const age = card.querySelector(".snapshot-age");
+            if (age) age.textContent = "Saved snapshot · Outside the current live feed. Reload for the latest report.";
+            const state = document.querySelector("[data-snapshot-state]");
+            if (state) state.textContent = "SAVED SNAPSHOT";
+          }
+        });
         payload.matches.forEach((match) => {
           document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
+            if (match.status === "live") {
+              card.dataset.snapshotStatus = "live";
+              if (!card.matches("a.live-feed-match-card")) {
+                const status = document.querySelector("[data-last-reported-status]");
+                const state = document.querySelector("[data-snapshot-state]");
+                if (status) status.textContent = "Live";
+                if (state) state.textContent = "LIVE AT LAST CHECK";
+              }
+            }
             const score = card.querySelector("[data-live-score]");
-            if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
+            if (score && match.score) renderSetScore(score, match.score, match.status === "live" ? 0 : (match.winner_side || score.dataset.winnerSide));
             const age = card.querySelector(".snapshot-age");
             if (age && match.synced_at) {
               const checked = new Date(match.synced_at.endsWith("Z") || /[+-]\d\d:\d\d$/.test(match.synced_at)
