@@ -26,6 +26,18 @@ class TournamentNameAuditTests(unittest.TestCase):
             self.assertNotIn('email', str(report))
             self.assertEqual(before, db.session.execute(select(Match.id, Match.tournament).order_by(Match.id)).all())
 
+    def test_inventory_is_explicit_complete_and_has_only_public_metadata(self):
+        with self.app.app_context(), readonly_catalog_session():
+            self.assertNotIn('inventory', tournament_name_report())
+            report = tournament_name_report(1, include_inventory=True)
+            self.assertEqual(len(report['inventory']), report['name_count'])
+            self.assertGreater(len(report['inventory']), report['returned_groups'])
+            names = {item['name'] for item in report['inventory']}
+            self.assertIn('Choice Unique', names)
+            self.assertNotIn('Choice Hidden', names)
+            allowed = {'tour', 'slug', 'name', 'matches', 'first_date', 'last_date', 'explicit_slug'}
+            self.assertTrue(all(set(item) == allowed for item in report['inventory']))
+
     def test_limit_and_order_are_explicit(self):
         with self.app.app_context(), readonly_catalog_session():
             report = tournament_name_report(1)

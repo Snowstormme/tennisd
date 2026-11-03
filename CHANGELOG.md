@@ -4,6 +4,12 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-11-03
+
+- Add an explicit full aggregate tournament-name inventory and a read-only
+  production audit workflow mode. Reject incompatible cohort filters and keep
+  report contents in the artifact instead of job logs. No names are merged.
+
 ## [0.18.0] - 2026-11-03
 
 - Show at most three featured matches on the homepage with matching selectors.

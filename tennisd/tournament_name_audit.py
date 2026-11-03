@@ -10,7 +10,7 @@ from .tournament_catalog import tournament_slug
 from .tournament_urls import explicit_tournament_slug
 
 
-def tournament_name_report(limit=50):
+def tournament_name_report(limit=50, *, include_inventory=False):
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
         raise ValueError('Limit must be an integer between 1 and 500.')
     rows = db.session.execute(select(
@@ -25,7 +25,7 @@ def tournament_name_report(limit=50):
             'last_date': last.isoformat(), 'explicit_slug': explicit_tournament_slug(name),
         })
     collisions = [(key, variants) for key, variants in sorted(groups.items()) if len(variants) > 1]
-    return {
+    report = {
         'schema_version': 1, 'scope': 'visible_catalog_names', 'name_count': len(rows),
         'collision_group_count': len(collisions), 'returned_groups': min(limit, len(collisions)),
         'has_more': len(collisions) > limit,
@@ -33,3 +33,7 @@ def tournament_name_report(limit=50):
         'groups': [{'tour': tour, 'slug': slug, 'variants': variants}
                    for (tour, slug), variants in collisions[:limit]],
     }
+    if include_inventory:
+        report['inventory'] = [dict(variant, tour=tour, slug=slug)
+                               for (tour, slug), variants in sorted(groups.items()) for variant in variants]
+    return report
