@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-03
+
+- Resolve tournament URL collisions explicitly instead of selecting the first
+  matching stored name. Preserve unique legacy URLs; offer choices for ambiguous
+  GETs and reject ambiguous subscription POSTs without changing subscriptions.
+- Use stable name-qualified addresses for colliding sitemap entries. Keep their
+  seasons, pagination and subscription actions scoped to the selected name.
+  Support non-Latin-only names and exclude hidden-only archives from resolution.
+
 ## [0.14.4] - 2026-11-03
 
 - Return actionable 429 wait times and preserve Retry-After/Allow headers in

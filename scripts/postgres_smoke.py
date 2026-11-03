@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import DBAPIError
 from tennisd.security import limit_action
+from tennisd.tournament_urls import explicit_tournament_slug
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
@@ -401,6 +402,17 @@ def main():
         moderation=moderation_context(ready=True,tab="polls")
         if moderation["poll_results"][poll.id][0].votes != 30:
             raise RuntimeError("PostgreSQL poll vote aggregation disagreed.")
+
+        db.session.add_all(Match(id=f"pg-collision-{i}",winner=stats_player,loser=opponents[0],tour="ATP",
+            tournament=name,surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4")
+            for i,name in enumerate(("PG Collision","PG-Collision")))
+        db.session.commit()
+        if app.test_client().get("/tournaments/atp/pg-collision").status_code!=300:
+            raise RuntimeError("PostgreSQL ambiguous tournament URL silently selected one name.")
+        for name in ("PG Collision","PG-Collision"):
+            response=app.test_client().get("/tournaments/atp/"+explicit_tournament_slug(name))
+            if response.status_code!=200 or name not in response.get_data(as_text=True):
+                raise RuntimeError("PostgreSQL explicit tournament identity did not resolve.")
 
         other_inbox = User(username="pg-other-inbox",email="other-inbox@example.test",display_name="Other inbox",password_hash="unused")
         db.session.add(other_inbox); db.session.flush()
