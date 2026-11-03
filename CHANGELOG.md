@@ -4,6 +4,13 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-03
+
+- Prevent automatic live/history replay from overwriting permanent results
+  registered for independent manual review, including drifted/rolled-back rows.
+  Classify protected imports as skipped; retain normal unreviewed updates and
+  fresh feed observations. Further changes to registered rows require review.
+
 ## [0.14.1] - 2026-11-03
 
 - Fix settings password-change reauthentication and revoke outstanding account
