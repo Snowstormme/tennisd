@@ -3,6 +3,7 @@
 import os
 import re
 import hashlib
+from functools import wraps
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -16,6 +17,29 @@ from .identities import PlayerIdentityIndex, normalized_player_name, player_iden
 
 
 API_ROOT = "https://api.livetennisapi.com/api/public/v1"
+
+
+def rollback_failed_import(function):
+    """Committing import entry points own their pending database transaction.
+
+    Earlier committed stages remain intact; failed-stage writes cannot leak
+    into a caller's later commit after it catches a provider/database error.
+    """
+    @wraps(function)
+    def guarded(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception:
+            db.session.rollback()
+            raise
+    return guarded
+
+
+def archive_is_reviewed(match):
+    from .result_corrections import definitions
+    return match is not None and any(c["before"]["id"] == match.id for c in definitions().values())
+
+
 GRAND_SLAMS = {
     "australian open": "Australian Open",
     "french open": "Roland Garros",
@@ -269,13 +293,11 @@ def preserve_finished_match(live_match, now):
         return None
     provider_id = f"livetennisapi:{live_match.provider_id}"
     existing = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
-    if existing:
+    if archive_is_reviewed(existing):
         # Registered source reviews are an explicit manual boundary. Protect
         # even a drifted/rolled-back row until it is reviewed again; never let
         # the same provider silently undo an independently checked repair.
-        from .result_corrections import definitions
-        if any(c["before"]["id"] == existing.id for c in definitions().values()):
-            return None
+        return None
     winner = permanent_profile(live_match, live_match.winner_side)
     loser = permanent_profile(live_match, 2 if live_match.winner_side == 1 else 1)
     if not winner or not loser or winner.id == loser.id:
@@ -544,6 +566,7 @@ def store_confirmed_result(row, now):
     return preserve_finished_match(match, now)
 
 
+@rollback_failed_import
 def import_history_matches(from_date, to_date, session=requests, now=None):
     """Import completed results; never infer a result from the live score."""
     now = now or datetime.now(timezone.utc)
@@ -579,6 +602,7 @@ def fetch_match_detail(provider_id, session=requests):
     return detail
 
 
+@rollback_failed_import
 def reconcile_live_matches(*, session=requests, now=None, limit=10, exclude_ids=(), include_finished=False):
     """Recheck a bounded number of stored IDs, using explicit provider outcomes."""
     now = now or datetime.now(timezone.utc)
@@ -618,7 +642,7 @@ def reconcile_live_matches(*, session=requests, now=None, limit=10, exclude_ids=
             match.winner_side, match.finished_at = None, None
             match.synced_at = now
             archived = db.session.scalar(select(Match).where(Match.provider_id == f"livetennisapi:{match.provider_id}"))
-            if archived:
+            if archived and not archive_is_reviewed(archived):
                 archived.status = "cancelled"
         elif detail.get("status") in ("live", "upcoming"):
             current = normalize_match(detail, now)
@@ -631,12 +655,13 @@ def reconcile_live_matches(*, session=requests, now=None, limit=10, exclude_ids=
             match.winner_side, match.finished_at = None, None
             match.synced_at = now
             archived = db.session.scalar(select(Match).where(Match.provider_id == f"livetennisapi:{match.provider_id}"))
-            if archived:
+            if archived and not archive_is_reviewed(archived):
                 archived.status = "verifying"
     db.session.commit()
     return written
 
 
+@rollback_failed_import
 def sync_matches(status, session=requests, now=None):
     if status not in ("live", "upcoming"):
         raise ValueError("status must be live or upcoming")
