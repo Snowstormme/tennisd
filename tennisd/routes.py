@@ -55,12 +55,16 @@ def match_location(match):
     return tournament_profile(match.tournament).get("location", "Location unavailable")
 
 
-def resolve_tournament_name(tour, slug):
+def resolve_tournament_name(tour, slug, *, season=None):
     tour = tour.upper()
     if tour not in ("ATP", "WTA"):
         return None
+    statement = select(Match.tournament).where(Match.tour == tour, catalog_is_visible())
+    if season is not None:
+        statement = statement.where(Match.week_start >= date(season, 1, 1),
+                                    Match.week_start < date(season + 1, 1, 1))
     names = db.session.scalars(
-        select(Match.tournament).where(Match.tour == tour, catalog_is_visible())
+        statement
         .distinct().order_by(Match.tournament)
     ).all()
     return resolve_name(names,slug)
@@ -980,8 +984,10 @@ def tournament_detail(tour, slug):
 @site.get("/tournaments/<tour>/<slug>/<int:season>")
 def tournament_edition_detail(tour, slug, season):
     tour = tour.upper()
-    tournament_name = resolve_tournament_name(tour, slug)
-    if tournament_name is None or not 1968 <= season <= date.today().year + 1:
+    if not 1968 <= season <= date.today().year + 1:
+        abort(404)
+    tournament_name = resolve_tournament_name(tour, slug, season=season)
+    if tournament_name is None:
         abort(404)
     condition = (Match.tour == tour, Match.tournament == tournament_name, catalog_is_visible(),
                  func.extract("year", Match.week_start) == season)

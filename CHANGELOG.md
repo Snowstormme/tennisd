@@ -4,6 +4,12 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-11-03
+
+- Resolve ambiguous tournament names inside the requested season for edition
+  pages. Exclude variants with no visible matches that year instead of offering
+  links to 404 pages; preserve all-season archive/subscription ambiguity guards.
+
 ## [0.18.1] - 2026-11-03
 
 - Add an explicit full aggregate tournament-name inventory and a read-only

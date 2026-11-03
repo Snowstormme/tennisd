@@ -77,3 +77,19 @@ class TournamentURLTests(unittest.TestCase):
         self.assertEqual(self.client.get('/tournaments/atp/event').status_code,300)
         for name in ('東京','北京'):
             self.assertEqual(self.client.get('/tournaments/atp/'+explicit_tournament_slug(name)).status_code,200)
+
+    def test_edition_resolution_does_not_offer_variants_from_other_years(self):
+        with self.app.app_context():
+            for match in db.session.scalars(select(Match).where(Match.tournament == self.names[1])):
+                match.week_start = date(2025, 1, 1)
+            db.session.commit()
+        self.assertEqual(self.client.get('/tournaments/atp/choice-open').status_code, 300)
+        for season, expected, absent in ((2024, self.names[0], self.names[1]), (2025, self.names[1], self.names[0])):
+            response = self.client.get(f'/tournaments/atp/choice-open/{season}')
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(expected.encode(), response.data)
+            self.assertNotIn(absent.encode(), response.data)
+        for season in (1000, 2023):
+            self.assertEqual(self.client.get(f'/tournaments/atp/choice-open/{season}').status_code, 404)
+        wrong = explicit_tournament_slug(self.names[1])
+        self.assertEqual(self.client.get(f'/tournaments/atp/{wrong}/2024').status_code, 404)
