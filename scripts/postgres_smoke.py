@@ -210,7 +210,7 @@ def main():
             surface="Clay",round="F",starts_at=datetime(2026,10,28,tzinfo=timezone.utc),
             winner_side=1,outcome="completed",is_doubles=False,score="6-0 6-0",
             player1_name=match.winner.name,player2_name=match.loser.name)
-        if preserve_finished_match(replay,utcnow()) is not None:
+        if preserve_finished_match(replay,datetime.now(timezone.utc)) is not None:
             raise RuntimeError("PostgreSQL protected provider replay was not classified as skipped.")
         db.session.commit()
         if {c.key:getattr(match,c.key) for c in Match.__table__.columns}!=protected_before:
