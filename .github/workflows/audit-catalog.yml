@@ -3,6 +3,10 @@ name: Audit catalog quality
 on:
   workflow_dispatch:
     inputs:
+      tournament_names:
+        description: Report visible tournament names and address collisions instead of match samples
+        type: boolean
+        default: false
       tour:
         description: Optional ATP or WTA filter (blank keeps both)
         type: string
@@ -52,9 +56,19 @@ jobs:
           AUDIT_PROVIDER: ${{ inputs.provider }}
           AUDIT_LIMIT: ${{ inputs.limit || '50' }}
           AUDIT_AFTER_ID: ${{ inputs.after_id }}
+          AUDIT_TOURNAMENT_NAMES: ${{ inputs.tournament_names }}
         run: |
-          python scripts/audit_catalog.py --limit "$AUDIT_LIMIT" --tour "$AUDIT_TOUR" --year "$AUDIT_YEAR" --tournament "$AUDIT_TOURNAMENT" --provider "$AUDIT_PROVIDER" --after-id "$AUDIT_AFTER_ID" > catalog-audit.json
-          cat catalog-audit.json
+          if [ "$AUDIT_TOURNAMENT_NAMES" = 'true' ]; then
+            if [ -n "$AUDIT_TOUR$AUDIT_YEAR$AUDIT_TOURNAMENT$AUDIT_PROVIDER$AUDIT_AFTER_ID" ]; then
+              echo 'Tournament-name inventory uses the entire visible catalog; clear cohort filters.' >&2
+              exit 1
+            fi
+            python scripts/audit_tournament_names.py --limit "$AUDIT_LIMIT" --include-inventory > catalog-audit.json
+          else
+            python scripts/audit_catalog.py --limit "$AUDIT_LIMIT" --tour "$AUDIT_TOUR" --year "$AUDIT_YEAR" --tournament "$AUDIT_TOURNAMENT" --provider "$AUDIT_PROVIDER" --after-id "$AUDIT_AFTER_ID" > catalog-audit.json
+          fi
+          # Reports stay in the artifact; avoid copying inventories into job logs.
+          python -c 'import json; r=json.load(open("catalog-audit.json")); print("Report generated; schema",r.get("schema_version"),"scope",r.get("scope"))'
       - uses: actions/upload-artifact@v7
         with:
           name: catalog-audit-${{ github.run_id }}

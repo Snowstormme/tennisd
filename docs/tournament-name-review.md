@@ -6,6 +6,14 @@ Start with a read-only address-collision inventory:
 python scripts/audit_tournament_names.py --limit 50
 ```
 
+Use `--include-inventory` to include **all** aggregated visible tour/name pairs,
+including unique names with different slugs. This opt-in inventory is not capped
+by the collision group limit. It contains metadata only, not match records.
+The **Audit catalog quality** workflow supports the same mode with
+`tournament_names: true`; leave cohort filters blank. Reports remain in a
+14-day artifact and are not printed in full to logs. This mode enforces the same
+read-only transaction and does not inspect or export accounts/subscriptions.
+
 Use the existing runtime database configuration. The CLI disables bootstrap and
 enforces a read-only database transaction. It selects aggregated public catalog
 metadata only, not account, diary, subscription or image data. The group limit is
