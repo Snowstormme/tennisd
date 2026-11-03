@@ -2,6 +2,7 @@ import os
 import re
 import secrets
 import hashlib
+from time import perf_counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from dotenv import load_dotenv
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.pool import NullPool
+from sqlalchemy.exc import TimeoutError as PoolTimeout
+from werkzeug.exceptions import ServiceUnavailable
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
@@ -165,7 +168,7 @@ def create_app(test_config=None):
     elif production:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
             "pool_pre_ping": True, "pool_recycle": 1800,
-            "pool_size": 2, "max_overflow": 1,
+            "pool_size": 2, "max_overflow": 1, "pool_timeout": 5,
         }
     if test_config:
         app.config.update(test_config)
@@ -245,10 +248,20 @@ def create_app(test_config=None):
     def assign_request_id():
         """Give every response a short correlation token for operational logs."""
         g.request_id = secrets.token_hex(12)
+        g.request_started = perf_counter()
 
     @app.after_request
     def security_headers(response):
         response.headers["X-Request-ID"] = g.request_id
+        if hasattr(g, "request_started"):
+            duration_ms = max(0, (perf_counter() - g.request_started) * 1000)
+            response.headers.add("Server-Timing", f"app;dur={duration_ms:.1f}")
+            if duration_ms >= 2000:
+                # Endpoint names contain no user-supplied paths, queries or form data.
+                app.logger.warning(
+                    "slow request endpoint=%s status=%s duration_ms=%.1f request_id=%s",
+                    request.endpoint or "unmatched", response.status_code, duration_ms, g.request_id,
+                )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -384,6 +397,10 @@ def create_app(test_config=None):
                 retry_after=retry_after, request_id=g.request_id))
             response.content_type = "text/html; charset=utf-8"
         return response
+
+    @app.errorhandler(PoolTimeout)
+    def database_pool_unavailable(error):
+        return friendly_error(ServiceUnavailable(retry_after=10))
 
     @app.get("/healthz")
     def healthz():
