@@ -32,6 +32,7 @@ from .search_queries import contains_text, search_statements
 from .tournament_catalog import tournament_level, tournament_profile, tournament_slug
 from .tournament_catalog import LEVEL_DETAILS
 from .tournament_directory import tournament_directory
+from .tournament_urls import TournamentAmbiguity, explicit_tournament_slug, resolve_name, sitemap_event_slugs
 from .web import public_url, schema_table_exists, shared_cache, xml_response
 from .live_routes import register_live_routes
 from .auth_routes import register_auth_routes
@@ -58,9 +59,25 @@ def resolve_tournament_name(tour, slug):
     if tour not in ("ATP", "WTA"):
         return None
     names = db.session.scalars(
-        select(Match.tournament).where(Match.tour == tour).distinct()
+        select(Match.tournament).where(Match.tour == tour, catalog_is_visible())
+        .distinct().order_by(Match.tournament)
     ).all()
-    return next((name for name in names if tournament_slug(name) == slug), None)
+    return resolve_name(names,slug)
+
+
+@site.errorhandler(TournamentAmbiguity)
+def choose_tournament(error):
+    args=dict(request.view_args or {})
+    args.pop('slug',None)
+    endpoint='site.tournament_edition_detail' if 'season' in args else 'site.tournament_detail'
+    choices=[{'name':name,'url':url_for(endpoint,slug=explicit_tournament_slug(name),**args)} for name in error.names]
+    return render_template('tournament_choice.html',choices=choices), (300 if request.method in ('GET', 'HEAD') else 409), {
+        'Cache-Control':'no-store, private','Vercel-CDN-Cache-Control':'no-store','X-Robots-Tag':'noindex, follow'}
+
+
+def tournament_sitemap_slugs():
+    return sitemap_event_slugs(db.session.execute(select(Match.tour,Match.tournament)
+        .where(catalog_is_visible()).distinct()).all())
 
 
 def current_match_rows(status, *, now=None):
@@ -486,13 +503,14 @@ def sitemap_players():
 
 @site.get("/sitemap-tournaments.xml")
 def sitemap_tournaments():
+    slugs=tournament_sitemap_slugs()
     tournaments = db.session.execute(
         select(Match.tour, Match.tournament)
         .where(*sitemap_match_conditions())
         .distinct().order_by(Match.tour, Match.tournament)
     ).all()
     entries = "".join(
-        f"<url><loc>{xml_escape(public_url(url_for('site.tournament_detail', tour=tour.lower(), slug=tournament_slug(name))))}</loc></url>"
+        f"<url><loc>{xml_escape(public_url(url_for('site.tournament_detail', tour=tour.lower(), slug=slugs[(tour,name)])))}</loc></url>"
         for tour, name in tournaments
     )
     return xml_response(
@@ -504,6 +522,7 @@ def sitemap_tournaments():
 
 @site.get("/sitemap-tournament-editions.xml")
 def sitemap_tournament_editions():
+    slugs=tournament_sitemap_slugs()
     editions = db.session.execute(
         select(
             Match.tour,
@@ -516,7 +535,7 @@ def sitemap_tournament_editions():
         .order_by(Match.tour, Match.tournament, func.extract("year", Match.week_start))
     ).all()
     entries = "".join(
-        f"<url><loc>{xml_escape(public_url(url_for('site.tournament_edition_detail', tour=tour.lower(), slug=tournament_slug(name), season=int(season))))}</loc>"
+        f"<url><loc>{xml_escape(public_url(url_for('site.tournament_edition_detail', tour=tour.lower(), slug=slugs[(tour,name)], season=int(season))))}</loc>"
         f"<lastmod>{last_match_week.isoformat()}</lastmod></url>"
         for tour, name, season, last_match_week in editions
     )

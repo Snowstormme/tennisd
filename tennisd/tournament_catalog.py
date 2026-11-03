@@ -12,7 +12,7 @@ from urllib.parse import quote
 def tournament_slug(name):
     value = unicodedata.normalize("NFKD", name or "")
     value = "".join(character for character in value if not unicodedata.combining(character))
-    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-") or "event"
 
 
 def commons_image(filename, width=1600):
