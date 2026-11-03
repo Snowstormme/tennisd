@@ -51,6 +51,23 @@ class ResultCorrectionTests(unittest.TestCase):
         self.assertEqual(match_snapshot(self.match), self.definition["before"])
         self.assertIsNone(correction_for_match(self.match))
 
+    def test_provider_replay_cannot_overwrite_registered_manual_review(self):
+        from datetime import datetime, timezone
+        from tennisd.live_tennis import preserve_finished_match
+        from tennisd.models import LiveMatch
+        replay = LiveMatch(provider_id="211673", status="finished", tour="ATP",
+            tournament="Provider replacement", surface="Clay", round="F",
+            starts_at=datetime(2026,10,28,tzinfo=timezone.utc), winner_side=1,
+            outcome="completed", is_doubles=False, score="0-6 0-6",
+            player1_name="Wrong winner",player2_name="Wrong loser")
+        for operation in ("apply", "rollback"):
+            reviewed_correction(self.key, operation=operation);db.session.commit()
+            before=match_snapshot(self.match,include_round=True)
+            self.assertIs(preserve_finished_match(replay,utcnow()),self.match)
+            db.session.commit()
+            self.assertEqual(match_snapshot(self.match,include_round=True),before)
+            self.assertEqual(db.session.get(Review,self.review_id).body,"Keep my private note")
+
     def test_apply_is_idempotent_and_preserves_diary_and_source_mappings(self):
         result = reviewed_correction(self.key, operation="apply");db.session.commit()
         self.assertTrue(result["changed"])
