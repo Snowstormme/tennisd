@@ -18,6 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
 from . import db
+from .models import ProfileImage
 from .models import Comment, FollowedPlayer, LiveMatch, Match, Player, PlayerExternalId, PlayerPhoto, RankingSnapshot, Review, TournamentSubscription, User, WatchlistItem, utcnow
 from .prize_money import update_prize_money
 from .result_corrections import correction_for_match
@@ -617,7 +618,9 @@ def home():
     featured_live_pairs = {}
     recent_reviews = db.session.scalars(
         select(Review).join(Match).where(Review.is_public.is_(True), catalog_is_visible())
-        .options(joinedload(Review.user), joinedload(Review.match))
+        .options(joinedload(Review.user).joinedload(User.profile_image).load_only(ProfileImage.user_id),
+                 joinedload(Review.match).joinedload(Match.winner),
+                 joinedload(Review.match).joinedload(Match.loser))
         .order_by(Review.created_at.desc()).limit(4)
     ).all()
     return render_template(
