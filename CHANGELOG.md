@@ -4,6 +4,14 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-11-03
+
+- Keep reviewed permanent results protected when reconciliation receives a
+  cancelled or unverified observation, not only a completed-result replay.
+- Roll back pending changes on live/history/reconciliation failure, preventing
+  accidental partial commits by callers. Retain earlier committed feed stages;
+  test failure midway, safe retry and ordinary unreviewed cancellation.
+
 ## [0.14.2] - 2026-11-03
 
 - Prevent automatic live/history replay from overwriting permanent results

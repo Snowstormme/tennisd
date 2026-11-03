@@ -1,6 +1,8 @@
 """Create the application schema and run a minimal PostgreSQL smoke check."""
 
 import os
+from unittest.mock import patch
+import requests
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, inspect, select, text
@@ -22,7 +24,8 @@ from tennisd.models import FollowedPlayer, Report, TournamentSubscription
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
-from tennisd.live_tennis import preserve_finished_match
+from tennisd.live_tennis import preserve_finished_match, reconcile_live_matches
+from tennisd.models import IngestionCursor
 
 
 def check_reviewed_batch():
@@ -215,6 +218,22 @@ def main():
         db.session.commit()
         if {c.key:getattr(match,c.key) for c in Match.__table__.columns}!=protected_before:
             raise RuntimeError("PostgreSQL provider replay overwrote an independently reviewed result.")
+        observations=[LiveMatch(provider_id=identifier,status="live",tour="ATP",tournament="PG replay",
+            surface="Hard",round="R32",player1_name="A",player2_name="B",is_doubles=False,
+            starts_at=datetime(2026,10,28,tzinfo=timezone.utc),synced_at=datetime(2026,10,28,tzinfo=timezone.utc))
+            for identifier in ("211673","pg-failure")]
+        db.session.add_all(observations);db.session.commit()
+        with patch("tennisd.live_tennis.fetch_match_detail",side_effect=[{"status":"cancelled"},requests.Timeout("fixture")]):
+            try:reconcile_live_matches(now=datetime(2026,10,29,tzinfo=timezone.utc),limit=2)
+            except requests.Timeout:pass
+            else:raise RuntimeError("PostgreSQL reconciliation did not propagate provider failure.")
+        db.session.commit()
+        if [r.status for r in observations]!=["live","live"] or db.session.scalar(select(func.count()).select_from(IngestionCursor))!=0:
+            raise RuntimeError("PostgreSQL failed reconciliation left partial observations or cursors.")
+        with patch("tennisd.live_tennis.fetch_match_detail",return_value={"status":"cancelled"}):
+            reconcile_live_matches(now=datetime(2026,10,29,tzinfo=timezone.utc),limit=2)
+        if match.status!="finished" or [r.status for r in observations]!=["cancelled","cancelled"]:
+            raise RuntimeError("PostgreSQL cancellation changed the protected archive or failed to update observations.")
         if not reviewed_correction(key, operation="rollback")["changed"]:
             raise RuntimeError("PostgreSQL correction could not restore the original result.")
         db.session.commit()
