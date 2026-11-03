@@ -9,7 +9,7 @@
     {% if ready %}
     <form method="post" class="stack-form feedback-form"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="page_path" value="{{ request.args.get('from', '') }}">
       <label>What is this about?<select name="category" required><option value="idea">An idea</option><option value="bug">Something is broken</option><option value="content">Missing or incorrect tennis data</option><option value="other">Something else</option></select></label>
-      <fieldset class="feedback-rating"><legend>How is Tennisd feeling today? <small>Optional</small></legend><div>{% for score, label in [(1, 'Very poor'), (2, 'Poor'), (3, 'Okay'), (4, 'Good'), (5, 'Excellent')] %}<label><input type="radio" name="rating" value="{{ score }}"><span>{{ score }}</span><small>{{ label }}</small></label>{% endfor %}</div></fieldset>
+      <fieldset class="feedback-rating"><legend>How is Tennisd feeling today? <small>Optional</small></legend><div>{% for score, label in [(1, 'Very poor'), (2, 'Poor'), (3, 'Okay'), (4, 'Good'), (5, 'Excellent')] %}<label><input type="radio" name="rating" value="{{ score }}" aria-label="{{ score }} out of 5: {{ label }}"><span>{{ score }}</span><small>{{ label }}</small></label>{% endfor %}</div></fieldset>
       <label>Your feedback<textarea name="message" minlength="10" maxlength="2000" rows="7" placeholder="What happened, or what would make Tennisd better?" required></textarea><small>10–2,000 characters. Do not include passwords or private information.</small></label>
       <button class="button" type="submit">Send feedback</button>
     </form>
