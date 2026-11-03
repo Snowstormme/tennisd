@@ -7,8 +7,9 @@ import secrets
 import time
 
 import requests
-from flask import abort, current_app, request
+from flask import current_app, request
 from sqlalchemy import delete, func, select, text
+from werkzeug.exceptions import TooManyRequests
 
 from . import db
 from .models import AuthToken, RateLimitEvent
@@ -35,7 +36,10 @@ def limit_action(action, subject, maximum, seconds):
         )
     )
     if recent >= maximum:
-        abort(429)
+        release_at = db.session.scalar(select(RateLimitEvent.created_at).where(
+            RateLimitEvent.key_hash == key, RateLimitEvent.created_at > now - seconds,
+        ).order_by(RateLimitEvent.created_at, RateLimitEvent.id).offset(recent - maximum).limit(1))
+        raise TooManyRequests(retry_after=max(1, release_at + seconds - now))
     db.session.add(RateLimitEvent(key_hash=key, created_at=now))
     if secrets.randbelow(100) == 0:
         db.session.execute(delete(RateLimitEvent).where(RateLimitEvent.created_at < now - 86400))
