@@ -18,7 +18,7 @@ from tennisd.pagination import bounded_page
 from tennisd.tournament_directory import tournament_directory
 from tennisd.moderation_queries import moderation_context
 from tennisd.models import FeedbackSubmission, Poll, PollOption, PollVote
-from tennisd.models import TournamentSubscription
+from tennisd.models import FollowedPlayer, Report, TournamentSubscription
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
@@ -406,6 +406,33 @@ def main():
             response = private_client.get(f"/comments/{replies[0].id}")
             if response.status_code != 302 or f"page=2#comment-{replies[0].id}" not in response.location:
                 raise RuntimeError("PostgreSQL comment jump did not locate the correct thread page.")
+        account_other_id=other_inbox.id
+        account_match_id=historical.id
+        account_opponent_ids=[p.id for p in opponents]
+
+    # Fresh auth context for a separate disposable account and real FK checks.
+    with app.app_context():
+        disposable=User(username="pg-delete-fixture",email="pg-delete@example.test",display_name="Disposable")
+        disposable.set_password("disposable-fixture-password")
+        db.session.add(disposable);db.session.flush();disposable_id=disposable.id
+        survivor=Review(user_id=account_other_id,match_id=account_match_id,watched_on=date(2026,1,1),body="Other owner preserved",is_public=True)
+        db.session.add(survivor);db.session.flush();survivor_id=survivor.id
+        own_comment=Comment(user_id=disposable_id,review_id=survivor_id,body="Disposable comment")
+        db.session.add(own_comment);db.session.flush();own_comment_id=own_comment.id
+        db.session.add(Report(reporter_id=account_other_id,comment_id=own_comment_id,reason="spam"))
+        db.session.add_all(FollowedPlayer(user_id=disposable_id,player_id=p) for p in account_opponent_ids)
+        db.session.commit()
+        client=app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"]=f"{disposable_id}:0";session["_fresh"]=True;session["csrf_token"]="delete-csrf"
+        response=client.get("/settings/export")
+        if {p["id"] for p in response.get_json()["followed_player_profiles"]}!=set(account_opponent_ids):
+            raise RuntimeError("PostgreSQL export lost namesake follow IDs.")
+        response=client.post("/settings/delete-account",data={"csrf_token":"delete-csrf","username":"pg-delete-fixture","password":"disposable-fixture-password"})
+        if response.status_code!=302 or db.session.get(User,disposable_id) is not None or db.session.get(Comment,own_comment_id) is not None:
+            raise RuntimeError("PostgreSQL account deletion failed for a reported own comment.")
+        if db.session.get(Review,survivor_id) is None or db.session.get(User,account_other_id) is None:
+            raise RuntimeError("PostgreSQL account deletion removed another owner's content.")
 
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":

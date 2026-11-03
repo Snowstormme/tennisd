@@ -4,6 +4,16 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-11-03
+
+- Fix settings password-change reauthentication and revoke outstanding account
+  tokens together with old sessions. Bound password confirmation lengths.
+- Remove reports targeting an account's deleted comments before bulk deletion,
+  preserving other owners' content and avoiding foreign-key failures.
+- Export stable player IDs/tours alongside legacy follow names, eager-load match
+  participants, avoid loading photo bytes and order records deterministically.
+  Escape CSV formula prefixes after whitespace/control characters as well.
+
 ## [0.14.0] - 2026-11-02
 
 - Add private complete player/tournament subscription lists with 30-item pages,

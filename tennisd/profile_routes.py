@@ -10,8 +10,8 @@ from sqlalchemy.orm import joinedload
 
 from . import db
 from .models import (
-    AuthState, Comment, Friendship, FollowedPlayer, Match, ProfileImage,
-    Review, TournamentSubscription, User, WatchlistItem, utcnow,
+    AuthState, AuthToken, Comment, Friendship, FollowedPlayer, Match, ProfileImage,
+    Report, Review, TournamentSubscription, User, WatchlistItem, utcnow,
 )
 from .security import limit_action
 from .stats import diary_scope, diary_statistics
@@ -129,7 +129,8 @@ def register_profile_routes(
             elif not 1 <= len(display_name) <= 60 or len(bio) > 280:
                 flash("Display name or bio is too long.", "error")
             elif new_password and (
-                not current_user.check_password(current_password) or not 10 <= len(new_password) <= 128
+                not 1 <= len(current_password) <= 128 or not 10 <= len(new_password) <= 128
+                or not current_user.check_password(current_password)
             ):
                 flash("Check your current password; the new one needs 10–128 characters.", "error")
             else:
@@ -149,9 +150,10 @@ def register_profile_routes(
                     if current_user.auth_state is None:
                         current_user.auth_state = AuthState(session_version=0)
                     current_user.auth_state.session_version += 1
+                    db.session.execute(delete(AuthToken).where(AuthToken.user_id == current_user.id))
                 db.session.commit()
                 if new_password:
-                    sign_in_user(current_user)
+                    sign_in_user(current_user._get_current_object())
                 flash("Settings saved.", "success")
                 return redirect(url_for("site.settings"))
         return render_template("settings.html")
@@ -161,25 +163,29 @@ def register_profile_routes(
     def export_diary():
         reviews = db.session.scalars(
             select(Review).where(Review.user_id == current_user.id)
-            .options(joinedload(Review.match)).order_by(Review.watched_on)
+            .options(joinedload(Review.match).joinedload(Match.winner),
+                joinedload(Review.match).joinedload(Match.loser))
+            .order_by(Review.watched_on, Review.id)
         ).all()
         follows = db.session.scalars(
             select(FollowedPlayer).where(FollowedPlayer.user_id == current_user.id)
             .options(joinedload(FollowedPlayer.player))
+            .order_by(FollowedPlayer.id)
         ).all()
         watchlist = db.session.scalars(
             select(WatchlistItem).where(WatchlistItem.user_id == current_user.id)
+            .order_by(WatchlistItem.id)
         ).all()
         tournament_subscriptions = []
         if schema_table_exists(TournamentSubscription.__tablename__):
             tournament_subscriptions = db.session.scalars(
                 select(TournamentSubscription).where(TournamentSubscription.user_id == current_user.id)
-                .order_by(TournamentSubscription.created_at)
+                .order_by(TournamentSubscription.created_at, TournamentSubscription.id)
             ).all()
         comments = db.session.scalars(
             select(Comment).where(Comment.user_id == current_user.id)
             .options(joinedload(Comment.review))
-            .order_by(Comment.created_at)
+            .order_by(Comment.created_at, Comment.id)
         ).all()
         payload = {
             "schema_version": 1,
@@ -187,7 +193,8 @@ def register_profile_routes(
             "email": current_user.email,
             "display_name": current_user.display_name,
             "bio": current_user.bio,
-            "has_profile_photo": current_user.profile_image is not None,
+            "has_profile_photo": db.session.scalar(select(ProfileImage.user_id).where(
+                ProfileImage.user_id == current_user.id)) is not None,
             "joined_at": current_user.created_at.isoformat(),
             "diary": [
                 {
@@ -204,6 +211,10 @@ def register_profile_routes(
                 for review in reviews
             ],
             "followed_players": [item.player.name for item in follows],
+            "followed_player_profiles": [
+                {"id": item.player_id, "name": item.player.name, "tour": item.player.tour}
+                for item in follows
+            ],
             "followed_tournaments": [
                 {"tour": item.tour, "tournament": item.tournament}
                 for item in tournament_subscriptions
@@ -233,7 +244,7 @@ def register_profile_routes(
             "record_type", "schema_version", "username", "email", "display_name", "bio",
             "has_profile_photo", "joined_at", "match_id", "match", "tournament", "watched_on",
             "rating_out_of_ten", "review", "favorite", "public", "spoilers", "player", "tour",
-            "followed_tournament", "comment_body", "review_id", "created_at",
+            "followed_tournament", "comment_body", "review_id", "created_at", "player_id",
         )
         output = io.StringIO(newline="")
         writer = csv.DictWriter(output, fieldnames=columns, lineterminator="\n")
@@ -241,7 +252,8 @@ def register_profile_routes(
 
         def safe_cell(value):
             text = "" if value is None else str(value)
-            return f"'{text}" if text.startswith(("=", "+", "-", "@")) else text
+            dangerous = text.startswith(("\t", "\r", "\n")) or text.lstrip().startswith(("=", "+", "-", "@"))
+            return f"'{text}" if dangerous else text
 
         def write_row(values):
             writer.writerow({key: safe_cell(value) for key, value in values.items()})
@@ -254,8 +266,9 @@ def register_profile_routes(
         })
         for item in payload["diary"]:
             write_row({"record_type": "diary", **item})
-        for player in payload["followed_players"]:
-            write_row({"record_type": "followed_player", "player": player})
+        for player in payload["followed_player_profiles"]:
+            write_row({"record_type": "followed_player", "player": player["name"],
+                "player_id": player["id"], "tour": player["tour"]})
         for item in payload["followed_tournaments"]:
             write_row({
                 "record_type": "followed_tournament", "tour": item["tour"],
@@ -281,9 +294,10 @@ def register_profile_routes(
     @login_required
     def delete_account():
         limit_action("account-delete", str(current_user.id), 5, 3600)
+        password = request.form.get("password", "")
         if (
             request.form.get("username", "").strip().lower() != current_user.username
-            or not current_user.check_password(request.form.get("password", ""))
+            or not 1 <= len(password) <= 128 or not current_user.check_password(password)
         ):
             flash("Username or password was incorrect. Your account was not deleted.", "error")
             return redirect(url_for("site.settings"))
@@ -291,6 +305,10 @@ def register_profile_routes(
         db.session.execute(delete(Friendship).where(or_(
             Friendship.requester_id == user.id, Friendship.addressee_id == user.id,
         )))
+        # Bulk comment deletion bypasses ORM cascades. Remove only reports whose
+        # target disappears, including reports submitted by other accounts.
+        own_comments = select(Comment.id).where(Comment.user_id == user.id)
+        db.session.execute(delete(Report).where(Report.comment_id.in_(own_comments)))
         db.session.execute(delete(Comment).where(Comment.user_id == user.id))
         db.session.execute(delete(FollowedPlayer).where(FollowedPlayer.user_id == user.id))
         if schema_table_exists(TournamentSubscription.__tablename__):
