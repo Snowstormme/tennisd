@@ -4,6 +4,13 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-03
+
+- Show at most three featured matches on the homepage with matching selectors.
+- Begin archive identity review with a read-only tournament-name collision
+  inventory: tour-scoped names, counts, date coverage and unambiguous addresses.
+  Hidden-only archives are excluded; no alias merging or data repair is applied.
+
 ## [0.17.1] - 2026-11-03
 
 - Load community review participants and avatar existence with their parent
