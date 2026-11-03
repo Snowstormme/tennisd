@@ -275,7 +275,7 @@ def preserve_finished_match(live_match, now):
         # the same provider silently undo an independently checked repair.
         from .result_corrections import definitions
         if any(c["before"]["id"] == existing.id for c in definitions().values()):
-            return existing
+            return None
     winner = permanent_profile(live_match, live_match.winner_side)
     loser = permanent_profile(live_match, 2 if live_match.winner_side == 1 else 1)
     if not winner or not loser or winner.id == loser.id:

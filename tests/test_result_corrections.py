@@ -63,7 +63,7 @@ class ResultCorrectionTests(unittest.TestCase):
         for operation in ("apply", "rollback"):
             reviewed_correction(self.key, operation=operation);db.session.commit()
             before=match_snapshot(self.match,include_round=True)
-            self.assertIs(preserve_finished_match(replay,utcnow()),self.match)
+            self.assertIsNone(preserve_finished_match(replay,utcnow()))
             db.session.commit()
             self.assertEqual(match_snapshot(self.match,include_round=True),before)
             self.assertEqual(db.session.get(Review,self.review_id).body,"Keep my private note")
