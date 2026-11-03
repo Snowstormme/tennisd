@@ -2,7 +2,7 @@
 from sqlalchemy import or_, select
 from sqlalchemy.orm import aliased, joinedload
 from .identities import catalog_is_visible
-from .models import Match, Player, User
+from .models import Match, Player, ProfileImage, User
 
 
 def contains_text(column, query):
@@ -23,5 +23,6 @@ def search_statements(query):
             .where(catalog_is_visible(), contains_text(Match.tournament, query))
             .distinct().order_by(Match.tournament, Match.tour),
         "members": select(User).where(or_(contains_text(User.username, query), contains_text(User.display_name, query)))
+            .options(joinedload(User.profile_image).load_only(ProfileImage.user_id))
             .order_by(User.username, User.id),
     }

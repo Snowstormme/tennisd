@@ -4,6 +4,13 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-03
+
+- Load community review participants and avatar existence with their parent
+  records on the homepage; load search member avatar existence in the results
+  query. Avoid separate per-member avatar queries and image byte transfers
+  during HTML rendering. Keep private-review filtering and pagination intact.
+
 ## [0.17.0] - 2026-11-03
 
 - Expose application processing time through Server-Timing; log requests taking
