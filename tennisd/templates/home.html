@@ -14,7 +14,6 @@
     </div>
     {% if featured_live_matches or featured_matches %}
     <div class="featured-carousel" data-featured-carousel role="region" aria-roledescription="carousel" aria-label="Featured matches">
-      <button type="button" class="featured-rotation" data-featured-rotation hidden>Pause</button>
       {% for match in featured_live_matches %}{{ current_match_card(match, featured_live_pairs[match.provider_id], match_location, true, loop.first) }}{% endfor %}
       {% for match in featured_matches %}{{ showcase_match_card(match, match_location, true, loop.first and not featured_live_matches) }}{% endfor %}
       <div class="featured-controls" aria-label="Featured matches">
