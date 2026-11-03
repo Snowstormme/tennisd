@@ -2,11 +2,13 @@
 
 import os
 from unittest.mock import patch
+from werkzeug.exceptions import TooManyRequests
 import requests
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import func, inspect, select, text
 from sqlalchemy.exc import DBAPIError
+from tennisd.security import limit_action
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
@@ -467,6 +469,26 @@ def main():
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":
         raise RuntimeError("Health check failed after PostgreSQL initialization.")
+
+    with app.app_context():
+        limit_action("pg-retry-after","fixture",1,60)
+        try:limit_action("pg-retry-after","fixture",1,60)
+        except TooManyRequests as error:
+            if not 1 <= error.retry_after <= 60:
+                raise RuntimeError("PostgreSQL rate-limit retry time disagreed.")
+        else:raise RuntimeError("PostgreSQL rate limit did not reject the extra request.")
+        db.session.rollback()
+        execute=db.session.execute
+        def broken_readiness(statement,*args,**kwargs):
+            if str(statement)=="SELECT 1":
+                return execute(text("SELECT * FROM pg_fixture_missing_error_table"))
+            return execute(statement,*args,**kwargs)
+        with patch.object(db.session,"execute",side_effect=broken_readiness):
+            response=app.test_client().get("/readyz")
+        if response.status_code!=500 or not response.is_json or "pg_fixture_missing" in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL failed readiness did not return a safe JSON error.")
+        if app.test_client().get("/readyz").status_code!=200:
+            raise RuntimeError("PostgreSQL error response did not reset its failed transaction.")
 
     print("PostgreSQL application smoke check passed.")
 

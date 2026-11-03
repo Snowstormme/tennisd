@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, abort, current_app, g, render_template, request, session, url_for
+from flask import Flask, abort, current_app, g, jsonify, render_template, request, session, url_for
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -281,7 +281,11 @@ def create_app(test_config=None):
             "site.sitemap_tournaments", "site.sitemap_tournament_editions",
             "site.sitemap_matches",
         }
-        if (
+        if response.status_code >= 400:
+            response.headers["Cache-Control"] = "no-store, private"
+            response.headers["Vercel-CDN-Cache-Control"] = "no-store"
+            response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        elif (
             request.endpoint == "static" and response.status_code == 200
             and request.args.get("v") == asset_versions.get((request.view_args or {}).get("filename"))
         ):
@@ -333,17 +337,53 @@ def create_app(test_config=None):
     @app.errorhandler(400)
     @app.errorhandler(403)
     @app.errorhandler(404)
+    @app.errorhandler(405)
+    @app.errorhandler(413)
     @app.errorhandler(429)
     @app.errorhandler(500)
     @app.errorhandler(503)
     def friendly_error(error):
+        if not getattr(g, "request_id", None):
+            g.request_id = secrets.token_hex(12)
+        messages = {
+            400: "That request couldn't be completed. Reload the page and try again.",
+            403: "You don't have access to that page.",
+            404: "This page is outside the lines.",
+            405: "This action needs a different request method. Return to the page and use its controls.",
+            413: "This request is too large. Use a smaller file or less text and try again.",
+            429: "Too many attempts. Wait before trying again.",
+            500: "We couldn't complete this request. Please try again shortly.",
+            503: "This service is temporarily unavailable. Please try again shortly.",
+        }
+        message = messages[error.code]
+        response = error.get_response()  # Retain Allow, Retry-After and status.
+        retry_after = response.headers.get("Retry-After")
         if error.code >= 500:
+            from sqlalchemy.exc import SQLAlchemyError
+            try:
+                db.session.rollback()
+            except SQLAlchemyError:
+                current_app.logger.warning("rollback failed request_id=%s", g.request_id)
             current_app.logger.error(
                 "request failed request_id=%s status=%s",
                 g.request_id,
                 error.code,
             )
-        return render_template("error.html", code=error.code), error.code
+        if request.path.startswith("/api/") or request.path == "/readyz":
+            response.set_data(jsonify(error=message, status=error.code, request_id=g.request_id).get_data())
+            response.content_type = "application/json"
+        elif error.code >= 500:
+            # Bypass context processors and account navigation: the database
+            # may still be unavailable even after its failed transaction ends.
+            response.set_data(current_app.jinja_env.get_template("service_error.html").render(
+                code=error.code, message=message, request_id=g.request_id,
+                stylesheet_url="/static/style.css?v=" + asset_versions["style.css"]))
+            response.content_type = "text/html; charset=utf-8"
+        else:
+            response.set_data(render_template("error.html", code=error.code, message=message,
+                retry_after=retry_after, request_id=g.request_id))
+            response.content_type = "text/html; charset=utf-8"
+        return response
 
     @app.get("/healthz")
     def healthz():

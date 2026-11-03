@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-11-03
+
+- Return actionable 429 wait times and preserve Retry-After/Allow headers in
+  friendly errors, including method and upload-limit errors. Mark errors
+  no-store/noindex and provide safe structured errors for API/readiness paths.
+- Roll back failed server-error transactions and render server-error HTML
+  without account/context-processor queries so a database failure cannot
+  recursively break the error page. Include request IDs for diagnostics.
+
 ## [0.14.3] - 2026-11-03
 
 - Keep reviewed permanent results protected when reconciliation receives a
