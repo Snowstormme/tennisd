@@ -4,7 +4,7 @@
 {% block title %}Search{% endblock %}
 {% block robots %}noindex, follow{% endblock %}
 {% block content %}
-<section class="page-banner search-banner"><div class="container"><p class="eyebrow">FIND IT ON TENNISD</p><h1>Search<span>.</span></h1><form class="global-search" method="get"><input aria-label="Search Tennisd" type="search" name="q" value="{{ query }}" placeholder="Player, tournament or member" maxlength="80" autofocus>{% if category != 'all' %}<input type="hidden" name="category" value="{{ category }}">{% endif %}<button class="button" type="submit">Search</button></form></div></section>
+<section class="page-banner search-banner"><div class="container"><p class="eyebrow">FIND IT ON TENNISD</p><h1>Search<span>.</span></h1><form class="global-search" method="get"><input aria-label="Search Tennisd" type="search" name="q" value="{{ query }}" placeholder="Player, tournament or member" maxlength="80">{% if category != 'all' %}<input type="hidden" name="category" value="{{ category }}">{% endif %}<button class="button" type="submit">Search</button></form></div></section>
 <div class="container page-section search-results" id="results">
 {% if query %}
 <nav class="directory-tabs" aria-label="Search categories"><a href="{{ url_for('site.search', q=query) }}#results"{% if category == 'all' %} aria-current="page"{% endif %}>Overview</a>{% for key in categories %}<a href="{{ url_for('site.search', q=query, category=key) }}#results"{% if category == key %} aria-current="page"{% endif %}>{{ key|title }} ({{ totals[key] }})</a>{% endfor %}</nav>

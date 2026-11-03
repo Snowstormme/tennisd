@@ -18,6 +18,13 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -r requirements-dev.txt
+      - uses: actions/setup-node@v6
+        if: matrix.python-version == '3.12'
+        with:
+          node-version: '24'
+      - name: Check browser interaction regressions
+        if: matrix.python-version == '3.12'
+        run: node --test tests/js/*.test.cjs
       - name: Audit Python dependencies
         run: pip-audit -r requirements.txt
       - run: python -m unittest discover -s tests -v

@@ -4,6 +4,19 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-03
+
+- Add an explicit Play/Pause control to featured matches. Keep keyboard and
+  manual selection paused until Play, stop timers in hidden tabs, and respond
+  to reduced-motion preference changes. Announce manually selected positions.
+- Give carousel selectors and password visibility controls 44px touch targets,
+  reserve a separate selector bar, and show consistent keyboard focus outlines.
+- Separate password labels from visibility buttons, connect registration hints,
+  preserve descriptive feedback rating names on mobile, remove search autofocus,
+  and use 16px mobile form text to avoid automatic input zoom on iOS.
+- Run seven dependency-free JavaScript interaction regressions in CI and
+  document the matching local test commands.
+
 ## [0.15.0] - 2026-11-03
 
 - Resolve tournament URL collisions explicitly instead of selecting the first

@@ -73,11 +73,16 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-featured-carousel]").forEach((carousel) => {
     const slides = Array.from(carousel.querySelectorAll("[data-featured-slide]"));
     const dots = Array.from(carousel.querySelectorAll("[data-featured-dot]"));
+    const rotation = carousel.querySelector("[data-featured-rotation]");
+    const status = carousel.querySelector("[data-featured-status]");
     if (slides.length < 2) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let active = 0;
-    let timer;
+    let timer = null;
+    let rotating = !reducedMotion.matches;
+    let hovered = false;
 
-    const show = (next) => {
+    const show = (next, announce = false) => {
       active = (next + slides.length) % slides.length;
       slides.forEach((slide, index) => {
         const current = index === active;
@@ -89,24 +94,45 @@ document.addEventListener("DOMContentLoaded", () => {
           else dots[index].removeAttribute("aria-current");
         }
       });
+      if (announce && status) status.textContent = `Match ${active + 1} of ${slides.length}`;
     };
-    const stop = () => window.clearInterval(timer);
-    const start = () => {
-      stop();
-      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const syncRotation = () => {
+      if (timer !== null) window.clearInterval(timer);
+      timer = null;
+      if (rotation) {
+        rotation.hidden = false;
+        rotation.textContent = rotating ? "Pause" : "Play";
+        rotation.setAttribute("aria-label", rotating ? "Pause automatic match rotation" : "Start automatic match rotation");
+      }
+      if (rotating && !hovered && !document.hidden) {
         timer = window.setInterval(() => show(active + 1), 6500);
       }
     };
 
     dots.forEach((dot, index) => dot.addEventListener("click", () => {
-      show(index);
-      start();
+      rotating = false;
+      syncRotation();
+      show(index, true);
     }));
-    carousel.addEventListener("pointerenter", stop);
-    carousel.addEventListener("pointerleave", start);
-    carousel.addEventListener("focusin", stop);
-    carousel.addEventListener("focusout", start);
-    start();
+    rotation?.addEventListener("click", () => {
+      rotating = !rotating;
+      syncRotation();
+    });
+    carousel.addEventListener("pointerenter", () => { hovered = true; syncRotation(); });
+    carousel.addEventListener("pointerleave", () => { hovered = false; syncRotation(); });
+    carousel.addEventListener("focusin", (event) => {
+      // Keyboard exploration pauses until an explicit Play action, even after focus leaves.
+      if (event.target === rotation) return;
+      rotating = false;
+      syncRotation();
+    });
+    document.addEventListener("visibilitychange", syncRotation);
+    reducedMotion.addEventListener("change", () => {
+      if (reducedMotion.matches) rotating = false;
+      syncRotation();
+    });
+    show(0);
+    syncRotation();
   });
 
   document.querySelectorAll("[data-tournament-theme-root]").forEach((page) => {
