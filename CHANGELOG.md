@@ -4,6 +4,12 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-11-03
+
+- Remove the featured-match Play/Pause button and its styling/handlers as
+  requested. Preserve automatic rotation before interaction, manual selectors,
+  keyboard focus protection, hidden-tab suspension and reduced-motion support.
+
 ## [0.16.0] - 2026-11-03
 
 - Add an explicit Play/Pause control to featured matches. Keep keyboard and

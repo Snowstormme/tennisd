@@ -24,12 +24,11 @@ class Target {
 
 function fixture({reduced = false, count = 3} = {}) {
   const carousel = new Target();
-  const rotation = new Target();
   const status = new Target();
   const slides = Array.from({length: count}, () => new Target());
   const dots = Array.from({length: count}, () => new Target());
   carousel.querySelectorAll = selector => selector === '[data-featured-slide]' ? slides : dots;
-  carousel.querySelector = selector => selector === '[data-featured-rotation]' ? rotation : status;
+  carousel.querySelector = () => status;
   const document = new Target();
   document.hidden = false;
   document.querySelectorAll = selector => selector === '[data-featured-carousel]' ? [carousel] : [];
@@ -45,7 +44,7 @@ function fixture({reduced = false, count = 3} = {}) {
   };
   runInNewContext(script, {document, window, navigator: {connection: {saveData: true}}});
   document.emit('DOMContentLoaded');
-  return {carousel, rotation, status, slides, dots, document, motion, timers,
+  return {carousel, status, slides, dots, document, motion, timers,
     tick() { for (const callback of [...timers.values()]) callback(); }};
 }
 
@@ -62,28 +61,21 @@ test('automatic slides expose only the current link and do not announce unsolici
   assert.equal(f.status.textContent, '');
 });
 
-test('Pause stays paused after hover exits; explicit Play resumes', () => {
+test('hover suspends automatic rotation and leaving resumes it', () => {
   const f = fixture();
   f.carousel.emit('pointerenter');
   assert.equal(f.timers.size, 0);
-  f.rotation.emit('click');
   f.carousel.emit('pointerleave');
-  assert.equal(f.timers.size, 0);
-  assert.equal(f.rotation.textContent, 'Play');
-  f.rotation.emit('click');
   assert.equal(f.timers.size, 1);
 });
 
-test('keyboard focus pauses until explicit Play, including movement between carousel controls', () => {
+test('keyboard exploration keeps the selected card stable even after focus leaves', () => {
   const f = fixture();
   f.carousel.emit('focusin', {target: f.slides[0]});
   f.carousel.emit('focusout', {relatedTarget: f.dots[0]});
   f.carousel.emit('focusin', {target: f.dots[0]});
   f.carousel.emit('pointerleave');
   assert.equal(f.timers.size, 0);
-  f.carousel.emit('focusin', {target: f.rotation});
-  f.rotation.emit('click');
-  assert.equal(f.timers.size, 1);
 });
 
 test('manual selection stops rotation and announces its position', () => {
@@ -105,7 +97,7 @@ test('hidden tabs stop timers and returning does not override a user pause', () 
   f.document.hidden = false;
   f.document.emit('visibilitychange');
   assert.equal(f.timers.size, 1);
-  f.rotation.emit('click');
+  f.dots[0].emit('click');
   f.document.hidden = true;
   f.document.emit('visibilitychange');
   f.document.hidden = false;
@@ -116,19 +108,17 @@ test('hidden tabs stop timers and returning does not override a user pause', () 
 test('reduced motion prevents automatic start and preference changes stop an existing timer', () => {
   const f = fixture({reduced: true});
   assert.equal(f.timers.size, 0);
-  assert.equal(f.rotation.textContent, 'Play');
   f.motion.matches = false;
   f.motion.emit('change');
   assert.equal(f.timers.size, 0);
-  f.rotation.emit('click');
-  assert.equal(f.timers.size, 1);
-  f.motion.matches = true;
-  f.motion.emit('change');
-  assert.equal(f.timers.size, 0);
+  const automatic = fixture();
+  assert.equal(automatic.timers.size, 1);
+  automatic.motion.matches = true;
+  automatic.motion.emit('change');
+  assert.equal(automatic.timers.size, 0);
 });
 
-test('a single slide has no dead rotation control or timer', () => {
+test('a single slide has no rotation timer', () => {
   const f = fixture({count: 1});
   assert.equal(f.timers.size, 0);
-  assert.equal(f.rotation.hidden, true);
 });

@@ -90,6 +90,7 @@ class TennisdFlows(unittest.TestCase):
         self.assertIn(b"TENNISD IS GROWING", home.data)
         self.assertNotIn(b"pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", home.data)
         self.assertIn(b"data-featured-carousel", home.data)
+        self.assertNotIn(b"data-featured-rotation", home.data)
         self.assertNotIn(b"THE FEATURED MATCH", home.data)
         self.assertNotIn(b"FROM THE ARCHIVE", home.data)
         self.assertIn(b"featured-set-score", home.data)

@@ -73,7 +73,6 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-featured-carousel]").forEach((carousel) => {
     const slides = Array.from(carousel.querySelectorAll("[data-featured-slide]"));
     const dots = Array.from(carousel.querySelectorAll("[data-featured-dot]"));
-    const rotation = carousel.querySelector("[data-featured-rotation]");
     const status = carousel.querySelector("[data-featured-status]");
     if (slides.length < 2) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -99,11 +98,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const syncRotation = () => {
       if (timer !== null) window.clearInterval(timer);
       timer = null;
-      if (rotation) {
-        rotation.hidden = false;
-        rotation.textContent = rotating ? "Pause" : "Play";
-        rotation.setAttribute("aria-label", rotating ? "Pause automatic match rotation" : "Start automatic match rotation");
-      }
       if (rotating && !hovered && !document.hidden) {
         timer = window.setInterval(() => show(active + 1), 6500);
       }
@@ -114,15 +108,10 @@ document.addEventListener("DOMContentLoaded", () => {
       syncRotation();
       show(index, true);
     }));
-    rotation?.addEventListener("click", () => {
-      rotating = !rotating;
-      syncRotation();
-    });
     carousel.addEventListener("pointerenter", () => { hovered = true; syncRotation(); });
     carousel.addEventListener("pointerleave", () => { hovered = false; syncRotation(); });
-    carousel.addEventListener("focusin", (event) => {
-      // Keyboard exploration pauses until an explicit Play action, even after focus leaves.
-      if (event.target === rotation) return;
+    carousel.addEventListener("focusin", () => {
+      // Keep the selected card stable after keyboard exploration for this page visit.
       rotating = false;
       syncRotation();
     });
