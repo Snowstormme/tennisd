@@ -483,7 +483,9 @@ def main():
             if str(statement)=="SELECT 1":
                 return execute(text("SELECT * FROM pg_fixture_missing_error_table"))
             return execute(statement,*args,**kwargs)
-        with patch.object(db.session,"execute",side_effect=broken_readiness):
+        # Test mode normally re-raises exceptions instead of exercising the
+        # production 500 handler. Enable that handler only for this fault test.
+        with patch.dict(app.config,{"PROPAGATE_EXCEPTIONS":False}),patch.object(db.session,"execute",side_effect=broken_readiness):
             response=app.test_client().get("/readyz")
         if response.status_code!=500 or not response.is_json or "pg_fixture_missing" in response.get_data(as_text=True):
             raise RuntimeError("PostgreSQL failed readiness did not return a safe JSON error.")
