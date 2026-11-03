@@ -4,6 +4,15 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-03
+
+- Expose application processing time through Server-Timing; log requests taking
+  at least two seconds using endpoint, status and request ID, without URLs,
+  query strings, form data or SQL.
+- Bound Render database pool acquisition to five seconds instead of the
+  SQLAlchemy default thirty; return a safe retryable 503 on pool exhaustion.
+  This does not eliminate hosting spin-up time or bound SQL execution time.
+
 ## [0.16.1] - 2026-11-03
 
 - Remove the featured-match Play/Pause button and its styling/handlers as
