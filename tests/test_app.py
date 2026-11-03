@@ -91,6 +91,8 @@ class TennisdFlows(unittest.TestCase):
         self.assertNotIn(b"pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", home.data)
         self.assertIn(b"data-featured-carousel", home.data)
         self.assertNotIn(b"data-featured-rotation", home.data)
+        self.assertEqual(home.data.count(b'data-featured-slide'), 3)
+        self.assertEqual(home.data.count(b'data-featured-dot='), 3)
         self.assertNotIn(b"THE FEATURED MATCH", home.data)
         self.assertNotIn(b"FROM THE ARCHIVE", home.data)
         self.assertIn(b"featured-set-score", home.data)

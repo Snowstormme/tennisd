@@ -610,7 +610,7 @@ def home():
         .order_by(
             func.coalesce(Match.completed_at, Match.scheduled_at).desc(),
             Match.week_start.desc(), Match.id.desc(),
-        ).limit(5)
+        ).limit(3)
     ).all()
     # Keep the homepage hero focused on permanent results. Live and upcoming
     # feed rows remain available in their dedicated Matches views.
