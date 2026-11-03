@@ -269,6 +269,13 @@ def preserve_finished_match(live_match, now):
         return None
     provider_id = f"livetennisapi:{live_match.provider_id}"
     existing = db.session.scalar(select(Match).where(Match.provider_id == provider_id))
+    if existing:
+        # Registered source reviews are an explicit manual boundary. Protect
+        # even a drifted/rolled-back row until it is reviewed again; never let
+        # the same provider silently undo an independently checked repair.
+        from .result_corrections import definitions
+        if any(c["before"]["id"] == existing.id for c in definitions().values()):
+            return None
     winner = permanent_profile(live_match, live_match.winner_side)
     loser = permanent_profile(live_match, 2 if live_match.winner_side == 1 else 1)
     if not winner or not loser or winner.id == loser.id:

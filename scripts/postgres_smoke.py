@@ -22,6 +22,7 @@ from tennisd.models import FollowedPlayer, Report, TournamentSubscription
 from tennisd.discussions import discussion_previews
 from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
 from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
+from tennisd.live_tennis import preserve_finished_match
 
 
 def check_reviewed_batch():
@@ -204,6 +205,16 @@ def main():
         db.session.commit()
         if reviewed_correction(key, operation="apply")["changed"]:
             raise RuntimeError("PostgreSQL correction was not idempotent.")
+        protected_before={c.key:getattr(match,c.key) for c in Match.__table__.columns}
+        replay=LiveMatch(provider_id="211673",status="finished",tour="ATP",tournament="Provider replay",
+            surface="Clay",round="F",starts_at=datetime(2026,10,28,tzinfo=timezone.utc),
+            winner_side=1,outcome="completed",is_doubles=False,score="6-0 6-0",
+            player1_name=match.winner.name,player2_name=match.loser.name)
+        if preserve_finished_match(replay,datetime.now(timezone.utc)) is not None:
+            raise RuntimeError("PostgreSQL protected provider replay was not classified as skipped.")
+        db.session.commit()
+        if {c.key:getattr(match,c.key) for c in Match.__table__.columns}!=protected_before:
+            raise RuntimeError("PostgreSQL provider replay overwrote an independently reviewed result.")
         if not reviewed_correction(key, operation="rollback")["changed"]:
             raise RuntimeError("PostgreSQL correction could not restore the original result.")
         db.session.commit()

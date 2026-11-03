@@ -51,6 +51,45 @@ class ResultCorrectionTests(unittest.TestCase):
         self.assertEqual(match_snapshot(self.match), self.definition["before"])
         self.assertIsNone(correction_for_match(self.match))
 
+    def test_provider_replay_cannot_overwrite_registered_manual_review(self):
+        from datetime import datetime, timezone
+        from tennisd.live_tennis import permanent_profile, preserve_finished_match
+        from tennisd.models import LiveMatch
+        replay = LiveMatch(provider_id="211673", status="finished", tour="ATP",
+            tournament="Provider replacement", surface="Clay", round="F",
+            starts_at=datetime(2026,10,28,tzinfo=timezone.utc), winner_side=1,
+            outcome="completed", is_doubles=False, score="6-0 6-0",
+            player1_name="Wrong winner",player2_name="Wrong loser")
+        for operation in ("apply", "rollback"):
+            reviewed_correction(self.key, operation=operation);db.session.commit()
+            replay.player1_name=self.match.winner.name
+            replay.player2_name=self.match.loser.name
+            if operation == "apply":
+                self.assertEqual(permanent_profile(replay,1).id,self.match.winner_id)
+                self.assertEqual(permanent_profile(replay,2).id,self.match.loser_id)
+            before={c.key:getattr(self.match,c.key) for c in Match.__table__.columns}
+            self.assertIsNone(preserve_finished_match(replay,utcnow()))
+            db.session.commit()
+            self.assertEqual({c.key:getattr(self.match,c.key) for c in Match.__table__.columns},before)
+            self.assertEqual(db.session.get(Review,self.review_id).body,"Keep my private note")
+
+    def test_unreviewed_result_still_accepts_provider_updates(self):
+        from datetime import datetime, timezone
+        from tennisd.live_tennis import preserve_finished_match
+        from tennisd.models import LiveMatch
+        reviewed_correction(self.key,operation="apply");db.session.commit()
+        control=Match(id="unreviewed-control",provider="livetennisapi",provider_id="livetennisapi:909090",
+            tour="ATP",tournament="Control",surface="Hard",level="I",round="R32",status="finished",
+            week_start=date(2026,10,28),winner=self.match.winner,loser=self.match.loser,score="6-1 6-2")
+        db.session.add(control);db.session.commit()
+        replay=LiveMatch(provider_id="909090",status="finished",tour="ATP",tournament="Control updated",
+            surface="Clay",tier="itf_m15",round="F",starts_at=datetime(2026,10,28,tzinfo=timezone.utc),
+            winner_side=1,outcome="completed",is_doubles=False,score="6-0 6-0",
+            player1_name=self.match.winner.name,player2_name=self.match.loser.name)
+        self.assertIs(preserve_finished_match(replay,utcnow()),control)
+        db.session.commit()
+        self.assertEqual((control.round,control.surface,control.score),("F","Clay","6-0 6-0"))
+
     def test_apply_is_idempotent_and_preserves_diary_and_source_mappings(self):
         result = reviewed_correction(self.key, operation="apply");db.session.commit()
         self.assertTrue(result["changed"])
