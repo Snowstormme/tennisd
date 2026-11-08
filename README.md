@@ -2,6 +2,8 @@
 
 **A tennis match diary.** Browse real ATP and WTA matches, log what you watched, rate matches, write reviews, comment, follow players, and see your tennis taste in a personal profile.
 
+![Tennis court at dusk](public/static/images/news-court-fallback.webp)
+
 Tennisd is a separate project from Movie Finder. The interface is in English. It uses Flask, Flask-SQLAlchemy and Flask-Login. SQLite works locally; set `DATABASE_URL` to use PostgreSQL when hosting.
 
 ## Run locally
