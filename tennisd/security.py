@@ -7,8 +7,9 @@ import secrets
 import time
 
 import requests
-from flask import abort, current_app, request
+from flask import current_app, request
 from sqlalchemy import delete, func, select, text
+from werkzeug.exceptions import TooManyRequests
 
 from . import db
 from .models import AuthToken, RateLimitEvent
@@ -35,7 +36,10 @@ def limit_action(action, subject, maximum, seconds):
         )
     )
     if recent >= maximum:
-        abort(429)
+        release_at = db.session.scalar(select(RateLimitEvent.created_at).where(
+            RateLimitEvent.key_hash == key, RateLimitEvent.created_at > now - seconds,
+        ).order_by(RateLimitEvent.created_at, RateLimitEvent.id).offset(recent - maximum).limit(1))
+        raise TooManyRequests(retry_after=max(1, release_at + seconds - now))
     db.session.add(RateLimitEvent(key_hash=key, created_at=now))
     if secrets.randbelow(100) == 0:
         db.session.execute(delete(RateLimitEvent).where(RateLimitEvent.created_at < now - 86400))
@@ -68,6 +72,21 @@ def valid_token(raw, purpose):
     if token and token.purpose == purpose and token.expires_at > int(time.time()):
         return token
     return None
+
+
+def consume_token(token):
+    """Claim a still-valid token once, in the caller's account transaction.
+
+    A prior lookup is only a preview: another request may consume or replace
+    the token before the form is submitted. The conditional delete arbitrates
+    concurrent submissions without committing the account change separately.
+    """
+    result = db.session.execute(delete(AuthToken).where(
+        AuthToken.digest == token.digest,
+        AuthToken.purpose == token.purpose,
+        AuthToken.expires_at > int(time.time()),
+    ).execution_options(synchronize_session=False))
+    return result.rowcount == 1
 
 
 def _verification_digest(user_id, code):

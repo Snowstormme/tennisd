@@ -415,3 +415,20 @@
 @media(min-width:901px){.site-header .main-nav a.nav-animated[aria-current="page"]{background:transparent;box-shadow:none}}
 @media(max-width:900px){.site-header .main-nav a.nav-animated[aria-current="page"]:after{left:0;right:0}}
 @media(prefers-reduced-motion:reduce){.site-header .main-nav a.nav-animated[aria-current="page"]:after{animation:none}}
+
+/* Keep carousel controls usable without requiring precise taps. */
+.featured-carousel{min-height:528px}
+.featured-slide{bottom:56px}
+.featured-controls{left:0;right:0;bottom:0;height:56px;gap:0;align-items:center;justify-content:center;border-top:1px solid var(--line);background:var(--ink)}
+.featured-controls button[data-featured-dot]{display:grid;place-items:center;width:44px;height:44px;background:transparent;border-radius:4px}
+.featured-controls button[data-featured-dot]:after{content:"";width:19px;height:3px;border-radius:4px;background:#ffffff85}
+.featured-controls button[data-featured-dot][aria-current="true"]:after{width:32px;background:var(--lime)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible,.password-toggle:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.password-toggle{width:44px;height:44px;right:1px}
+.password-toggle span{left:12px;top:14px}
+.password-group>label{margin-bottom:7px}
+.password-group>small{display:block;margin-top:7px;color:var(--muted);font-size:11px}
+@media(max-width:1050px){.featured-carousel{min-height:498px}}
+@media(max-width:600px){.featured-carousel{min-height:488px}}
+@media(max-width:650px){input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),select,textarea{font-size:16px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.featured-slide{transition:none}.button,.match-card,.home-match-card,.tournament-card,.player-photo-card{transition:none}}

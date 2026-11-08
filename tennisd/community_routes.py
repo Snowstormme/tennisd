@@ -2,14 +2,19 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from flask import abort, flash, redirect, request, url_for
+from flask import abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from sqlalchemy import delete, or_, select
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.orm import joinedload
+from .pagination import bounded_page
+from .discussions import REPLY_PAGE_SIZE
 
 from . import db
 from .models import Comment, Match, Report, Review, WatchlistItem
 from .notifications import create_notification
+from .identities import match_identity_is_valid
 from .security import limit_action
+from .web import require_database_id
 
 
 def register_community_routes(site):
@@ -19,6 +24,9 @@ def register_community_routes(site):
     @login_required
     def log_match(match_id):
         match = db.get_or_404(Match, match_id)
+        if not match_identity_is_valid(match):
+            flash("This result is awaiting a data review. Your existing diary entry is preserved.", "error")
+            return redirect(url_for("site.match_detail", match_id=match_id))
         try:
             watched_on = date.fromisoformat(request.form.get("watched_on", ""))
             if watched_on > date.today() or watched_on < match.week_start:
@@ -56,10 +64,36 @@ def register_community_routes(site):
         flash("Your match diary entry was saved.", "success")
         return redirect(url_for("site.match_detail", match_id=match_id))
 
+    @site.get("/reviews/<int:review_id>")
+    def review_detail(review_id):
+        if review_id > 2147483647:
+            abort(404)
+        review = db.get_or_404(Review, require_database_id(review_id))
+        if not review.is_public and (not current_user.is_authenticated or current_user.id != review.user_id):
+            abort(404)
+        pagination = bounded_page(select(Comment).where(Comment.review_id == review.id)
+            .options(joinedload(Comment.user)).order_by(Comment.created_at.desc(), Comment.id.desc()),
+            page=request.args.get("page", 1, type=int), per_page=REPLY_PAGE_SIZE)
+        return render_template("review.html", review=review, pagination=pagination)
+
+    @site.get("/comments/<int:comment_id>")
+    def comment_detail(comment_id):
+        if comment_id > 2147483647:
+            abort(404)
+        comment = db.get_or_404(Comment, comment_id)
+        review = comment.review
+        if not review.is_public and (not current_user.is_authenticated or current_user.id != review.user_id):
+            abort(404)
+        newer = db.session.scalar(select(func.count(Comment.id)).where(Comment.review_id == review.id,
+            or_(Comment.created_at > comment.created_at,
+                and_(Comment.created_at == comment.created_at, Comment.id > comment.id))))
+        return redirect(url_for("site.review_detail", review_id=review.id,
+            page=newer // REPLY_PAGE_SIZE + 1, _anchor=f"comment-{comment.id}"))
+
     @site.post("/reviews/<int:review_id>/delete")
     @login_required
     def delete_review(review_id):
-        review = db.get_or_404(Review, review_id)
+        review = db.get_or_404(Review, require_database_id(review_id))
         if review.user_id != current_user.id:
             abort(403)
         match_id = review.match_id
@@ -71,7 +105,7 @@ def register_community_routes(site):
     @site.post("/reviews/<int:review_id>/comments")
     @login_required
     def add_comment(review_id):
-        review = db.get_or_404(Review, review_id)
+        review = db.get_or_404(Review, require_database_id(review_id))
         if not review.is_public:
             abort(404)
         body = request.form.get("body", "").strip()
@@ -90,23 +124,22 @@ def register_community_routes(site):
                     create_notification(
                         review.user_id, kind="review_comment", title="New reply to your review",
                         body=f"{current_user.display_name} commented on your match review.",
-                        url=url_for("site.match_detail", match_id=review.match_id) + f"#review-{review.id}",
+                        url=url_for("site.review_detail", review_id=review.id, _anchor="comments"),
                     )
                 db.session.commit()
                 flash("Comment added.", "success")
-        return redirect(url_for("site.match_detail", match_id=review.match_id) + f"#review-{review.id}")
+        return redirect(url_for("site.review_detail", review_id=review.id, _anchor="comments"))
 
     @site.post("/comments/<int:comment_id>/delete")
     @login_required
     def delete_comment(comment_id):
-        comment = db.get_or_404(Comment, comment_id)
+        comment = db.get_or_404(Comment, require_database_id(comment_id))
         if comment.user_id != current_user.id and comment.review.user_id != current_user.id:
             abort(403)
-        match_id = comment.review.match_id
         review_id = comment.review_id
         db.session.delete(comment)
         db.session.commit()
-        return redirect(url_for("site.match_detail", match_id=match_id) + f"#review-{review_id}")
+        return redirect(url_for("site.review_detail", review_id=review_id, _anchor="comments"))
 
     @site.post("/reports")
     @login_required
@@ -117,17 +150,17 @@ def register_community_routes(site):
         if reason not in {"spam", "harassment", "hate", "other"}:
             abort(400)
         if target == "review":
-            review = db.get_or_404(Review, request.form.get("target_id", type=int))
+            review = db.get_or_404(Review, require_database_id(request.form.get("target_id")))
             if not review.is_public:
                 abort(404)
-            match_id = review.match_id
+            review_id = review.id
             condition = (Report.reporter_id == current_user.id, Report.review_id == review.id)
             report = Report(reporter_id=current_user.id, review_id=review.id, reason=reason)
         elif target == "comment":
-            comment = db.get_or_404(Comment, request.form.get("target_id", type=int))
+            comment = db.get_or_404(Comment, require_database_id(request.form.get("target_id")))
             if not comment.review.is_public:
                 abort(404)
-            match_id = comment.review.match_id
+            review_id = comment.review_id
             condition = (Report.reporter_id == current_user.id, Report.comment_id == comment.id)
             report = Report(reporter_id=current_user.id, comment_id=comment.id, reason=reason)
         else:
@@ -136,4 +169,4 @@ def register_community_routes(site):
             db.session.add(report)
             db.session.commit()
         flash("Thank you. This report is queued for review.", "success")
-        return redirect(url_for("site.match_detail", match_id=match_id))
+        return redirect(url_for("site.review_detail", review_id=review_id))

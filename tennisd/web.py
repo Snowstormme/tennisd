@@ -1,9 +1,26 @@
 """Shared HTTP helpers used by the site routes."""
 
-from flask import current_app, request, url_for
+from flask import abort, current_app, request, url_for
 from urllib.parse import urlsplit
 
 from . import db
+
+
+def database_id(value):
+    """Parse positive PostgreSQL integer IDs without unbounded conversion."""
+    if isinstance(value, int):
+        return value if 1 <= value <= 2147483647 else None
+    if not isinstance(value, str) or not 1 <= len(value) <= 10 or not value.isascii() or not value.isdigit():
+        return None
+    number = int(value)
+    return number if 1 <= number <= 2147483647 else None
+
+
+def require_database_id(value):
+    identifier = database_id(value)
+    if identifier is None:
+        abort(404)
+    return identifier
 
 
 def schema_table_exists(table_name):

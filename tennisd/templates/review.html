@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% from '_discussion.html' import review_card, discussion_pagination with context %}
+{% block title %}Discussion · {{ review.user.display_name }}{% endblock %}
+{% block robots %}noindex, follow{% endblock %}
+{% block content %}
+<div class="container page-section discussion-page">
+<a class="back-link" href="{{ url_for('site.match_detail', match_id=review.match_id, _anchor='reviews') }}">BACK TO MATCH</a>
+<p class="eyebrow">COURTSIDE DISCUSSION</p>
+<h1>{{ review.match.winner.name }} vs {{ review.match.loser.name }}</h1>
+<p>{{ pagination.total }} {{ 'reply' if pagination.total == 1 else 'replies' }} · Newest first{% if not review.is_public %} · Private entry{% endif %}</p>
+{{ discussion_pagination(pagination, review_id=review.id) }}
+{{ review_card(review, pagination.items, pagination.total, thread=true) }}
+{{ discussion_pagination(pagination, review_id=review.id) }}
+</div>
+{% endblock %}

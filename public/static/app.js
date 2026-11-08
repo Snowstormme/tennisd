@@ -73,11 +73,15 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-featured-carousel]").forEach((carousel) => {
     const slides = Array.from(carousel.querySelectorAll("[data-featured-slide]"));
     const dots = Array.from(carousel.querySelectorAll("[data-featured-dot]"));
+    const status = carousel.querySelector("[data-featured-status]");
     if (slides.length < 2) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let active = 0;
-    let timer;
+    let timer = null;
+    let rotating = !reducedMotion.matches;
+    let hovered = false;
 
-    const show = (next) => {
+    const show = (next, announce = false) => {
       active = (next + slides.length) % slides.length;
       slides.forEach((slide, index) => {
         const current = index === active;
@@ -89,24 +93,35 @@ document.addEventListener("DOMContentLoaded", () => {
           else dots[index].removeAttribute("aria-current");
         }
       });
+      if (announce && status) status.textContent = `Match ${active + 1} of ${slides.length}`;
     };
-    const stop = () => window.clearInterval(timer);
-    const start = () => {
-      stop();
-      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const syncRotation = () => {
+      if (timer !== null) window.clearInterval(timer);
+      timer = null;
+      if (rotating && !hovered && !document.hidden) {
         timer = window.setInterval(() => show(active + 1), 6500);
       }
     };
 
     dots.forEach((dot, index) => dot.addEventListener("click", () => {
-      show(index);
-      start();
+      rotating = false;
+      syncRotation();
+      show(index, true);
     }));
-    carousel.addEventListener("pointerenter", stop);
-    carousel.addEventListener("pointerleave", start);
-    carousel.addEventListener("focusin", stop);
-    carousel.addEventListener("focusout", start);
-    start();
+    carousel.addEventListener("pointerenter", () => { hovered = true; syncRotation(); });
+    carousel.addEventListener("pointerleave", () => { hovered = false; syncRotation(); });
+    carousel.addEventListener("focusin", () => {
+      // Keep the selected card stable after keyboard exploration for this page visit.
+      rotating = false;
+      syncRotation();
+    });
+    document.addEventListener("visibilitychange", syncRotation);
+    reducedMotion.addEventListener("change", () => {
+      if (reducedMotion.matches) rotating = false;
+      syncRotation();
+    });
+    show(0);
+    syncRotation();
   });
 
   document.querySelectorAll("[data-tournament-theme-root]").forEach((page) => {
@@ -142,7 +157,8 @@ document.addEventListener("DOMContentLoaded", () => {
         scoreNode.textContent = rawScore;
         return;
       }
-      const sets = String(rawScore).trim().split(/\s+/).filter((token) => token.includes("-"));
+      const sets = String(rawScore).replaceAll("–", "-").trim().split(/\s+/)
+        .filter((token) => /^\d+-\d+(?:\(\d+\))?$/.test(token));
       if (!sets.length) {
         const status = document.createElement("span");
         status.className = "match-score-status";
@@ -173,10 +189,46 @@ document.addEventListener("DOMContentLoaded", () => {
         const response = await fetch("/api/live-matches");
         if (!response.ok) return;
         const payload = await response.json();
+        if (!Array.isArray(payload.matches)) return;
+        const currentIds = new Set(payload.matches.map((match) => String(match.id)));
+        document.querySelectorAll('[data-snapshot-status="live"]').forEach((card) => {
+          if (currentIds.has(card.dataset.liveMatch)) return;
+          if (card.matches("a.live-feed-match-card")) {
+            const grid = card.parentElement;
+            card.remove();
+            if (grid && !grid.querySelector("[data-live-match]") && !grid.querySelector(".snapshot-empty-note")) {
+              const note = document.createElement("p");
+              note.className = "snapshot-empty-note feed-note";
+              note.textContent = "No current live snapshots. Reload to check the latest feed.";
+              grid.append(note);
+            }
+          } else {
+            const age = card.querySelector(".snapshot-age");
+            if (age) age.textContent = "Saved snapshot · Outside the current live feed. Reload for the latest report.";
+            const state = document.querySelector("[data-snapshot-state]");
+            if (state) state.textContent = "SAVED SNAPSHOT";
+          }
+        });
         payload.matches.forEach((match) => {
           document.querySelectorAll(`[data-live-match="${CSS.escape(match.id)}"]`).forEach((card) => {
+            if (match.status === "live") {
+              card.dataset.snapshotStatus = "live";
+              if (!card.matches("a.live-feed-match-card")) {
+                const status = document.querySelector("[data-last-reported-status]");
+                const state = document.querySelector("[data-snapshot-state]");
+                if (status) status.textContent = "Live";
+                if (state) state.textContent = "LIVE AT LAST CHECK";
+              }
+            }
             const score = card.querySelector("[data-live-score]");
-            if (score && match.score) renderSetScore(score, match.score, match.winner_side || score.dataset.winnerSide);
+            if (score && match.score) renderSetScore(score, match.score, match.status === "live" ? 0 : (match.winner_side || score.dataset.winnerSide));
+            const age = card.querySelector(".snapshot-age");
+            if (age && match.synced_at) {
+              const checked = new Date(match.synced_at.endsWith("Z") || /[+-]\d\d:\d\d$/.test(match.synced_at)
+                ? match.synced_at : `${match.synced_at}Z`);
+              const hours = Math.floor((Date.now() - checked.getTime()) / 3600000);
+              if (Number.isFinite(hours)) age.textContent = `Daily snapshot · Checked ${Math.max(0, hours)}h ago${hours > 30 ? " · Refresh overdue" : ""}`;
+            }
           });
         });
       } catch (_) {
@@ -206,7 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? ""
           : ` · ${Math.max(0, Math.floor((Date.now() - checked.getTime()) / 60000))}m ago`;
         syncStatus.textContent = payload.status === "ok"
-          ? `Feed healthy${minutes}`
+          ? `Daily snapshot checked${minutes}`
           : `Feed needs attention${minutes}`;
       } catch (_) {
         syncStatus.textContent = "Feed status unavailable";
@@ -229,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = await response.json();
         if (count) count.textContent = `${payload.total} stories`;
         if (checked) checked.textContent = "Checked just now";
-        if (firstStory && payload.first_id && payload.first_id !== firstStory) {
+        if (payload.first_id && payload.first_id !== firstStory) {
           window.location.reload();
           return;
         }
@@ -238,7 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (checked) checked.textContent = "Live update paused";
       }
     };
-    startVisiblePolling(refreshNews, 300000);
+    startVisiblePolling(refreshNews, firstStory ? 300000 : 15000);
   }
 
 });

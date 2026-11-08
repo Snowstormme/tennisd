@@ -1,11 +1,148 @@
 """Create the application schema and run a minimal PostgreSQL smoke check."""
 
 import os
+from unittest.mock import patch
+from werkzeug.exceptions import TooManyRequests
+import requests
+from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import text
+from sqlalchemy import func, inspect, select, text
+from sqlalchemy.exc import DBAPIError
+from tennisd.security import limit_action
+from tennisd.tournament_urls import explicit_tournament_slug
 
 from tennisd import create_app, db
 from tennisd.migrations import run_migrations
+from tennisd.catalog_audit import catalog_cohort_report, catalog_report, match_snapshot, readonly_catalog_session
+from tennisd.models import Comment, IngestionRun, LiveMatch, Match, MatchParticipant, Notification, Player, RankingSnapshot, Review, User
+from tennisd.identities import catalog_is_visible
+from tennisd.snapshot_policy import current_snapshot_condition, snapshot_counts, snapshot_visibility_reason
+from tennisd.search_queries import search_statements
+from tennisd.rankings import latest_singles_dates, valid_singles_ranking
+from tennisd.pagination import bounded_page
+from tennisd.tournament_directory import tournament_directory
+from tennisd.moderation_queries import moderation_context
+from tennisd.models import FeedbackSubmission, Poll, PollOption, PollVote
+from tennisd.models import FollowedPlayer, Report, TournamentSubscription
+from tennisd.discussions import discussion_previews
+from tennisd.stats import community_statistics, diary_statistics, player_match_scope, player_statistics
+from tennisd.result_corrections import batches, corrected_snapshot, definitions, reviewed_batch, reviewed_correction
+from tennisd.live_tennis import preserve_finished_match, reconcile_live_matches
+from tennisd.models import IngestionCursor
+
+
+def check_reviewed_batch():
+    batch = "fognini-2024-archive"
+    keys = batches()[batch]
+    matches = {}
+    for key in keys:
+        correction = definitions()[key]; before = correction["before"]
+        for data in (before["winner"], before["loser"], correction["corrected_player"]):
+            if db.session.get(Player, data["id"]) is None:
+                db.session.add(Player(**data))
+        match = Match(id=before["id"], provider=before["provider"], provider_id=before["provider_id"],
+            tour=before["tour"], tournament=before["tournament"], status=before["status"],
+            week_start=date.fromisoformat(before["date"]), score=before["score"],
+            winner_id=before["winner"]["id"], loser_id=before["loser"]["id"],
+            surface="Hard", level="M", round="R?")
+        matches[key] = match
+        db.session.add(match)
+        db.session.add_all(MatchParticipant(**row) for row in correction["related_before"]["participants"])
+    db.session.commit()
+    with readonly_catalog_session():
+        preview = reviewed_batch(batch)
+        if preview["blocked"] or preview["changed"] or len(preview["results"]) != 7:
+            raise RuntimeError("PostgreSQL reviewed batch preview did not remain read-only.")
+    original_runs = db.session.scalar(select(func.count(IngestionRun.id)))
+    last = keys[-1]
+    matches[last].score = "unreviewed score"; db.session.commit()
+    try:
+        reviewed_batch(batch, operation="apply")
+    except ValueError as error:
+        if "changed since review" not in str(error):
+            raise
+    else:
+        raise RuntimeError("PostgreSQL batch unexpectedly accepted a changed final result.")
+    # Deliberately commit after catching: the savepoint must already undo all
+    # earlier matches, participants and journals in this failed batch.
+    db.session.commit()
+    for key in keys[:-1]:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL left a partially applied reviewed batch.")
+    if db.session.scalar(select(func.count(IngestionRun.id))) != original_runs:
+        raise RuntimeError("PostgreSQL left journals from a failed batch.")
+    matches[last].score = definitions()[last]["before"]["score"]; db.session.commit()
+    reviewed_batch(batch, operation="apply"); db.session.rollback()
+    for key in keys:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL committed a successful batch before its caller.")
+    if reviewed_batch(batch, operation="apply")["changed"] != 7:
+        raise RuntimeError("PostgreSQL did not apply the complete reviewed batch.")
+    db.session.commit()
+    for key in keys:
+        correction = definitions()[key]
+        if match_snapshot(matches[key]) != corrected_snapshot(correction):
+            raise RuntimeError("PostgreSQL repaired the wrong winner/loser side.")
+        for row in correction["related_before"]["participants"]:
+            expected = row["player_id"]
+            if expected == correction["before"][correction["corrected_side"]]["id"]:
+                expected = correction["corrected_player"]["id"]
+            if db.session.get(MatchParticipant, row["id"]).player_id != expected:
+                raise RuntimeError("PostgreSQL did not repair a related participant.")
+    if reviewed_batch(batch, operation="apply")["changed"]:
+        raise RuntimeError("PostgreSQL reviewed batch was not idempotent.")
+    reviewed_batch(batch, operation="rollback"); db.session.commit()
+    for key in keys:
+        if match_snapshot(matches[key]) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL reviewed batch rollback was incomplete.")
+
+
+def check_reviewed_rounds():
+    reviewed_batch("fognini-2024-archive", operation="apply"); db.session.commit()
+    batch = "fognini-2024-rounds"
+    keys = batches()[batch]
+    matches = {key: db.session.get(Match, definitions()[key]["before"]["id"]) for key in keys}
+    for key, match in matches.items():
+        match.round = definitions()[key]["before"]["round"]
+    db.session.commit()
+    with readonly_catalog_session():
+        report = catalog_cohort_report(tour="ATP", year=2024, provider="tennis_api",
+            tournament="Rolex Paris Masters - Paris", limit=2)
+        if report["counts"] != {"matches": 3, "identity_conflicts": 0} or not report["has_more"]:
+            raise RuntimeError("PostgreSQL cohort audit did not scope totals and bound samples.")
+        preview = reviewed_batch(batch)
+        if preview["changed"] or preview["blocked"] or len(preview["results"]) != 5:
+            raise RuntimeError("PostgreSQL round preview was not read-only.")
+    reviewed_batch(batch, operation="apply"); db.session.rollback()
+    for key, match in matches.items():
+        if match.round != definitions()[key]["before"]["round"]:
+            raise RuntimeError("PostgreSQL round repair committed before its caller.")
+    if reviewed_batch(batch, operation="apply")["changed"] != 5:
+        raise RuntimeError("PostgreSQL round group did not apply completely.")
+    db.session.commit()
+    for key, match in matches.items():
+        if match_snapshot(match, include_round=True) != corrected_snapshot(definitions()[key]):
+            raise RuntimeError("PostgreSQL round repair changed an unrelated result field.")
+    if reviewed_batch(batch, operation="apply")["changed"]:
+        raise RuntimeError("PostgreSQL round repair was not idempotent.")
+    last = keys[-1]
+    matches[last].round = "F"; db.session.commit()
+    try:
+        reviewed_batch(batch, operation="rollback")
+    except ValueError as error:
+        if "changed since review" not in str(error):
+            raise
+    else:
+        raise RuntimeError("PostgreSQL round rollback overwrote a later edit.")
+    db.session.commit()
+    for key in keys[:-1]:
+        if matches[key].round != definitions()[key]["corrected_round"]:
+            raise RuntimeError("PostgreSQL left a partially rolled-back round group.")
+    matches[last].round = definitions()[last]["corrected_round"]; db.session.commit()
+    reviewed_batch(batch, operation="rollback"); db.session.commit()
+    for key, match in matches.items():
+        if match_snapshot(match, include_round=True) != definitions()[key]["before"]:
+            raise RuntimeError("PostgreSQL round rollback was incomplete.")
 
 
 def main():
@@ -21,6 +158,9 @@ def main():
     })
     run_migrations(app)
     with app.app_context():
+        # This test app starts before its schema exists, unlike production.
+        # Refresh capabilities from the actual migrated database, not guesses.
+        app.extensions["schema_capabilities"] = frozenset(inspect(db.engine).get_table_names())
         db.session.execute(text("SELECT 1"))
         user_tables = db.session.execute(text(
             "SELECT COUNT(*) FROM information_schema.tables "
@@ -30,9 +170,339 @@ def main():
             raise RuntimeError("Application schema was not created.")
         db.session.rollback()
 
+        with readonly_catalog_session():
+            report = catalog_report(1)
+            if report["cross_tour_or_self_matches"] != 0:
+                raise RuntimeError("The fresh catalog is unexpectedly inconsistent.")
+        try:
+            with readonly_catalog_session():
+                db.session.execute(text("CREATE TABLE public.forbidden_catalog_write (id integer)"))
+        except DBAPIError as error:
+            if getattr(error.orig, "sqlstate", None) != "25006":
+                raise
+        else:
+            raise RuntimeError("Catalog preview unexpectedly allowed a database write.")
+
+        key = "itf-sharm-2026-030-kirci-yuan"
+        original = definitions()[key]["before"]
+        winner, loser = Player(**original["winner"]), Player(**original["loser"])
+        match = Match(
+            id=original["id"], provider=original["provider"], provider_id=original["provider_id"],
+            tour=original["tour"], tournament=original["tournament"], status=original["status"],
+            week_start=date.fromisoformat(original["date"]), score=original["score"],
+            winner=winner, loser=loser, level="I", round="R32", surface="Hard",
+        )
+        db.session.add_all((winner, loser, match))
+        db.session.commit()
+
+        member = User(username="pgdiary", email="pgdiary@example.test", display_name="PG diary", password_hash="unused-test-value")
+        db.session.add(Review(user=member, match=match, watched_on=date(2026,10,31),
+            rating_half=7, is_favorite=True, is_public=False, body="PRIVATE_POSTGRES_DIARY_NOTE"))
+        db.session.commit()
+        own = diary_statistics(member.id)
+        public = diary_statistics(member.id, public_only=True)
+        if own["logs"] != 1 or own["average_ten"] != 7.0 or own["favorites"] != 1 or public["logs"] != 0:
+            raise RuntimeError("PostgreSQL diary summaries did not preserve visibility or totals.")
+        page = bounded_page(select(Review).where(Review.user_id == member.id), page=10 ** 100)
+        if page.page != 1 or len(page.items) != 1:
+            raise RuntimeError("PostgreSQL pagination did not bound an oversized offset.")
+        if not reviewed_correction(key, operation="apply")["changed"]:
+            raise RuntimeError("PostgreSQL correction did not apply under its row lock.")
+        db.session.commit()
+        if reviewed_correction(key, operation="apply")["changed"]:
+            raise RuntimeError("PostgreSQL correction was not idempotent.")
+        protected_before={c.key:getattr(match,c.key) for c in Match.__table__.columns}
+        replay=LiveMatch(provider_id="211673",status="finished",tour="ATP",tournament="Provider replay",
+            surface="Clay",round="F",starts_at=datetime(2026,10,28,tzinfo=timezone.utc),
+            winner_side=1,outcome="completed",is_doubles=False,score="6-0 6-0",
+            player1_name=match.winner.name,player2_name=match.loser.name)
+        if preserve_finished_match(replay,datetime.now(timezone.utc)) is not None:
+            raise RuntimeError("PostgreSQL protected provider replay was not classified as skipped.")
+        db.session.commit()
+        if {c.key:getattr(match,c.key) for c in Match.__table__.columns}!=protected_before:
+            raise RuntimeError("PostgreSQL provider replay overwrote an independently reviewed result.")
+        observations=[LiveMatch(provider_id=identifier,status="live",tour="ATP",tournament="PG replay",
+            surface="Hard",round="R32",player1_name="A",player2_name="B",is_doubles=False,
+            starts_at=datetime(2026,10,28,tzinfo=timezone.utc),synced_at=datetime(2026,10,28,tzinfo=timezone.utc))
+            for identifier in ("211673","pg-failure")]
+        db.session.add_all(observations);db.session.commit()
+        with patch("tennisd.live_tennis.fetch_match_detail",side_effect=[{"status":"cancelled"},requests.Timeout("fixture")]):
+            try:reconcile_live_matches(now=datetime(2026,10,29,tzinfo=timezone.utc),limit=2)
+            except requests.Timeout:pass
+            else:raise RuntimeError("PostgreSQL reconciliation did not propagate provider failure.")
+        db.session.commit()
+        if [r.status for r in observations]!=["live","live"] or db.session.scalar(select(func.count()).select_from(IngestionCursor))!=0:
+            raise RuntimeError("PostgreSQL failed reconciliation left partial observations or cursors.")
+        with patch("tennisd.live_tennis.fetch_match_detail",return_value={"status":"cancelled"}):
+            reconcile_live_matches(now=datetime(2026,10,29,tzinfo=timezone.utc),limit=2)
+        if match.status!="finished" or [r.status for r in observations]!=["cancelled","cancelled"]:
+            raise RuntimeError("PostgreSQL cancellation changed the protected archive or failed to update observations.")
+        if not reviewed_correction(key, operation="rollback")["changed"]:
+            raise RuntimeError("PostgreSQL correction could not restore the original result.")
+        db.session.commit()
+
+        # Reuse a reviewed existing profile without creating an external mapping.
+        existing_key = "us-open-2024-machac-fognini"
+        definition = definitions()[existing_key]
+        original = definition["before"]
+        winner, loser = Player(**original["winner"]), Player(**original["loser"])
+        target = Player(**definition["corrected_player"])
+        historical = Match(
+            id=original["id"], provider=original["provider"], provider_id=original["provider_id"],
+            tour=original["tour"], tournament=original["tournament"], status=original["status"],
+            week_start=date.fromisoformat(original["date"]), score=original["score"],
+            winner=winner, loser=loser, level="G", round="R128", surface="Hard",
+        )
+        db.session.add_all((winner, loser, target, historical))
+        db.session.add_all(MatchParticipant(**row) for row in definition["related_before"]["participants"])
+        db.session.commit()
+        with readonly_catalog_session():
+            reviewed_correction(existing_key)
+        reviewed_correction(existing_key, operation="apply"); db.session.commit()
+        participant_id = definition["related_before"]["participants"][1]["id"]
+        participant = db.session.get(MatchParticipant, participant_id)
+        if historical.loser_id != target.id or participant.player_id != target.id:
+            raise RuntimeError("PostgreSQL correction did not reuse the reviewed existing profile.")
+        reviewed_correction(existing_key, operation="rollback"); db.session.commit()
+        if historical.loser_id != original["loser"]["id"] or participant.player_id != original["loser"]["id"]:
+            raise RuntimeError("PostgreSQL existing-profile correction could not be reversed.")
+
+        public_review = Review(user=member, match=historical, watched_on=date(2026,10,31),
+            is_public=True, rating_half=8, body="PostgreSQL public review")
+        db.session.add(public_review); db.session.flush()
+        replies = [Comment(review_id=public_review.id,user_id=member.id,body=f"PG reply {i}",
+            created_at=datetime(2026,10,31,tzinfo=timezone.utc)) for i in range(25)]
+        db.session.add_all(replies);db.session.commit()
+        previews, totals = discussion_previews([public_review.id])
+        if [c.id for c in previews[public_review.id]] != [c.id for c in reversed(replies[-3:])] or totals[public_review.id] != 25:
+            raise RuntimeError("PostgreSQL discussion preview window was not bounded or stable.")
+        reply_page = bounded_page(select(Comment).where(Comment.review_id == public_review.id)
+            .order_by(Comment.created_at.desc(),Comment.id.desc()),page=10**100,per_page=20)
+        if reply_page.page != 2 or len(reply_page.items) != 5:
+            raise RuntimeError("PostgreSQL reply pages did not clamp oversized requests.")
+        if community_statistics(historical)["average"] != 8:
+            raise RuntimeError("PostgreSQL public community summary was incorrect.")
+
+        check_reviewed_batch()
+        check_reviewed_rounds()
+        hidden = db.session.get(Match, "ta-atp-1105541")
+        if hidden is None or hidden.round != "R128":
+            raise RuntimeError("The hidden round fixture was not preserved.")
+        if db.session.scalar(select(Match.id).where(Match.id == hidden.id, catalog_is_visible())) is not None:
+            raise RuntimeError("PostgreSQL public discovery exposed a hidden R128 result.")
+
+        now = datetime.now(timezone.utc)
+        for key, status, checked, start in (
+            ("pg-current", "live", now, now),
+            ("pg-stale", "live", now - timedelta(days=2), now),
+            ("pg-old-schedule", "live", now, now - timedelta(days=20)),
+            ("pg-upcoming", "upcoming", now, now + timedelta(days=2)),
+            ("pg-distant", "upcoming", now, now + timedelta(days=8)),
+            ("pg-finished", "finished", now, now - timedelta(days=2)),
+        ):
+            db.session.add(LiveMatch(provider_id=key,status=status,tour="ATP",tournament="PG Snapshot",
+                draw="singles",round="R32",surface="Hard",player1_name="PG One",player2_name="PG Two",
+                synced_at=checked,starts_at=start,score="6-4 2-1"))
+        db.session.commit()
+        visible = set(db.session.scalars(select(LiveMatch.provider_id).where(current_snapshot_condition(now))))
+        if visible != {"pg-current", "pg-upcoming", "pg-finished"}:
+            raise RuntimeError("PostgreSQL snapshot freshness/schedule policy disagreed.")
+        counts = snapshot_counts(now)
+        if counts["live"] != {"current": 1, "outside_current_window": 2}:
+            raise RuntimeError("PostgreSQL snapshot diagnostic aggregation disagreed.")
+        saved = db.session.get(LiveMatch, "pg-old-schedule")
+        if snapshot_visibility_reason(saved, now) is None or saved.status != "live" or saved.score != "6-4 2-1":
+            raise RuntimeError("Snapshot exclusion changed the provider's saved report.")
+
+        stats_player = Player(id="pg-stats",name="Postgres Summary",tour="ATP")
+        opponents = [Player(id="pg-rival-a",name="Alex Same",tour="ATP"), Player(id="pg-rival-b",name="Alex Same",tour="ATP")]
+        for i in range(23):
+            match = Match(id=f"pg-summary-{i:03}",winner=opponents[0] if i==2 else stats_player,
+                loser=stats_player if i==2 else opponents[i%2],tour="ATP",tournament="PG Summary",surface="Hard",
+                level="G" if i==0 else "A",round="F" if i<2 else "R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4")
+            if i==0:
+                match.w_first_in,match.w_svpt,match.w_first_won,match.w_ace = 50,100,25,0
+            elif i==1:
+                match.w_svpt,match.w_ace = 1000,4
+            elif i==2:
+                match.l_first_in,match.l_svpt,match.l_first_won,match.l_ace = 30,60,20,2
+            db.session.add(match)
+        db.session.add(Match(id="pg-summary-hidden",winner=stats_player,loser=opponents[0],tour="ATP",
+            tournament="PG Summary",surface="Hard",level="G",round="R128",status="finished",
+            week_start=date(2024,1,1),score="6-0 6-0",w_ace=999))
+        db.session.commit()
+        summary = player_statistics(stats_player)
+        if (summary["match_count"],summary["wins"],summary["losses"],summary["title_count"],summary["slam_titles"]) != (23,22,1,2,1):
+            raise RuntimeError("PostgreSQL player summaries did not cover the complete visible history.")
+        if (summary["first_serve_pct"],summary["first_serve_won_pct"],summary["aces_per_match"],summary["ace_matches"]) != (50,56,2.0,3):
+            raise RuntimeError("PostgreSQL service summaries used unpaired or hidden observations.")
+        page = bounded_page(select(Match).where(player_match_scope(stats_player.id)).order_by(Match.id), page=10**100)
+        if page.page != 2 or page.total != 23 or len(page.items) != 5:
+            raise RuntimeError("PostgreSQL player history pagination was not bounded.")
+
+        db.session.add_all([
+            RankingSnapshot(player=stats_player, ranked_on=date(2024,1,1),ranking_type="singles",rank=8),
+            RankingSnapshot(player=stats_player, ranked_on=date(2024,1,1),ranking_type="doubles",rank=1),
+            RankingSnapshot(player=stats_player, ranked_on=date(2025,1,1),ranking_type="doubles",rank=2),
+            RankingSnapshot(player=stats_player, ranked_on=date(2025,2,1),ranking_type="singles",rank=0),
+        ])
+        db.session.commit()
+        latest = latest_singles_dates([stats_player.id])
+        ranks = db.session.scalars(select(RankingSnapshot.rank).join(latest,
+            (latest.c.player_id == RankingSnapshot.player_id) &
+            (latest.c.ranked_on == RankingSnapshot.ranked_on)).where(valid_singles_ranking())).all()
+        if ranks != [8]:
+            raise RuntimeError("PostgreSQL recorded singles ranks included invalid/mixed types.")
+        for path in ("/players?q=Postgres+Summary&view=rankings&page=" + str(10**100),
+                     "/matches?q=PG+Summary&page=" + str(10**100)):
+            if app.test_client().get(path).status_code != 200:
+                raise RuntimeError("PostgreSQL public directory did not bound an oversized page.")
+
+        response = app.test_client().get("/tournaments/atp/pg-summary?page=" + str(10**100))
+        if response.status_code != 200 or "Page 2 of 2" not in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL tournament archive did not paginate the full exact collection.")
+        response = app.test_client().get("/tournaments/atp/pg-summary/2024?round=R32&page=" + str(10**100))
+        body = response.get_data(as_text=True)
+        if response.status_code != 200 or "Page 2 of 2" not in body or "21 in this selection" not in body:
+            raise RuntimeError("PostgreSQL edition filter/window counts disagreed.")
+        if "Multiple finals are recorded" not in body or "1/64" in body:
+            raise RuntimeError("PostgreSQL edition inferred a unique champion or exposed R128.")
+
+        db.session.add_all([
+            Match(id="pg-search-literal",winner=stats_player,loser=opponents[0],tour="ATP",tournament="PG_50%! Open",
+                surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4"),
+            Match(id="pg-search-control",winner=stats_player,loser=opponents[0],tour="ATP",tournament="PGX50Y! Open",
+                surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4"),
+        ])
+        db.session.commit()
+        search_page = bounded_page(search_statements("PG_50%!")["tournaments"],page=10**100,per_page=30,rows=True)
+        if search_page.total != 1 or search_page.items[0].tournament != "PG_50%! Open":
+            raise RuntimeError("PostgreSQL literal search or distinct row pagination disagreed.")
+        response = app.test_client().get("/search?q=PG_50%25%21&category=tournaments&page=" + str(10**100))
+        if response.status_code != 200 or "PGX50Y! Open" in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL complete search did not preserve literal text.")
+        page, cards, featured, major_count = tournament_directory(query="PG Summary",page=10**100)
+        if page.page != 1 or page.total != 1 or cards[0]["matches"] != 23 or cards[0]["levels"] != {"G","A"}:
+            raise RuntimeError("PostgreSQL tournament summary lost levels, counts or bounded pages.")
+        page, cards, _, _ = tournament_directory(query="PG_50%!",page=10**100)
+        if page.total != 1 or cards[0]["tournament"] != "PG_50%! Open":
+            raise RuntimeError("PostgreSQL tournament directory did not preserve literal search.")
+        response = app.test_client().get("/tournaments?q=PG+Summary&page=" + str(10**100))
+        if response.status_code != 200 or "23 matches" not in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL tournament directory HTTP rendering disagreed.")
+
+        db.session.add_all(FeedbackSubmission(category="bug",message="PG moderation fixture",rating=3) for _ in range(55))
+        poll=Poll(question="PG aggregate votes",options=[PollOption(label="Answer")])
+        db.session.add(poll);db.session.flush()
+        db.session.add_all(PollVote(poll_id=poll.id,option_id=poll.options[0].id,visitor_key=f"pg-vote-{i}") for i in range(30))
+        db.session.commit()
+        moderation=moderation_context(ready=True,tab="feedback",page=10**100)
+        if moderation["pagination"].page != 3 or len(moderation["feedback_items"]) != 5 or moderation["feedback_summary"]["total"] != 55:
+            raise RuntimeError("PostgreSQL moderation history or complete summary disagreed.")
+        moderation=moderation_context(ready=True,tab="polls")
+        if moderation["poll_results"][poll.id][0].votes != 30:
+            raise RuntimeError("PostgreSQL poll vote aggregation disagreed.")
+
+        db.session.add_all(Match(id=f"pg-collision-{i}",winner=stats_player,loser=opponents[0],tour="ATP",
+            tournament=name,surface="Hard",level="A",round="R32",status="finished",week_start=date(2024,1,1),score="6-4 6-4")
+            for i,name in enumerate(("PG Collision","PG-Collision")))
+        db.session.commit()
+        if app.test_client().get("/tournaments/atp/pg-collision").status_code!=300:
+            raise RuntimeError("PostgreSQL ambiguous tournament URL silently selected one name.")
+        for name in ("PG Collision","PG-Collision"):
+            response=app.test_client().get("/tournaments/atp/"+explicit_tournament_slug(name))
+            if response.status_code!=200 or name not in response.get_data(as_text=True):
+                raise RuntimeError("PostgreSQL explicit tournament identity did not resolve.")
+
+        other_inbox = User(username="pg-other-inbox",email="other-inbox@example.test",display_name="Other inbox",password_hash="unused")
+        db.session.add(other_inbox); db.session.flush()
+        db.session.add_all(Notification(user_id=member.id,kind="pg-test",title=f"PG update {i}",body="Private test",
+            url="/notifications",created_at=datetime(2024,1,1,tzinfo=timezone.utc)) for i in range(55))
+        db.session.add(Notification(user_id=other_inbox.id,kind="pg-test",title="Other private update",body="Other",url="/notifications"))
+        db.session.commit()
+        # Isolate Flask-Login cache from earlier anonymous request checks.
+        with app.app_context():
+            private_client = app.test_client()
+            with private_client.session_transaction() as session:
+                session["_user_id"] = f"{member.id}:0"; session["_fresh"] = True; session["csrf_token"] = "pg-csrf"
+            subscriptions=[TournamentSubscription(user_id=member.id,tour="ATP",tournament=f"PG followed {i}") for i in range(55)]
+            foreign_subscription=TournamentSubscription(user_id=other_inbox.id,tour="ATP",tournament="PG private other")
+            db.session.add_all(subscriptions+[foreign_subscription]);db.session.commit()
+            response=private_client.get("/settings/following?tab=tournaments&page="+str(10**100))
+            if response.status_code!=200 or "Page 2 of 2" not in response.get_data(as_text=True):
+                raise RuntimeError("PostgreSQL complete follow list did not bound pages.")
+            response=private_client.post(f"/settings/following/tournaments/{foreign_subscription.id}/remove",data={"csrf_token":"pg-csrf"})
+            if response.status_code!=404:
+                raise RuntimeError("PostgreSQL subscription removal crossed account boundaries.")
+            response=private_client.post(f"/settings/following/tournaments/{subscriptions[0].id}/remove",data={"csrf_token":"pg-csrf"})
+            if response.status_code!=302 or db.session.get(TournamentSubscription,foreign_subscription.id) is None:
+                raise RuntimeError("PostgreSQL explicit subscription removal failed.")
+            response = private_client.get("/notifications?page="+str(10**100))
+            if response.status_code != 200 or "Page 2 of 2" not in response.get_data(as_text=True):
+                raise RuntimeError("PostgreSQL notification history did not bound the full inbox.")
+            response = private_client.post("/notifications/read-all",data={"csrf_token":"pg-csrf"})
+            if response.status_code != 302:
+                raise RuntimeError("PostgreSQL bulk-read action did not succeed.")
+            own_unread = db.session.scalar(select(func.count(Notification.id)).where(Notification.user_id==member.id,Notification.read_at.is_(None)))
+            other_unread = db.session.scalar(select(func.count(Notification.id)).where(Notification.user_id==other_inbox.id,Notification.read_at.is_(None)))
+            if (own_unread,other_unread) != (0,1):
+                raise RuntimeError("PostgreSQL bulk-read crossed account boundaries.")
+            response = private_client.get(f"/comments/{replies[0].id}")
+            if response.status_code != 302 or f"page=2#comment-{replies[0].id}" not in response.location:
+                raise RuntimeError("PostgreSQL comment jump did not locate the correct thread page.")
+        account_other_id=other_inbox.id
+        account_match_id=historical.id
+        account_opponent_ids=[p.id for p in opponents]
+
+    # Fresh auth context for a separate disposable account and real FK checks.
+    with app.app_context():
+        disposable=User(username="pg-delete-fixture",email="pg-delete@example.test",display_name="Disposable")
+        disposable.set_password("disposable-fixture-password")
+        db.session.add(disposable);db.session.flush();disposable_id=disposable.id
+        survivor=Review(user_id=account_other_id,match_id=account_match_id,watched_on=date(2026,1,1),body="Other owner preserved",is_public=True)
+        db.session.add(survivor);db.session.flush();survivor_id=survivor.id
+        own_comment=Comment(user_id=disposable_id,review_id=survivor_id,body="Disposable comment")
+        db.session.add(own_comment);db.session.flush();own_comment_id=own_comment.id
+        db.session.add(Report(reporter_id=account_other_id,comment_id=own_comment_id,reason="spam"))
+        db.session.add_all(FollowedPlayer(user_id=disposable_id,player_id=p) for p in account_opponent_ids)
+        db.session.commit()
+        client=app.test_client()
+        with client.session_transaction() as session:
+            session["_user_id"]=f"{disposable_id}:0";session["_fresh"]=True;session["csrf_token"]="delete-csrf"
+        response=client.get("/settings/export")
+        if {p["id"] for p in response.get_json()["followed_player_profiles"]}!=set(account_opponent_ids):
+            raise RuntimeError("PostgreSQL export lost namesake follow IDs.")
+        response=client.post("/settings/delete-account",data={"csrf_token":"delete-csrf","username":"pg-delete-fixture","password":"disposable-fixture-password"})
+        if response.status_code!=302 or db.session.get(User,disposable_id) is not None or db.session.get(Comment,own_comment_id) is not None:
+            raise RuntimeError("PostgreSQL account deletion failed for a reported own comment.")
+        if db.session.get(Review,survivor_id) is None or db.session.get(User,account_other_id) is None:
+            raise RuntimeError("PostgreSQL account deletion removed another owner's content.")
+
     response = app.test_client().get("/healthz")
     if response.status_code != 200 or response.get_data(as_text=True) != "ok":
         raise RuntimeError("Health check failed after PostgreSQL initialization.")
+
+    with app.app_context():
+        limit_action("pg-retry-after","fixture",1,60)
+        try:limit_action("pg-retry-after","fixture",1,60)
+        except TooManyRequests as error:
+            if not 1 <= error.retry_after <= 60:
+                raise RuntimeError("PostgreSQL rate-limit retry time disagreed.")
+        else:raise RuntimeError("PostgreSQL rate limit did not reject the extra request.")
+        db.session.rollback()
+        execute=db.session.execute
+        def broken_readiness(statement,*args,**kwargs):
+            if str(statement)=="SELECT 1":
+                return execute(text("SELECT * FROM pg_fixture_missing_error_table"))
+            return execute(statement,*args,**kwargs)
+        # Test mode normally re-raises exceptions instead of exercising the
+        # production 500 handler. Enable that handler only for this fault test.
+        with patch.dict(app.config,{"PROPAGATE_EXCEPTIONS":False}),patch.object(db.session,"execute",side_effect=broken_readiness):
+            response=app.test_client().get("/readyz")
+        if response.status_code!=500 or not response.is_json or "pg_fixture_missing" in response.get_data(as_text=True):
+            raise RuntimeError("PostgreSQL failed readiness did not return a safe JSON error.")
+        if app.test_client().get("/readyz").status_code!=200:
+            raise RuntimeError("PostgreSQL error response did not reset its failed transaction.")
 
     print("PostgreSQL application smoke check passed.")
 

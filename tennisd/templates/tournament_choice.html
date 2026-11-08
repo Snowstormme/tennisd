@@ -1,0 +1,4 @@
+{% extends 'base.html' %}
+{% block title %}Choose a tournament archive{% endblock %}
+{% block robots %}noindex, follow{% endblock %}
+{% block content %}<div class="container narrow-page"><p class="eyebrow">TOURNAMENT ARCHIVES</p><h1>Choose an archive<span>.</span></h1><p>Several stored tournament names share this address. Their results and subscriptions are kept separate. Choose the entry you want to open; then repeat any follow action on that page.</p>{% for item in choices %}<article class="account-tools"><h2><a href="{{ item.url }}">{{ item.name }}</a></h2></article>{% endfor %}<a class="text-link" href="{{ url_for('site.tournaments') }}">All tournaments</a></div>{% endblock %}

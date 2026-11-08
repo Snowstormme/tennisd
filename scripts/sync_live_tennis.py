@@ -11,14 +11,16 @@ from tennisd import create_app, db
 from tennisd.live_tennis import sync_matches
 from tennisd.models import IngestionCursor, IngestionRun, LiveMatch, Player, FollowedPlayer, TournamentSubscription
 from tennisd.notifications import create_notification
+from tennisd.identities import profiles_for_matches
+from tennisd.snapshot_policy import current_snapshot_condition
 from sqlalchemy import select
 
 
 PROVIDER = "livetennisapi"
-SYNC_INTERVAL = timedelta(hours=24)
 
 
-def feed_due(feed, now, interval):
+def feed_due(feed, now):
+    """Refresh once per UTC calendar day, regardless of scheduler jitter."""
     cursor = db.session.get(IngestionCursor, (PROVIDER, feed))
     if cursor is None:
         return True
@@ -28,7 +30,9 @@ def feed_due(feed, now, interval):
         return True
     if previous.tzinfo is None:
         previous = previous.replace(tzinfo=timezone.utc)
-    return now - previous >= interval
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return previous.astimezone(timezone.utc).date() < now.astimezone(timezone.utc).date()
 
 
 def mark_feed(feed, now):
@@ -46,24 +50,26 @@ def notify_followers(now):
     matches = db.session.scalars(select(LiveMatch).where(
         LiveMatch.status.in_(("live", "upcoming")),
         LiveMatch.synced_at >= now - timedelta(minutes=10),
+        current_snapshot_condition(now),
     )).all()
     if not matches:
         return 0
     followed = db.session.execute(
-        select(FollowedPlayer.user_id, FollowedPlayer.player_id, Player.name)
+        select(FollowedPlayer.user_id, FollowedPlayer.player_id, Player.name, Player.tour)
         .join(Player, Player.id == FollowedPlayer.player_id)
     ).all()
     subscriptions = db.session.execute(
         select(TournamentSubscription.user_id, TournamentSubscription.tour, TournamentSubscription.tournament)
     ).all()
+    profiles = profiles_for_matches(matches)
     created = 0
     for match in matches:
         url = f"/live-matches/{quote(match.provider_id, safe='')}"
-        title = "Live match" if match.status == "live" else "Upcoming match"
+        title = "Daily match snapshot" if match.status == "live" else "Upcoming match"
         body = f"{match.player1_name} vs {match.player2_name} · {match.tournament}"
-        names = {match.player1_name.casefold(), match.player2_name.casefold()}
-        for user_id, _player_id, player_name in followed:
-            if player_name.casefold() in names and create_notification(
+        participant_ids = {player.id for player in profiles[match.provider_id] if player is not None}
+        for user_id, player_id, _player_name, _player_tour in followed:
+            if player_id in participant_ids and create_notification(
                 user_id, kind="followed_player_match", title=title, body=body, url=url,
             ):
                 created += 1
@@ -84,9 +90,9 @@ def main():
         modes = [mode]
         if mode == "auto":
             modes = []
-            if feed_due("live", now, SYNC_INTERVAL):
+            if feed_due("live", now):
                 modes.append("live")
-            if feed_due("upcoming", now, SYNC_INTERVAL):
+            if feed_due("upcoming", now):
                 modes.append("upcoming")
         if not modes:
             print("Live Tennis API refresh is not due yet.")

@@ -4,6 +4,383 @@ This file records notable user-facing and maintainer-facing changes.
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-11-03
+
+- Resolve ambiguous tournament names inside the requested season for edition
+  pages. Exclude variants with no visible matches that year instead of offering
+  links to 404 pages; preserve all-season archive/subscription ambiguity guards.
+
+## [0.18.1] - 2026-11-03
+
+- Add an explicit full aggregate tournament-name inventory and a read-only
+  production audit workflow mode. Reject incompatible cohort filters and keep
+  report contents in the artifact instead of job logs. No names are merged.
+
+## [0.18.0] - 2026-11-03
+
+- Show at most three featured matches on the homepage with matching selectors.
+- Begin archive identity review with a read-only tournament-name collision
+  inventory: tour-scoped names, counts, date coverage and unambiguous addresses.
+  Hidden-only archives are excluded; no alias merging or data repair is applied.
+
+## [0.17.1] - 2026-11-03
+
+- Load community review participants and avatar existence with their parent
+  records on the homepage; load search member avatar existence in the results
+  query. Avoid separate per-member avatar queries and image byte transfers
+  during HTML rendering. Keep private-review filtering and pagination intact.
+
+## [0.17.0] - 2026-11-03
+
+- Expose application processing time through Server-Timing; log requests taking
+  at least two seconds using endpoint, status and request ID, without URLs,
+  query strings, form data or SQL.
+- Bound Render database pool acquisition to five seconds instead of the
+  SQLAlchemy default thirty; return a safe retryable 503 on pool exhaustion.
+  This does not eliminate hosting spin-up time or bound SQL execution time.
+
+## [0.16.1] - 2026-11-03
+
+- Remove the featured-match Play/Pause button and its styling/handlers as
+  requested. Preserve automatic rotation before interaction, manual selectors,
+  keyboard focus protection, hidden-tab suspension and reduced-motion support.
+
+## [0.16.0] - 2026-11-03
+
+- Add an explicit Play/Pause control to featured matches. Keep keyboard and
+  manual selection paused until Play, stop timers in hidden tabs, and respond
+  to reduced-motion preference changes. Announce manually selected positions.
+- Give carousel selectors and password visibility controls 44px touch targets,
+  reserve a separate selector bar, and show consistent keyboard focus outlines.
+- Separate password labels from visibility buttons, connect registration hints,
+  preserve descriptive feedback rating names on mobile, remove search autofocus,
+  and use 16px mobile form text to avoid automatic input zoom on iOS.
+- Run seven dependency-free JavaScript interaction regressions in CI and
+  document the matching local test commands.
+
+## [0.15.0] - 2026-11-03
+
+- Resolve tournament URL collisions explicitly instead of selecting the first
+  matching stored name. Preserve unique legacy URLs; offer choices for ambiguous
+  GETs and reject ambiguous subscription POSTs without changing subscriptions.
+- Use stable name-qualified addresses for colliding sitemap entries. Keep their
+  seasons, pagination and subscription actions scoped to the selected name.
+  Support non-Latin-only names and exclude hidden-only archives from resolution.
+
+## [0.14.4] - 2026-11-03
+
+- Return actionable 429 wait times and preserve Retry-After/Allow headers in
+  friendly errors, including method and upload-limit errors. Mark errors
+  no-store/noindex and provide safe structured errors for API/readiness paths.
+- Roll back failed server-error transactions and render server-error HTML
+  without account/context-processor queries so a database failure cannot
+  recursively break the error page. Include request IDs for diagnostics.
+
+## [0.14.3] - 2026-11-03
+
+- Keep reviewed permanent results protected when reconciliation receives a
+  cancelled or unverified observation, not only a completed-result replay.
+- Roll back pending changes on live/history/reconciliation failure, preventing
+  accidental partial commits by callers. Retain earlier committed feed stages;
+  test failure midway, safe retry and ordinary unreviewed cancellation.
+
+## [0.14.2] - 2026-11-03
+
+- Prevent automatic live/history replay from overwriting permanent results
+  registered for independent manual review, including drifted/rolled-back rows.
+  Classify protected imports as skipped; retain normal unreviewed updates and
+  fresh feed observations. Further changes to registered rows require review.
+
+## [0.14.1] - 2026-11-03
+
+- Fix settings password-change reauthentication and revoke outstanding account
+  tokens together with old sessions. Bound password confirmation lengths.
+- Remove reports targeting an account's deleted comments before bulk deletion,
+  preserving other owners' content and avoiding foreign-key failures.
+- Export stable player IDs/tours alongside legacy follow names, eager-load match
+  participants, avoid loading photo bytes and order records deterministically.
+  Escape CSV formula prefixes after whitespace/control characters as well.
+
+## [0.14.0] - 2026-11-02
+
+- Add private complete player/tournament subscription lists with 30-item pages,
+  full totals, literal name search and tour filters. Link them from settings and
+  the profile's bounded twelve-item previews.
+- Add owner-scoped explicit unfollow actions by subscription ID, including
+  tournaments no longer in the archive. Preserve filters and bound the return
+  page after removal; repeated stale actions cannot toggle a follow back on.
+
+## [0.13.0] - 2026-11-02
+
+- Add complete 25-item moderator report, feedback, poll and audit histories,
+  selected-queue loading, status/category filters and full summary counts.
+- Aggregate poll results in SQL without loading individual votes; link reports
+  to reachable discussions and validate stored feedback destinations.
+- Bound numeric feedback/poll/report/comment inputs before conversion or SQL.
+  Lock report decisions and reject repeat actions on already dismissed reports.
+
+## [0.12.0] - 2026-11-02
+
+- Page the tournament directory in SQL before loading card metadata, preserving
+  full counts and value/date/name/tour ordering. Fetch only selected surface and
+  level metadata; avoid loading the complete summary catalog into Python.
+- Bound the first-page major preview to eight cards with a link to every major.
+  Add filter-preserving pagination above and below results, clamp huge page
+  requests, normalize invalid filters and retain literal wildcard searches.
+
+## [0.11.3] - 2026-11-02
+
+- Add 27 remaining source-reviewed Paris 2024 main-draw round repairs in two
+  atomic groups: three R128 to R64, sixteen R64 to R32 and eight R32 to R16.
+  Preserve participants, results, dates and permanent diary links. Corrected
+  R64 rows become discoverable under the existing public visibility policy.
+
+## [0.11.2] - 2026-11-01
+
+- Add nineteen individually source-reviewed Paris 2024 qualifying round repairs:
+  thirteen Q2 to Q1 and six Q4 to Q2. Preserve results, dates, participants and
+  diary IDs with exact related-row guards and atomic apply/rollback.
+
+## [0.11.1] - 2026-11-01
+
+- Consume verification and password-reset tokens with a conditional database
+  delete in the same transaction as the account update. Reject used, replaced
+  or newly expired tokens at submission time.
+- Limit reset emails per address as well as per IP, and prevent browser storage
+  of account forms and token redirects.
+
+## [0.11.0] - 2026-11-01
+
+- Add complete 30-item notification, pending-request and reply histories with
+  stable pages, unread counts/filter and an owner-scoped mark-all-read action.
+- Preserve the first read timestamp and validate stored destinations. Repair
+  legacy review links in the view; disable deleted/private/unsafe destinations
+  without rewriting stored notification URLs.
+- Add comment permalinks that locate the exact 20-reply discussion page, with
+  the same public/owner visibility checks. Keep all inboxes private and no-store.
+
+## [0.10.0] - 2026-11-01
+
+- Add full paginated search categories for players, matches, tournaments and
+  members. Show complete counts and explicit preview limits, with links to every
+  category, bounded page input and query/category-preserving navigation.
+- Search literal text consistently across global search, match archives, player
+  directories and tournament lists. Percent, underscore and the escape marker
+  no longer act as unintended SQL wildcards.
+- Eager-load match participants for search cards and wrap category tabs on small
+  screens. Preserve public visibility, R128 exclusion and noindex metadata.
+
+## [0.9.0] - 2026-11-01
+
+- Page exact tournament archives and season results by 18 matches. Expose all
+  loaded seasons, round filters, full selection counts and stable ordering.
+- Calculate title leaders and season lists in SQL without hydrating every final
+  or tournament date. Keep complete counts independent of the displayed page.
+- Retain every visible round, including RR, later qualifying, unknown and blank
+  codes. Distinguish multiple recorded finals from a uniquely recorded champion.
+- Describe calendar-year result pages as collections in structured metadata;
+  do not claim a complete draw or a single completed event.
+
+## [0.8.0] - 2026-11-01
+
+- Bound archive, player and recorded-ranking page requests before computing SQL
+  offsets. Preserve filter parameters and add accessible page links above/below
+  results with explicit page counts and section anchors.
+- Select only the latest positive singles rank in directory cards and recorded
+  rankings; doubles and invalid ranks cannot override a valid singles snapshot.
+- Add unique ID tie breakers to archive/directory/search result orderings. Ignore
+  malformed or oversized archive years instead of raising integer errors.
+
+## [0.7.0] - 2026-11-01
+
+- Page match discussions by 18 public reviews, with three latest reply previews
+  per review selected by a SQL window. Aggregate ratings over the full public
+  discussion without loading every review body.
+- Add stable 20-reply discussion pages, owner-only access to private entries,
+  spoiler protection and escaped content. Preserve comment deletion permissions.
+- Direct new reply notifications and comment action redirects to the discussion
+  so a reply remains reachable when its review leaves the first match page.
+
+## [0.6.0] - 2026-11-01
+
+- Apply a shared current-snapshot policy to match lists, player profiles, live
+  polling and follower notifications. Exclude stale checks and out-of-window
+  schedules without changing stored scores, statuses, winners or diary records.
+- Preserve direct saved reports with explicit freshness explanations. Expire
+  live cards during browser polling and avoid winner labels for ongoing matches.
+- Report eligible/excluded observation counts separately from feed job health;
+  select the latest live/upcoming run independently of historical import volume.
+
+## [0.5.0] - 2026-11-01
+
+- Aggregate player wins/losses, titles, surfaces, seasons, opponents and service
+  metrics in SQL across the complete visible history. Load at most twelve title
+  records; keep full title counts and distinct namesake opponent IDs.
+- Add 18-match player archive pages with stable date/ID ordering, bounded page
+  requests and direct player-ID navigation. Remove the ambiguous name-only
+  "Find all" link. Summaries remain independent of the displayed page.
+- Compute each service percentage only from paired, consistent point counts;
+  show its contributing match count, retain known zeros and exclude invalid
+  negative/impossible observations. Keep missing values distinct from zero.
+- Ignore invalid rank zero, retain zero ranking points and clarify that best
+  ranks cover loaded history. All queries preserve the R128 visibility policy.
+
+
+## [0.4.0] - 2026-11-01
+
+- Public discovery starts at R64 (1/32 final). Hide R128 in archive searches,
+  home feeds, player statistics, tournament editions, live slates and sitemaps.
+  Preserve database rows, direct result pages, account exports and diaries.
+- Use fractional main-draw round labels consistently across match cards, detail
+  pages and tournament headings. Identity audits still inspect hidden results.
+
+## [0.3.4] - 2026-11-01
+
+- Correct twenty individually reviewed Paris 2024 opening-round results from
+  R128 to R64 using the official 64-position ATP main draw. Preserve every
+  participant, score, date and diary reference. Record exact participant snapshots
+  and source draw positions; retain atomic group apply/rollback.
+- Test the 20-record group boundary, idempotency and late-failure rollback.
+
+## [0.3.3] - 2026-11-01
+
+### Verified rounds
+
+- Add five source-reviewed round-only repairs: Chengdu R128 → R32, Beijing
+  qualifying Q2 → Q1, Paris main draw R128 → R64, Paris qualifying Q2 → Q1 and
+  qualifying final Q4 → Q2. Preserve participants, scores, dates and diary IDs.
+- Guard exact result/round and related-row snapshots with the existing atomic
+  group apply/rollback. Keep participant and round reviews independent; indicate
+  when both are verified. Use readable round names on the match detail page.
+
+### Catalog review
+
+- Add database-enforced read-only cohort reports filtered by tour, calendar
+  year, exact tournament name and provider. Include valid identities as well as
+  conflicts, observed round distributions, bounded samples and ID cursors.
+- Keep totals scoped to the complete cohort across sample pages. Export public
+  match fields only and retain the original unfiltered quality report format.
+- Expose the filters and downloadable JSON reports in the manual audit workflow.
+
+## [0.3.2] - 2026-11-01
+
+### Data recovery
+
+- Restore Fabio Fognini's identity in seven individually verified 2024 results:
+  Chengdu, Beijing qualifying, two Shanghai matches, Paris main draw and two
+  Paris qualifying matches. Store official ATP draw URLs, positions and PDF
+  SHA-256 digests alongside exact original match/participant snapshots.
+- Support correcting the reviewed winner or loser while preserving score,
+  opponent, participant sides/winner flags, permanent IDs and diary entries.
+- Add one fixed seven-result recovery group with a read-only preview and atomic
+  apply/rollback. A database savepoint undoes the complete group on any error,
+  even if the caller catches it. Arbitrary match lists are not accepted.
+- Explicitly begin SQLite's outer transaction before creating the savepoint,
+  so releasing a successful group still allows the caller to roll it back.
+- Validate mixed winner/loser recovery, late failure, idempotency, private diary
+  preservation and rollback in SQLite; cover the same group and savepoint
+  failure behavior in PostgreSQL CI.
+
+## [0.3.1] - 2026-11-01
+
+### Data corrections
+
+- Add individually reviewed US Open 2024 corrections: Tomas Machac defeated
+  Fabio Fognini 7-5 6-1 6-3; Ugo Humbert defeated Thiago Monteiro 6-3 6-4 6-4.
+  The legacy importer incorrectly assigned WTA opponents to both results.
+- Reuse exact existing ATP profiles with name/tour/country guards. Preview now
+  validates the target identity too and exposes public related rows when review
+  is incomplete. Guard the exact participant/statistic/set snapshots; update the
+  two reviewed loser participant references in the same transaction as their
+  matches. Keep permanent match and diary IDs and preserve external mappings.
+- Support idempotent apply/rollback for one selected result, refusing added,
+  changed or partially repaired related records.
+- Link each corrected result to the appropriate official draw. The manual
+  workflow accepts only the three version-controlled reviewed corrections.
+
+## [0.3.0] - 2026-11-01
+
+### Added
+
+- Paginate diary entries, likes, watchlist and friends in groups of 18, with
+  stable date/ID ordering and bounded invalid/oversized page requests.
+- Calculate profile totals and rating/surface/player summaries in SQL across the
+  entire visible diary. Keep namesakes separate using player IDs.
+
+### Performance and privacy
+
+- Load only the active profile section; the overview fetches at most five recent
+  and four favorite entries. Private rows, page counts and summary aggregates
+  share the same visibility scope. Account exports remain complete.
+
+### Operations
+
+- Test encryption/decryption as well as restoring the recovered dump in CI.
+- Allow opt-in backups to use the existing limited sync connection when a
+  dedicated backup URL is absent, enforce a read-only dump transaction and
+  serialize backup jobs. Backup activation remains disabled by default.
+
+## [0.2.2] - 2026-11-01
+
+### Fixed
+
+- Check daily ingestion by UTC calendar date so an earlier scheduler run does
+  not skip the next day's refresh behind a strict 24-hour interval.
+
+### Data corrections
+
+- Explain the paused diary form on results under review while preserving the
+  owner's ability to delete an existing entry.
+- Add the source-reviewed correction of lt-211673: Yi Yuan (HKG) is Koray
+  Kirci's opponent in the official ITF M15 Sharm ElSheikh main draw, with a
+  6–1 6–2 result. The active provider misidentifies the opponent as Yue Yuan.
+- Provide a default read-only preview, exact original-field guards, a row lock,
+  idempotent apply/rollback and a public result journal. Preserve match/diary IDs
+  and all existing player/provider mappings; expose the official evidence link
+  when the reviewed correction is present.
+
+## [0.2.1] - 2026-11-01
+
+### Fixed
+
+- Keep namesakes and distinct source player IDs separate during import, profile
+  linking and follower notifications; refuse ambiguous archive redirects.
+- Reject a provider result that assigns the same source ID to both opponents.
+
+### Operations
+
+- Classify historical identity conflicts by provider and tour, include bounded
+  public result samples and report the latest live/upcoming ingestion runs.
+- Add a source-backed catalog recovery preview that cannot apply changes and
+  enforces read-only SQL in PostgreSQL and SQLite. Stop provider calls after the
+  first upstream failure, and never query live IDs for a retired source.
+- Test database-level write refusal in the PostgreSQL smoke job.
+
+## [0.2.0] - 2026-11-01
+
+### Fixed
+
+- Require explicit provider outcomes before archiving daily feed results; missing
+  events are no longer treated as cancelled or settled from a partial listing.
+- Validate player names and tours when resolving provider identities, contain
+  inconsistent catalog rows, and preserve diary IDs when correcting results.
+- Render en-dash scores as sets, suppress legacy null point annotations, and
+  show the age and limitations of daily snapshots.
+- Use content hashes for static asset URLs so returning visitors receive updated
+  CSS and JavaScript.
+- Improve mobile match readability, feedback/poll controls and profile checkboxes.
+- Keep successful news snapshots during source failures, refresh outside web
+  requests, and use direct BBC/ESPN publisher RSS feeds.
+
+### Operations
+
+- Add a read-only catalog audit and replace the destructive archive rebuild with
+  bounded provider rechecks.
+- Restore each configured backup into an isolated CI database before encryption,
+  and test the restore guard in CI.
+- Test Python 3.12 and 3.13, constrain runtime dependency versions, and configure
+  the Render Blueprint to deploy after CI passes.
+
 ### Added
 
 - Community contribution guidance, Code of Conduct, accessibility guidance, and issue and pull request templates.

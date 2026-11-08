@@ -1,0 +1,77 @@
+name: Audit catalog quality
+
+on:
+  workflow_dispatch:
+    inputs:
+      tournament_names:
+        description: Report visible tournament names and address collisions instead of match samples
+        type: boolean
+        default: false
+      tour:
+        description: Optional ATP or WTA filter (blank keeps both)
+        type: string
+        default: ''
+      year:
+        description: Optional calendar year (1968–2100)
+        type: string
+        default: ''
+      tournament:
+        description: Optional exact tournament name (case-insensitive)
+        type: string
+        default: ''
+      provider:
+        description: Optional exact provider (e.g. tennis_api)
+        type: string
+        default: ''
+      limit:
+        description: Maximum public samples (1–500)
+        type: string
+        default: '50'
+      after_id:
+        description: Optional sample cursor from the previous cohort report
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Report catalog inconsistencies without changing records
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          AUTO_CREATE_DB: 'false'
+          AUDIT_TOUR: ${{ inputs.tour }}
+          AUDIT_YEAR: ${{ inputs.year }}
+          AUDIT_TOURNAMENT: ${{ inputs.tournament }}
+          AUDIT_PROVIDER: ${{ inputs.provider }}
+          AUDIT_LIMIT: ${{ inputs.limit || '50' }}
+          AUDIT_AFTER_ID: ${{ inputs.after_id }}
+          AUDIT_TOURNAMENT_NAMES: ${{ inputs.tournament_names }}
+        run: |
+          if [ "$AUDIT_TOURNAMENT_NAMES" = 'true' ]; then
+            if [ -n "$AUDIT_TOUR$AUDIT_YEAR$AUDIT_TOURNAMENT$AUDIT_PROVIDER$AUDIT_AFTER_ID" ]; then
+              echo 'Tournament-name inventory uses the entire visible catalog; clear cohort filters.' >&2
+              exit 1
+            fi
+            python scripts/audit_tournament_names.py --limit "$AUDIT_LIMIT" --include-inventory > catalog-audit.json
+          else
+            python scripts/audit_catalog.py --limit "$AUDIT_LIMIT" --tour "$AUDIT_TOUR" --year "$AUDIT_YEAR" --tournament "$AUDIT_TOURNAMENT" --provider "$AUDIT_PROVIDER" --after-id "$AUDIT_AFTER_ID" > catalog-audit.json
+          fi
+          # Reports stay in the artifact; avoid copying inventories into job logs.
+          python -c 'import json; r=json.load(open("catalog-audit.json")); print("Report generated; schema",r.get("schema_version"),"scope",r.get("scope"))'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: catalog-audit-${{ github.run_id }}
+          path: catalog-audit.json
+          if-no-files-found: error
+          retention-days: 14

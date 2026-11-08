@@ -66,15 +66,19 @@ class AccountSecurityFlows(unittest.TestCase):
             self.assertTrue(session["csrf_token"])
 
     def test_versioned_static_assets_are_immutable(self):
-        response = self.client.get("/static/app.js?v=test-release")
+        version = self.app.extensions["asset_versions"]["app.js"]
+        response = self.client.get(f"/static/app.js?v={version}")
         self.assertEqual(response.status_code, 200)
         self.assertIn("max-age=31536000", response.headers["Cache-Control"])
         self.assertIn("immutable", response.headers["Cache-Control"])
         self.assertEqual(response.headers["Vercel-CDN-Cache-Control"], "max-age=31536000")
+        stale = self.client.get("/static/app.js?v=previous-release")
+        self.assertNotIn("immutable", stale.headers["Cache-Control"])
 
     def test_footer_displays_application_version(self):
         response = self.client.get("/")
-        self.assertIn(b"Version 0.1.0", response.data)
+        version = (Path(__file__).resolve().parents[1] / "VERSION").read_bytes().strip()
+        self.assertIn(b"Version " + version, response.data)
 
     def test_security_txt_is_rfc9116_document(self):
         response = self.client.get("/.well-known/security.txt")
@@ -158,6 +162,43 @@ class AccountSecurityFlows(unittest.TestCase):
         self.assertEqual(self.client.post("/login", data={
             "csrf_token": self.token(), "identity": "alice", "password": "another-long-password",
         }).headers["Location"], "/me")
+
+    def test_account_forms_are_not_stored_by_browser(self):
+        for path in ("/login", "/register", "/check-email", "/forgot-password",
+                     "/resend-verification", "/reset-password/invalid"):
+            response = self.client.get(path)
+            self.assertIn("no-store", response.headers["Cache-Control"], path)
+            self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+
+    def test_reset_email_limit_applies_across_client_addresses(self):
+        self.register()
+        for index in range(4):
+            self.client.get("/forgot-password")
+            response = self.client.post("/forgot-password", data={
+                "csrf_token": self.token(), "email": "alice@example.com",
+            }, environ_overrides={"REMOTE_ADDR": f"192.0.2.{index + 1}"})
+            self.assertEqual(response.status_code, 302 if index < 3 else 429)
+        self.assertEqual(len(self.sent), 4)  # One verification, three resets.
+
+    def test_token_claim_is_single_use_expiring_and_transactional(self):
+        from tennisd.security import consume_token, issue_token, valid_token
+        self.register()
+        with self.app.app_context():
+            user = db.session.scalar(select(User).where(User.username == "alice"))
+            raw = issue_token(user, "reset", 1800)
+            saved = valid_token(raw, "reset")
+            self.assertIsNone(valid_token(raw, "verify"))
+            self.assertTrue(consume_token(saved))
+            self.assertFalse(consume_token(saved))
+            db.session.rollback()
+            self.assertTrue(consume_token(saved))
+            db.session.commit()
+            self.assertIsNone(valid_token(raw, "reset"))
+            raw = issue_token(user, "reset", 1800)
+            saved = valid_token(raw, "reset")
+            with patch("tennisd.security.time.time", return_value=saved.expires_at):
+                self.assertFalse(consume_token(saved))
+            db.session.rollback()
 
     def test_resend_replaces_the_previous_verification_code(self):
         self.register()

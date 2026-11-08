@@ -69,8 +69,9 @@ def history_fixture():
 
 
 class Response:
-    def __init__(self, rows):
+    def __init__(self, rows, status_code=200):
         self.rows = rows
+        self.status_code = status_code
 
     def raise_for_status(self):
         return None
@@ -80,12 +81,16 @@ class Response:
 
 
 class Session:
-    def __init__(self, rows):
+    def __init__(self, rows, details=None):
         self.rows = rows
+        self.details = details or {}
         self.calls = []
 
     def get(self, url, **kwargs):
         self.calls.append((url, kwargs))
+        if "/matches/" in url:
+            detail = self.details.get(url.rsplit("/", 1)[-1])
+            return Response(detail, 200 if detail else 404)
         return Response(self.rows)
 
 
@@ -121,6 +126,7 @@ class LiveTennisTests(unittest.TestCase):
             "provider": "livetennisapi",
             "status": "degraded",
             "feeds": {},
+            "snapshots": {status: {"current": 0, "outside_current_window": 0} for status in ("live", "upcoming", "finished")},
         })
         self.assertEqual(response.headers["Cache-Control"], "no-store")
 
@@ -169,8 +175,8 @@ class LiveTennisTests(unittest.TestCase):
             db.session.commit()
         page = self.client.get("/matches?view=live")
         self.assertIn(b"data-live-sync-status", page.data)
-        self.assertNotIn(b"Updated ", page.data)
-        self.assertIn(b"Live on court", page.data)
+        self.assertIn(b"Daily snapshot", page.data)
+        self.assertIn(b"Last reported live", page.data)
         self.assertIn(b"surface-hard", page.data)
         self.assertIn(b"Carlos Alcaraz", page.data)
         api_response = self.client.get("/api/live-matches")
@@ -181,7 +187,7 @@ class LiveTennisTests(unittest.TestCase):
         self.assertNotIn("Cookie", api_response.headers.get("Vary", ""))
 
     def test_sync_creates_permanent_profiles_for_new_live_players(self):
-        now = datetime(2026, 7, 1, 12, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
         row = fixture("upcoming", now + timedelta(days=2))
         row["players"] = {
             "p1": {"id": 88001, "name": "New Tour Player"},
@@ -226,8 +232,15 @@ class LiveTennisTests(unittest.TestCase):
                 player1_name="Iga Swiatek", player2_name="Aryna Sabalenka", score="6–4 6–3",
             ))
             db.session.commit()
+            completed = history_fixture()
+            completed.update({
+                "id": "settled-1", "tour": "wta", "tier": "grand_slam",
+                "tournament": "Wimbledon", "scheduled_time": (now - timedelta(hours=2)).isoformat(),
+                "players": {"p1": {"name": "Iga Swiatek"}, "p2": {"name": "Aryna Sabalenka"}},
+                "score": {"games": [[6, 6], [4, 3]]},
+            })
             with patch.dict(os.environ, {"LIVETENNISAPI_KEY": "test-key"}):
-                self.assertEqual(sync_matches("live", session=Session([]), now=now), 0)
+                self.assertEqual(sync_matches("live", session=Session([], {"settled-1": completed}), now=now), 0)
             match = db.session.get(LiveMatch, "settled-1")
             self.assertEqual(match.status, "finished")
             self.assertEqual(match.winner_side, 1)
@@ -246,7 +259,7 @@ class LiveTennisTests(unittest.TestCase):
         self.assertEqual(winner_from_score("6–4 3–6 7–5"), 1)
         self.assertIsNone(winner_from_score("6–4 5–2"))
         self.assertEqual(winner_from_score("7–6 (5–7) 6–4"), 1)
-        self.assertEqual(winner_from_score("6–3 2–1 ret."), 1)
+        self.assertIsNone(winner_from_score("6–3 2–1 ret."))
 
     def test_tiebreak_and_retirement_scores_are_final(self):
         tiebreak = LiveMatch(
@@ -262,9 +275,9 @@ class LiveTennisTests(unittest.TestCase):
     def test_verifying_live_duplicate_opens_existing_archive_match(self):
         now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)
         with self.app.app_context():
-            novak = Player(id="novak", tour="ATP", name="Novak Djokovic")
+            novak = db.session.get(Player, "atp-104925")
             alex = Player(id="alex", tour="ATP", name="Alex De Minaur")
-            db.session.add_all((novak, alex))
+            db.session.add(alex)
             db.session.add(Match(
                 id="beijing-final", tour="ATP", tournament="China Open - Beijing",
                 level="A", surface="Hard", week_start=now.date(), round="F",
@@ -273,7 +286,7 @@ class LiveTennisTests(unittest.TestCase):
             ))
             db.session.add(LiveMatch(
                 provider_id="beijing-live", status="verifying", tour="ATP",
-                tournament="Beijing", surface="Hard", round="F", starts_at=now,
+                tournament="China Open - Beijing", surface="Hard", round="F", starts_at=now,
                 player1_name="Alex De Minaur", player2_name="Novak Djokovic",
                 score="6–7 0–0", draw="singles", is_doubles=False,
             ))
@@ -282,7 +295,7 @@ class LiveTennisTests(unittest.TestCase):
         detail = self.client.get("/live-matches/beijing-live")
         self.assertEqual(detail.status_code, 302)
         self.assertTrue(detail.headers["Location"].endswith("/matches/beijing-final"))
-        profile = self.client.get("/players/novak")
+        profile = self.client.get("/players/atp-104925")
         self.assertNotIn(b"VERIFYING", profile.data)
         self.assertIn(b"7-6(3) 0-1 ret.", profile.data)
 

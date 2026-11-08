@@ -9,7 +9,7 @@ from sqlalchemy import delete, or_, select
 
 from . import db
 from .models import AuthState, AuthToken, User, utcnow
-from .security import client_ip, limit_action, send_account_email, valid_token, valid_verification_code
+from .security import client_ip, consume_token, limit_action, send_account_email, valid_token, valid_verification_code
 from .web import safe_next
 
 
@@ -94,11 +94,10 @@ def register_auth_routes(site, *, sign_in_user):
             limit_action("verify-code-email", email, 10, 900)
             user = db.session.scalar(select(User).where(User.email == email))
             saved = valid_verification_code(user, code)
-            if saved is None or user.auth_state is None or user.auth_state.email_verified_at is not None:
+            if saved is None or user.auth_state is None or user.auth_state.email_verified_at is not None or not consume_token(saved):
                 flash("The code is incorrect or has expired.", "error")
             else:
                 user.auth_state.email_verified_at = utcnow()
-                db.session.delete(saved)
                 db.session.commit()
                 session.pop("verification_email", None)
                 flash("Email verified. You can log in now.", "success")
@@ -131,11 +130,13 @@ def register_auth_routes(site, *, sign_in_user):
             flash("This verification link has expired. Request a new one.", "error")
             return redirect(url_for("site.resend_verification"))
         if request.method == "POST":
+            if not consume_token(saved):
+                flash("This verification link has expired. Request a new one.", "error")
+                return redirect(url_for("site.resend_verification"))
             user = saved.user
             if user.auth_state is None:
                 user.auth_state = AuthState(session_version=0)
             user.auth_state.email_verified_at = utcnow()
-            db.session.delete(saved)
             db.session.commit()
             flash("Email verified. You can log in now.", "success")
             return redirect(url_for("site.login"))
@@ -148,6 +149,7 @@ def register_auth_routes(site, *, sign_in_user):
         if request.method == "POST":
             limit_action("reset-ip", client_ip(), 5, 3600)
             email = request.form.get("email", "").strip().lower()[:255]
+            limit_action("reset-email", email, 3, 3600)
             user = db.session.scalar(select(User).where(User.email == email))
             if user:
                 try:
@@ -160,15 +162,19 @@ def register_auth_routes(site, *, sign_in_user):
 
     @site.route("/reset-password/<token>", methods=["GET", "POST"])
     def reset_password(token):
+        if request.method == "POST":
+            limit_action("reset-submit-ip", client_ip(), 10, 3600)
         saved = valid_token(token, "reset")
         if saved is None:
             flash("This reset link has expired. Request a new one.", "error")
             return redirect(url_for("site.forgot_password"))
         if request.method == "POST":
-            limit_action("reset-submit-ip", client_ip(), 10, 3600)
             password = request.form.get("password", "")
             if not 10 <= len(password) <= 128:
                 flash("Use a password with 10–128 characters.", "error")
+            elif not consume_token(saved):
+                flash("This reset link has expired. Request a new one.", "error")
+                return redirect(url_for("site.forgot_password"))
             else:
                 user = saved.user
                 user.set_password(password)

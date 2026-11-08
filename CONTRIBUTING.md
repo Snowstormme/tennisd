@@ -13,7 +13,7 @@ Thank you for helping improve Tennisd. Please read the [Code of Conduct](CODE_OF
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Copy `.env.example` to `.env` for local configuration. Never commit `.env`, database dumps, API keys, passwords, connection URLs, or other credentials.
@@ -21,8 +21,12 @@ Copy `.env.example` to `.env` for local configuration. Never commit `.env`, data
 Run the test suite before submitting changes:
 
 ```bash
-python -m pytest -q
+python -m unittest discover -s tests -v
+node --test tests/js/*.test.cjs
 ```
+
+Browser interaction regression tests use Node.js 24 and its built-in test runner;
+no npm dependencies are required. CI runs both suites.
 
 For security-sensitive changes, also run the relevant checks described in `docs/security-checklist.md`.
 

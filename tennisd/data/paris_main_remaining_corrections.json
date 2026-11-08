@@ -1,0 +1,1703 @@
+[
+  {
+    "id": "ta-atp-1105543-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        49,
+        56
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105543",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105543",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "7-5 7-6(5)",
+      "winner": {
+        "id": "atp-111442",
+        "name": "Jordan Thompson",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-105173",
+        "name": "Adrian Mannarino",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626949,
+          "match_id": "ta-atp-1105543",
+          "player_id": "atp-111442",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626950,
+          "match_id": "ta-atp-1105543",
+          "player_id": "atp-105173",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105548-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        21,
+        24
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105548",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105548",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "atp-209950",
+        "name": "Arthur Fils",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "lt-7272cfdcae0efd6f",
+        "name": "Jan-Lennard Struff",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627183,
+          "match_id": "ta-atp-1105548",
+          "player_id": "atp-209950",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627184,
+          "match_id": "ta-atp-1105548",
+          "player_id": "lt-7272cfdcae0efd6f",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105549-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        57,
+        60
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105549",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105549",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-3 6-2",
+      "winner": {
+        "id": "atp-200005",
+        "name": "Ugo Humbert",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-106218",
+        "name": "Marcos Giron",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627185,
+          "match_id": "ta-atp-1105549",
+          "player_id": "atp-200005",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627186,
+          "match_id": "ta-atp-1105549",
+          "player_id": "atp-106218",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105554-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        45,
+        48
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105554",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105554",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-4 2-6 7-6(4)",
+      "winner": {
+        "id": "atp-200615",
+        "name": "Alexei Popyrin",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-106421",
+        "name": "Daniil Medvedev",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627187,
+          "match_id": "ta-atp-1105554",
+          "player_id": "atp-200615",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627188,
+          "match_id": "ta-atp-1105554",
+          "player_id": "atp-106421",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105555-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        5,
+        8
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105555",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105555",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-4 6-2",
+      "winner": {
+        "id": "atp-208029",
+        "name": "Holger Rune",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-122330",
+        "name": "Alexander Bublik",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627189,
+          "match_id": "ta-atp-1105555",
+          "player_id": "atp-208029",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627190,
+          "match_id": "ta-atp-1105555",
+          "player_id": "atp-122330",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105565-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        61,
+        64
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105565",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105565",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-5 6-1",
+      "winner": {
+        "id": "atp-207989",
+        "name": "Carlos Alcaraz",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-111797",
+        "name": "Nicolas Jarry",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627503,
+          "match_id": "ta-atp-1105565",
+          "player_id": "atp-207989",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627504,
+          "match_id": "ta-atp-1105565",
+          "player_id": "atp-111797",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105568-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        33,
+        40
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105568",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105568",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "6-2 4-6 7-6(5)",
+      "winner": {
+        "id": "atp-105777",
+        "name": "Grigor Dimitrov",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126239",
+        "name": "Arthur Rinderknech",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626951,
+          "match_id": "ta-atp-1105568",
+          "player_id": "atp-105777",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626952,
+          "match_id": "ta-atp-1105568",
+          "player_id": "atp-126239",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105569-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        29,
+        32
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105569",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105569",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-6(6) 7-6(5)",
+      "winner": {
+        "id": "atp-202103",
+        "name": "Francisco Cerundolo",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126094",
+        "name": "Andrey Rublev",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627505,
+          "match_id": "ta-atp-1105569",
+          "player_id": "atp-202103",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627506,
+          "match_id": "ta-atp-1105569",
+          "player_id": "atp-126094",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105571-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        13,
+        16
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105571",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105571",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "7-6(6) 4-6 6-4",
+      "winner": {
+        "id": "atp-207733",
+        "name": "Jack Draper",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126203",
+        "name": "Taylor Fritz",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627191,
+          "match_id": "ta-atp-1105571",
+          "player_id": "atp-207733",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627192,
+          "match_id": "ta-atp-1105571",
+          "player_id": "atp-126203",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105574-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        28
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105574",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105574",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "atp-126774",
+        "name": "Stefanos Tsitsipas",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-126214",
+        "name": "Alejandro Tabilo",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627511,
+          "match_id": "ta-atp-1105574",
+          "player_id": "atp-126774",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627512,
+          "match_id": "ta-atp-1105574",
+          "player_id": "atp-126214",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105579-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        49,
+        52
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105579",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105579",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "7-6(3) 3-6 6-4",
+      "winner": {
+        "id": "atp-111442",
+        "name": "Jordan Thompson",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-134770",
+        "name": "Casper Ruud",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627513,
+          "match_id": "ta-atp-1105579",
+          "player_id": "atp-111442",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627514,
+          "match_id": "ta-atp-1105579",
+          "player_id": "atp-134770",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105580-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        17,
+        20
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105580",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105580",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "7-6(2) 6-3",
+      "winner": {
+        "id": "atp-100644",
+        "name": "Alexander Zverev",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-134868",
+        "name": "Tallon Griekspoor",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627193,
+          "match_id": "ta-atp-1105580",
+          "player_id": "atp-100644",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627194,
+          "match_id": "ta-atp-1105580",
+          "player_id": "atp-134868",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105581-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        41,
+        48
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105581",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105581",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "7-6(5) 6-4",
+      "winner": {
+        "id": "atp-111575",
+        "name": "Karen Khachanov",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200615",
+        "name": "Alexei Popyrin",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626953,
+          "match_id": "ta-atp-1105581",
+          "player_id": "atp-111575",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626954,
+          "match_id": "ta-atp-1105581",
+          "player_id": "atp-200615",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105583-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        9,
+        12
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105583",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105583",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-4 7-6(5)",
+      "winner": {
+        "id": "atp-200282",
+        "name": "Alex De Minaur",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200175",
+        "name": "Miomir Kecmanovic",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627195,
+          "match_id": "ta-atp-1105583",
+          "player_id": "atp-200282",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627196,
+          "match_id": "ta-atp-1105583",
+          "player_id": "atp-200175",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105586-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        33,
+        36
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105586",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105586",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-7(9) 6-3 7-5",
+      "winner": {
+        "id": "atp-105777",
+        "name": "Grigor Dimitrov",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-144869",
+        "name": "Tomas Martin Etcheverry",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627197,
+          "match_id": "ta-atp-1105586",
+          "player_id": "atp-105777",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627198,
+          "match_id": "ta-atp-1105586",
+          "player_id": "atp-144869",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105588-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        53,
+        56
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105588",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105588",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "3-6 6-2 6-4",
+      "winner": {
+        "id": "atp-105173",
+        "name": "Adrian Mannarino",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-200267",
+        "name": "Zizou Bergs",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627199,
+          "match_id": "ta-atp-1105588",
+          "player_id": "atp-105173",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627200,
+          "match_id": "ta-atp-1105588",
+          "player_id": "atp-200267",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105597-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        25,
+        32
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105597",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105597",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "6-7(1) 6-4 6-2",
+      "winner": {
+        "id": "atp-126774",
+        "name": "Stefanos Tsitsipas",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-202103",
+        "name": "Francisco Cerundolo",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626955,
+          "match_id": "ta-atp-1105597",
+          "player_id": "atp-126774",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626956,
+          "match_id": "ta-atp-1105597",
+          "player_id": "atp-202103",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105604-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        9,
+        16
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105604",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105604",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "5-7 6-2 6-3",
+      "winner": {
+        "id": "atp-200282",
+        "name": "Alex De Minaur",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207733",
+        "name": "Jack Draper",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626957,
+          "match_id": "ta-atp-1105604",
+          "player_id": "atp-200282",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626958,
+          "match_id": "ta-atp-1105604",
+          "player_id": "atp-207733",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105610-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        57,
+        64
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105610",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105610",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "6-1 3-6 7-5",
+      "winner": {
+        "id": "atp-200005",
+        "name": "Ugo Humbert",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-207989",
+        "name": "Carlos Alcaraz",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626959,
+          "match_id": "ta-atp-1105610",
+          "player_id": "atp-200005",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626960,
+          "match_id": "ta-atp-1105610",
+          "player_id": "atp-207989",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105612-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        1,
+        8
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105612",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105612",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "3-6 6-3 6-4",
+      "winner": {
+        "id": "atp-208029",
+        "name": "Holger Rune",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-209070",
+        "name": "Arthur Cazaux",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626961,
+          "match_id": "ta-atp-1105612",
+          "player_id": "atp-208029",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626962,
+          "match_id": "ta-atp-1105612",
+          "player_id": "atp-209070",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105614-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        41,
+        44
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105614",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105614",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-7(12) 6-1 6-4",
+      "winner": {
+        "id": "atp-111575",
+        "name": "Karen Khachanov",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-208659",
+        "name": "Giovanni Mpetshi Perricard",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627201,
+          "match_id": "ta-atp-1105614",
+          "player_id": "atp-111575",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627202,
+          "match_id": "ta-atp-1105614",
+          "player_id": "atp-208659",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105615-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        7,
+        8
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105615",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105615",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-29",
+      "score": "6-4 6-4",
+      "winner": {
+        "id": "atp-208029",
+        "name": "Holger Rune",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-208286",
+        "name": "Matteo Arnaldi",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627523,
+          "match_id": "ta-atp-1105615",
+          "player_id": "atp-208029",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627524,
+          "match_id": "ta-atp-1105615",
+          "player_id": "atp-208286",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105616-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        19,
+        20
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105616",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105616",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "6-3 6-4",
+      "winner": {
+        "id": "atp-134868",
+        "name": "Tallon Griekspoor",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-209260",
+        "name": "Luciano Darderi",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627871,
+          "match_id": "ta-atp-1105616",
+          "player_id": "atp-134868",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627872,
+          "match_id": "ta-atp-1105616",
+          "player_id": "atp-209260",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105620-paris-main-round",
+    "batch": "paris-2024-main-r16",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        17,
+        24
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105620",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105620",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-31",
+      "score": "6-4 3-6 6-3",
+      "winner": {
+        "id": "atp-100644",
+        "name": "Alexander Zverev",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-209950",
+        "name": "Arthur Fils",
+        "tour": "ATP"
+      },
+      "round": "R32"
+    },
+    "corrected_round": "R16",
+    "related_before": {
+      "participants": [
+        {
+          "id": 626963,
+          "match_id": "ta-atp-1105620",
+          "player_id": "atp-100644",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 626964,
+          "match_id": "ta-atp-1105620",
+          "player_id": "atp-209950",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105624-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        59,
+        60
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105624",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105624",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-28",
+      "score": "7-6(6) 7-6(6)",
+      "winner": {
+        "id": "atp-106218",
+        "name": "Marcos Giron",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-209992",
+        "name": "Juncheng Shang",
+        "tour": "ATP"
+      },
+      "round": "R128"
+    },
+    "corrected_round": "R64",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627873,
+          "match_id": "ta-atp-1105624",
+          "player_id": "atp-106218",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627874,
+          "match_id": "ta-atp-1105624",
+          "player_id": "atp-209992",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105626-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        1,
+        4
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105626",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105626",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "6-3 7-6(4)",
+      "winner": {
+        "id": "atp-209070",
+        "name": "Arthur Cazaux",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-210097",
+        "name": "Ben Shelton",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627203,
+          "match_id": "ta-atp-1105626",
+          "player_id": "atp-209070",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627204,
+          "match_id": "ta-atp-1105626",
+          "player_id": "atp-210097",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  },
+  {
+    "id": "ta-atp-1105630-paris-main-round",
+    "batch": "paris-2024-main-remaining-early",
+    "kind": "round",
+    "source_label": "ATP",
+    "verified_on": "2026-11-02",
+    "reason": "Official main draw visually verifies the round for this exact pairing; change only round, retaining results, participants, dates and diary IDs.",
+    "evidence": {
+      "draw_url": "https://www.protennislive.com/posting/2024/352/mds.pdf",
+      "draw_page": 1,
+      "draw_positions": [
+        37,
+        40
+      ],
+      "source_pdf_sha256": "8345c5719264810f80936289cd16cb71f8a3cf6f93c1c9bafbb36a55ed7b3218"
+    },
+    "before": {
+      "id": "ta-atp-1105630",
+      "provider": "tennis_api",
+      "provider_id": "tennis_api:atp:1105630",
+      "tour": "ATP",
+      "tournament": "Rolex Paris Masters - Paris",
+      "status": "finished",
+      "date": "2024-10-30",
+      "score": "7-6(6) 7-6(7)",
+      "winner": {
+        "id": "atp-126239",
+        "name": "Arthur Rinderknech",
+        "tour": "ATP"
+      },
+      "loser": {
+        "id": "atp-210506",
+        "name": "Alex Michelsen",
+        "tour": "ATP"
+      },
+      "round": "R64"
+    },
+    "corrected_round": "R32",
+    "related_before": {
+      "participants": [
+        {
+          "id": 627205,
+          "match_id": "ta-atp-1105630",
+          "player_id": "atp-126239",
+          "side": 1,
+          "seed": null,
+          "entry": null,
+          "is_winner": true
+        },
+        {
+          "id": 627206,
+          "match_id": "ta-atp-1105630",
+          "player_id": "atp-210506",
+          "side": 2,
+          "seed": null,
+          "entry": null,
+          "is_winner": false
+        }
+      ],
+      "statistics": [],
+      "sets": []
+    }
+  }
+]
