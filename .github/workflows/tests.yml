@@ -18,7 +18,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -r requirements-dev.txt
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: matrix.python-version == '3.12'
         with:
           node-version: '24'
