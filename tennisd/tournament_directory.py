@@ -23,10 +23,17 @@ def tournament_directory(*, query='', tour='', surface='', level='', page=1):
     filtered=bool(query or tour or surface or level)
     featured_count=0
     featured=[]
+    total=None
     if not filtered:
-        featured_count=db.session.scalar(select(func.count()).select_from(summary).where(summary.c.priority==0))
+        ordinary_count,featured_count=db.session.execute(
+            select(
+                func.count().filter(summary.c.priority!=0),
+                func.count().filter(summary.c.priority==0),
+            ).select_from(summary)
+        ).one()
+        total=ordinary_count
         ordered=ordered.where(summary.c.priority!=0)
-    pagination=bounded_page(ordered,page=page,per_page=36,rows=True)
+    pagination=bounded_page(ordered,page=page,per_page=36,rows=True,total=total)
     # Show the bounded major preview only on the first unfiltered page. The
     # dedicated level filter remains the complete archive of major events.
     if not filtered and pagination.page==1:

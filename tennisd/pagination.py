@@ -35,11 +35,12 @@ class Page:
         return self.page + 1 if self.has_next else None
 
 
-def bounded_page(statement, *, page=1, per_page=18, rows=False):
+def bounded_page(statement, *, page=1, per_page=18, rows=False, total=None):
     """Ignore oversized page requests before they can overflow a SQL offset."""
     if not 1 <= per_page <= 50:
         raise ValueError("Page size must be between 1 and 50.")
-    total = db.session.scalar(select(func.count()).select_from(statement.order_by(None).subquery()))
+    if total is None:
+        total = db.session.scalar(select(func.count()).select_from(statement.order_by(None).subquery()))
     pages = max(1, (total + per_page - 1) // per_page)
     page = min(max(1, page), pages)
     query = statement.limit(per_page).offset((page - 1) * per_page)
