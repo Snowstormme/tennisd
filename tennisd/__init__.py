@@ -7,7 +7,18 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
-from flask import Flask, abort, current_app, g, jsonify, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    current_app,
+    g,
+    has_request_context,
+    jsonify,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from flask_login import current_user
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
@@ -66,6 +77,27 @@ def snapshot_is_stale(value):
 def enforce_sqlite_foreign_keys(connection, _record):
     if connection.__class__.__module__.startswith("sqlite3"):
         connection.execute("PRAGMA foreign_keys=ON")
+
+
+@event.listens_for(Engine, "before_cursor_execute")
+def start_request_query_timer(
+    _connection, _cursor, _statement, _parameters, context, _executemany
+):
+    """Time SQL for request diagnostics without retaining SQL or bound values."""
+    if has_request_context():
+        context._tennisd_query_started = perf_counter()
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def finish_request_query_timer(
+    _connection, _cursor, _statement, _parameters, context, _executemany
+):
+    started = getattr(context, "_tennisd_query_started", None)
+    if started is None or not has_request_context():
+        return
+    metrics = g.setdefault("database_metrics", {"count": 0, "duration_ms": 0.0})
+    metrics["count"] += 1
+    metrics["duration_ms"] += max(0, (perf_counter() - started) * 1000)
 
 
 def create_app(test_config=None):
@@ -253,14 +285,25 @@ def create_app(test_config=None):
     @app.after_request
     def security_headers(response):
         response.headers["X-Request-ID"] = g.request_id
+        database_metrics = g.get("database_metrics", {"count": 0, "duration_ms": 0.0})
+        database_timing = (
+            f'db;dur={database_metrics["duration_ms"]:.1f};'
+            f'desc="{database_metrics["count"]} queries"'
+        )
         if hasattr(g, "request_started"):
             duration_ms = max(0, (perf_counter() - g.request_started) * 1000)
-            response.headers.add("Server-Timing", f"app;dur={duration_ms:.1f}")
+            response.headers.add("Server-Timing", f"app;dur={duration_ms:.1f}, {database_timing}")
             if duration_ms >= 2000:
                 # Endpoint names contain no user-supplied paths, queries or form data.
                 app.logger.warning(
-                    "slow request endpoint=%s status=%s duration_ms=%.1f request_id=%s",
-                    request.endpoint or "unmatched", response.status_code, duration_ms, g.request_id,
+                    "slow request endpoint=%s status=%s duration_ms=%.1f "
+                    "db_queries=%s db_duration_ms=%.1f request_id=%s",
+                    request.endpoint or "unmatched",
+                    response.status_code,
+                    duration_ms,
+                    database_metrics["count"],
+                    database_metrics["duration_ms"],
+                    g.request_id,
                 )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"

@@ -23,9 +23,18 @@ class RequestLatencyTests(unittest.TestCase):
     def test_processing_time_header_has_milliseconds_without_slow_log(self):
         with patch('tennisd.perf_counter', side_effect=[1, 1.125]), patch.object(self.app.logger, 'warning') as log:
             response = self.client.get('/healthz')
-        self.assertEqual(response.headers['Server-Timing'], 'app;dur=125.0')
+        self.assertEqual(response.headers['Server-Timing'], 'app;dur=125.0, db;dur=0.0;desc="0 queries"')
         self.assertEqual(response.status_code, 200)
         log.assert_not_called()
+
+    def test_server_timing_reports_only_aggregate_database_metrics(self):
+        response = self.client.get('/players?q=private-search-term')
+        self.assertEqual(response.status_code, 200)
+        timing = response.headers['Server-Timing']
+        self.assertIn('app;dur=', timing)
+        self.assertRegex(timing, r'db;dur=\d+\.\d;desc="\d+ queries"')
+        self.assertNotIn('private-search-term', timing)
+        self.assertNotIn('SELECT', timing)
 
     def test_slow_unmatched_request_log_excludes_path_query_and_headers(self):
         with patch('tennisd.perf_counter', side_effect=[1, 3.5]), self.assertLogs(self.app.logger, level='WARNING') as log:
