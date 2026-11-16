@@ -25,7 +25,7 @@ from .result_corrections import correction_for_match
 from .security import client_ip, limit_action
 from .identities import catalog_is_visible, match_identity_is_valid, profiles_for_matches
 from .stats import community_statistics, percent, player_match_scope, player_statistics
-from .pagination import bounded_page
+from .pagination import Page, bounded_page
 from .discussions import discussion_previews
 from .snapshot_policy import current_snapshot_condition
 from .rankings import latest_singles_dates, valid_singles_ranking
@@ -846,7 +846,11 @@ def players():
         statement = statement.order_by(RankingSnapshot.rank, Player.tour, Player.name, Player.id)
     else:
         statement = (
-            select(Player).where(func.lower(Player.name).not_in(("unknown player", "unknown", "tbd", "tba")))
+            select(
+                Player,
+                func.coalesce(match_counts.c.match_count, 0).label("match_count"),
+                func.coalesce(follower_counts.c.follower_count, 0).label("follower_count"),
+            ).where(func.lower(Player.name).not_in(("unknown player", "unknown", "tbd", "tba")))
             .outerjoin(match_counts, match_counts.c.player_id == Player.id)
             .outerjoin(follower_counts, follower_counts.c.player_id == Player.id)
         )
@@ -859,32 +863,34 @@ def players():
             func.coalesce(match_counts.c.match_count, 0).desc(),
             Player.wikidata_id.is_(None), Player.name, Player.id,
         )
-    pagination = bounded_page(statement, page=request.args.get("page", 1, type=int), per_page=30)
-    player_ids = [
-        item.player_id if view == "rankings" else item.id
-        for item in pagination.items
-    ]
-    metrics = {player_id: {"matches": 0, "followers": 0, "rank": None} for player_id in player_ids}
+    if view == "players":
+        player_rows = bounded_page(
+            statement, page=request.args.get("page", 1, type=int), per_page=30, rows=True,
+        )
+        pagination = Page(
+            items=[row[0] for row in player_rows.items], total=player_rows.total,
+            page=player_rows.page, per_page=player_rows.per_page,
+        )
+        player_ids = [player.id for player in pagination.items]
+        metrics = {
+            row[0].id: {"matches": row.match_count, "followers": row.follower_count, "rank": None}
+            for row in player_rows.items
+        }
+    else:
+        pagination = bounded_page(statement, page=request.args.get("page", 1, type=int), per_page=30)
+        player_ids = [item.player_id for item in pagination.items]
+        metrics = {player_id: {"matches": 0, "followers": 0, "rank": None} for player_id in player_ids}
     if player_ids:
-        for player_id, count in db.session.execute(
-            select(match_counts.c.player_id, match_counts.c.match_count)
-            .where(match_counts.c.player_id.in_(player_ids))
-        ):
-            metrics[player_id]["matches"] = count
-        for player_id, count in db.session.execute(
-            select(follower_counts.c.player_id, follower_counts.c.follower_count)
-            .where(follower_counts.c.player_id.in_(player_ids))
-        ):
-            metrics[player_id]["followers"] = count
-        latest_dates = latest_singles_dates(player_ids)
-        for player_id, rank in db.session.execute(
-            select(RankingSnapshot.player_id, RankingSnapshot.rank).join(
-                latest_dates,
-                (latest_dates.c.player_id == RankingSnapshot.player_id)
-                & (latest_dates.c.ranked_on == RankingSnapshot.ranked_on),
-            ).where(valid_singles_ranking())
-        ):
-            metrics[player_id]["rank"] = rank
+        if view == "players":
+            latest_dates = latest_singles_dates(player_ids)
+            for player_id, rank in db.session.execute(
+                select(RankingSnapshot.player_id, RankingSnapshot.rank).join(
+                    latest_dates,
+                    (latest_dates.c.player_id == RankingSnapshot.player_id)
+                    & (latest_dates.c.ranked_on == RankingSnapshot.ranked_on),
+                ).where(valid_singles_ranking())
+            ):
+                metrics[player_id]["rank"] = rank
     return render_template(
         "players.html", pagination=pagination, query=query, tour=tour, view=view,
         player_metrics=metrics,
