@@ -5,6 +5,11 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_match_featured_finals
     ON "match" (week_start DESC, tour)
     WHERE round = 'F' AND level IN ('G', 'M', 'PM', 'P', 'A', 'I');
 
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_match_home_featured_recent
+    ON "match" ((COALESCE(completed_at, scheduled_at)) DESC, week_start DESC, id DESC)
+    WHERE status = 'finished' AND round <> 'R128'
+      AND level IN ('G', 'M', 'PM', 'P', 'A', 'I', 'F');
+
 CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_match_tournament_catalog
     ON "match" (tournament, tour, surface, level, week_start);
 
