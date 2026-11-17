@@ -1,5 +1,5 @@
 """Bound tournament summaries in SQL before loading card metadata."""
-from sqlalchemy import and_, case, func, literal, or_, select
+from sqlalchemy import and_, case, func, literal, or_, select, true
 from . import db
 from .identities import catalog_is_visible
 from .models import Match
@@ -24,35 +24,44 @@ def tournament_directory(*, query='', tour='', surface='', level='', page=1):
     featured_count=0
     featured=[]
     if not filtered:
-        ordinary_count,featured_count=db.session.execute(
-            select(
-                func.count().filter(summary.c.priority!=0),
-                func.count().filter(summary.c.priority==0),
-            ).select_from(summary).execution_options(tennisd_metric="tournament_summary")
-        ).one()
-        total=ordinary_count
-        pages=max(1,(total+35)//36)
-        selected_page=min(max(1,page),pages)
+        totals=select(
+            func.count().filter(summary.c.priority!=0).label('ordinary_total'),
+            func.count().filter(summary.c.priority==0).label('featured_count'),
+        ).select_from(summary).cte('tournament_totals')
         columns=(summary.c.tour,summary.c.tournament,summary.c.matches,
                  summary.c.earliest,summary.c.latest,summary.c.priority)
-        ordinary_rows=(select(literal(0).label('section_order'),*columns)
-            .select_from(summary).where(summary.c.priority!=0)
-            .order_by(summary.c.priority,summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
-            .limit(36).offset((selected_page-1)*36).cte('tournament_page_rows'))
-        statements=[select(ordinary_rows)]
-        if selected_page==1:
-            featured_rows=(select(literal(1).label('section_order'),*columns)
-                .select_from(summary).where(summary.c.priority==0)
-                .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
-                .limit(8).cte('tournament_featured_rows'))
-            statements.append(select(featured_rows))
-        combined_statement=(statements[0].union_all(*statements[1:])
-                            if len(statements)>1 else statements[0])
-        combined=combined_statement.subquery()
-        rows=db.session.execute(select(combined).order_by(
-            combined.c.section_order,combined.c.priority,combined.c.latest.desc(),
-            combined.c.tournament,combined.c.tour,
-        ).execution_options(tennisd_metric='tournament_page')).all()
+        def fetch_directory_rows(requested_page):
+            ordinary_rows=(select(literal(0).label('section_order'),*columns)
+                .select_from(summary).where(summary.c.priority!=0)
+                .order_by(summary.c.priority,summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
+                .limit(36).offset((requested_page-1)*36).cte('tournament_page_rows'))
+            statements=[select(ordinary_rows)]
+            if requested_page==1:
+                featured_rows=(select(literal(1).label('section_order'),*columns)
+                    .select_from(summary).where(summary.c.priority==0)
+                    .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
+                    .limit(8).cte('tournament_featured_rows'))
+                statements.append(select(featured_rows))
+            selected_rows=(statements[0].union_all(*statements[1:])
+                           if len(statements)>1 else statements[0]).cte('tournament_rows')
+            combined=totals.outerjoin(selected_rows,true())
+            return db.session.execute(select(
+                selected_rows.c.section_order,selected_rows.c.tour,selected_rows.c.tournament,
+                selected_rows.c.matches,selected_rows.c.earliest,selected_rows.c.latest,
+                selected_rows.c.priority,totals.c.ordinary_total,totals.c.featured_count,
+            ).select_from(combined).order_by(
+                selected_rows.c.section_order,selected_rows.c.priority,selected_rows.c.latest.desc(),
+                selected_rows.c.tournament,selected_rows.c.tour,
+            ).execution_options(tennisd_metric='tournament_directory')).all()
+
+        requested_page=min(max(1,page),2_147_483_647)
+        rows=fetch_directory_rows(requested_page)
+        total=int(rows[0].ordinary_total or 0)
+        featured_count=int(rows[0].featured_count or 0)
+        pages=max(1,(total+35)//36)
+        selected_page=min(requested_page,pages)
+        if selected_page!=requested_page:
+            rows=fetch_directory_rows(selected_page)
         page_items=[row for row in rows if row.section_order==0]
         featured=[row for row in rows if row.section_order==1]
         pagination=Page(items=page_items,total=total,page=selected_page,per_page=36)
