@@ -29,22 +29,30 @@ def tournament_directory(*, query='', tour='', surface='', level='', page=1):
             select(
                 func.count().filter(summary.c.priority!=0),
                 func.count().filter(summary.c.priority==0),
-            ).select_from(summary)
+            ).select_from(summary).execution_options(tennisd_metric="tournament_summary")
         ).one()
         total=ordinary_count
         ordered=ordered.where(summary.c.priority!=0)
-    pagination=bounded_page(ordered,page=page,per_page=36,rows=True,total=total)
+    pagination=bounded_page(
+        ordered, page=page, per_page=36, rows=True, total=total,
+        count_metric="tournament_page_count", page_metric="tournament_page",
+    )
     # Show the bounded major preview only on the first unfiltered page. The
     # dedicated level filter remains the complete archive of major events.
     if not filtered and pagination.page==1:
         featured=db.session.execute(select(summary).where(summary.c.priority==0)
-            .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour).limit(8)).all()
+            .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour).limit(8)
+            .execution_options(tennisd_metric="tournament_featured")).all()
     selected=list(pagination.items)+list(featured)
     metadata={}
     if selected:
         selection=or_(*(and_(Match.tour==r.tour,Match.tournament==r.tournament) for r in selected))
-        for row in db.session.execute(select(Match.tour,Match.tournament,Match.surface,Match.level)
-            .where(*conditions,selection).distinct()):
+        metadata_statement = (
+            select(Match.tour,Match.tournament,Match.surface,Match.level)
+            .where(*conditions,selection).distinct()
+            .execution_options(tennisd_metric="tournament_metadata")
+        )
+        for row in db.session.execute(metadata_statement):
             item=metadata.setdefault((row.tour,row.tournament),{'surfaces':set(),'levels':set()})
             item['surfaces'].add(row.surface);item['levels'].add(row.level)
     def cards(rows):

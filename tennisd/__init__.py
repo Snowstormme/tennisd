@@ -37,7 +37,11 @@ login_manager = LoginManager()
 login_manager.login_view = "site.login"
 VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 APP_VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() or "0.1.0"
-HOME_QUERY_METRICS = frozenset(("home_archive", "home_featured", "home_reviews"))
+DB_SECTION_METRICS = frozenset((
+    "home_archive", "home_featured", "home_reviews",
+    "tournament_summary", "tournament_page_count", "tournament_page",
+    "tournament_featured", "tournament_metadata",
+))
 
 
 def freshness(value, now=None):
@@ -88,7 +92,7 @@ def start_request_query_timer(
     if has_request_context():
         context._tennisd_query_started = perf_counter()
         label = context.execution_options.get("tennisd_metric")
-        context._tennisd_metric = label if label in HOME_QUERY_METRICS else None
+        context._tennisd_metric = label if label in DB_SECTION_METRICS else None
 
 
 @event.listens_for(Engine, "after_cursor_execute")
