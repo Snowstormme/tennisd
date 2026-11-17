@@ -869,6 +869,7 @@ def players():
     if view == "players":
         player_rows = bounded_page(
             statement, page=request.args.get("page", 1, type=int), per_page=30, rows=True,
+            count_metric="player_page_count", page_metric="player_page",
         )
         pagination = Page(
             items=[row[0] for row in player_rows.items], total=player_rows.total,
@@ -880,7 +881,10 @@ def players():
             for row in player_rows.items
         }
     else:
-        pagination = bounded_page(statement, page=request.args.get("page", 1, type=int), per_page=30)
+        pagination = bounded_page(
+            statement, page=request.args.get("page", 1, type=int), per_page=30,
+            count_metric="player_page_count", page_metric="player_page",
+        )
         player_ids = [item.player_id for item in pagination.items]
         metrics = {player_id: {"matches": 0, "followers": 0, "rank": None} for player_id in player_ids}
     if player_ids:
@@ -892,6 +896,7 @@ def players():
                     (latest_dates.c.player_id == RankingSnapshot.player_id)
                     & (latest_dates.c.ranked_on == RankingSnapshot.ranked_on),
                 ).where(valid_singles_ranking())
+                .execution_options(tennisd_metric="player_rank")
             ):
                 metrics[player_id]["rank"] = rank
     return render_template(
