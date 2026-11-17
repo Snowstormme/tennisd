@@ -13,7 +13,7 @@ import requests
 from flask import Blueprint, Response, abort, current_app, flash, redirect, render_template, request, send_file, session, url_for
 from flask_login import current_user, login_required, login_user
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import and_, case, func, or_, select, union_all
+from sqlalchemy import and_, case, func, lateral, or_, select, true, union_all
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import aliased, joinedload
 
@@ -825,10 +825,23 @@ def players():
     view = request.args.get("view", "players")
     if view not in ("players", "rankings"):
         view = "players"
-    appearances = union_all(
-        select(Match.winner_id.label("player_id")).where(catalog_is_visible()),
-        select(Match.loser_id.label("player_id")).where(catalog_is_visible()),
-    ).subquery()
+    appearance_conditions = [catalog_is_visible()]
+    if tour in ("ATP", "WTA"):
+        appearance_conditions.append(Match.tour == tour)
+    if db.engine.dialect.name == "postgresql":
+        sides = lateral(union_all(
+            select(Match.winner_id.label("player_id")).correlate(Match),
+            select(Match.loser_id.label("player_id")).correlate(Match),
+        )).alias("player_sides")
+        appearances = (
+            select(sides.c.player_id).select_from(Match).join(sides, true())
+            .where(*appearance_conditions).subquery()
+        )
+    else:
+        appearances = union_all(
+            select(Match.winner_id.label("player_id")).where(*appearance_conditions),
+            select(Match.loser_id.label("player_id")).where(*appearance_conditions),
+        ).subquery()
     match_counts = select(
         appearances.c.player_id, func.count().label("match_count")
     ).group_by(appearances.c.player_id).subquery()
