@@ -41,7 +41,7 @@ DB_SECTION_METRICS = frozenset((
     "home_archive", "home_featured", "home_reviews",
     "tournament_summary", "tournament_page_count", "tournament_page",
     "tournament_directory",
-    "tournament_metadata",
+    "tournament_metadata", "player_page_count", "player_page", "player_rank",
 ))
 
 
