@@ -40,7 +40,7 @@ APP_VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() or "0.1.0"
 DB_SECTION_METRICS = frozenset((
     "home_archive", "home_featured", "home_reviews",
     "tournament_summary", "tournament_page_count", "tournament_page",
-    "tournament_featured", "tournament_metadata",
+    "tournament_metadata",
 ))
 
 
