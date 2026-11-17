@@ -37,6 +37,7 @@ login_manager = LoginManager()
 login_manager.login_view = "site.login"
 VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 APP_VERSION = VERSION_FILE.read_text(encoding="utf-8").strip() or "0.1.0"
+HOME_QUERY_METRICS = frozenset(("home_archive", "home_featured", "home_reviews"))
 
 
 def freshness(value, now=None):
@@ -86,6 +87,8 @@ def start_request_query_timer(
     """Time SQL for request diagnostics without retaining SQL or bound values."""
     if has_request_context():
         context._tennisd_query_started = perf_counter()
+        label = context.execution_options.get("tennisd_metric")
+        context._tennisd_metric = label if label in HOME_QUERY_METRICS else None
 
 
 @event.listens_for(Engine, "after_cursor_execute")
@@ -96,8 +99,16 @@ def finish_request_query_timer(
     if started is None or not has_request_context():
         return
     metrics = g.setdefault("database_metrics", {"count": 0, "duration_ms": 0.0})
+    duration_ms = max(0, (perf_counter() - started) * 1000)
     metrics["count"] += 1
-    metrics["duration_ms"] += max(0, (perf_counter() - started) * 1000)
+    metrics["duration_ms"] += duration_ms
+    label = getattr(context, "_tennisd_metric", None)
+    if label:
+        section = metrics.setdefault("sections", {}).setdefault(
+            label, {"count": 0, "duration_ms": 0.0},
+        )
+        section["count"] += 1
+        section["duration_ms"] += duration_ms
 
 
 def create_app(test_config=None):
@@ -290,9 +301,16 @@ def create_app(test_config=None):
             f'db;dur={database_metrics["duration_ms"]:.1f};'
             f'desc="{database_metrics["count"]} queries"'
         )
+        section_timings = ", ".join(
+            f'{label};dur={section["duration_ms"]:.1f};desc="{section["count"]} queries"'
+            for label, section in sorted(database_metrics.get("sections", {}).items())
+        )
         if hasattr(g, "request_started"):
             duration_ms = max(0, (perf_counter() - g.request_started) * 1000)
-            response.headers.add("Server-Timing", f"app;dur={duration_ms:.1f}, {database_timing}")
+            timings = f"app;dur={duration_ms:.1f}, {database_timing}"
+            if section_timings:
+                timings += f", {section_timings}"
+            response.headers.add("Server-Timing", timings)
             if duration_ms >= 2000:
                 # Endpoint names contain no user-supplied paths, queries or form data.
                 app.logger.warning(

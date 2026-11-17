@@ -587,6 +587,7 @@ def home():
     ).exists()
     recent_matches = db.session.scalars(
         select(Match)
+        .execution_options(tennisd_metric="home_archive")
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
@@ -602,6 +603,7 @@ def home():
     ).all()
     featured_matches = db.session.scalars(
         select(Match)
+        .execution_options(tennisd_metric="home_featured")
         .join(winner, Match.winner_id == winner.id)
         .join(loser, Match.loser_id == loser.id)
         .where(
@@ -622,6 +624,7 @@ def home():
     featured_live_pairs = {}
     recent_reviews = db.session.scalars(
         select(Review).join(Match).where(Review.is_public.is_(True), catalog_is_visible())
+        .execution_options(tennisd_metric="home_reviews")
         .options(joinedload(Review.user).joinedload(User.profile_image).load_only(ProfileImage.user_id),
                  joinedload(Review.match).joinedload(Match.winner),
                  joinedload(Review.match).joinedload(Match.loser))
