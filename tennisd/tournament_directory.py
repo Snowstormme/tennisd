@@ -38,13 +38,14 @@ def tournament_directory(*, query='', tour='', surface='', level='', page=1):
         ordinary_rows=(select(literal(0).label('section_order'),*columns)
             .select_from(summary).where(summary.c.priority!=0)
             .order_by(summary.c.priority,summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
-            .limit(36).offset((selected_page-1)*36))
-        statements=[ordinary_rows]
+            .limit(36).offset((selected_page-1)*36).cte('tournament_page_rows'))
+        statements=[select(ordinary_rows)]
         if selected_page==1:
             featured_rows=(select(literal(1).label('section_order'),*columns)
                 .select_from(summary).where(summary.c.priority==0)
-                .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour).limit(8))
-            statements.append(featured_rows)
+                .order_by(summary.c.latest.desc(),summary.c.tournament,summary.c.tour)
+                .limit(8).cte('tournament_featured_rows'))
+            statements.append(select(featured_rows))
         combined_statement=(statements[0].union_all(*statements[1:])
                             if len(statements)>1 else statements[0])
         combined=combined_statement.subquery()
