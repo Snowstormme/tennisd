@@ -1,0 +1,35 @@
+name: Explain player directory query
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tennisd-player-directory-explain
+  cancel-in-progress: false
+
+jobs:
+  explain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install 'psycopg[binary]>=3.3.8,<4'
+      - name: Capture a bounded, read-only query plan
+        env:
+          DATABASE_URL: ${{ secrets.TENNISD_SYNC_DATABASE_URL }}
+          PGSSLMODE: require
+          PLAN_OUTPUT: player-directory-plan.json
+        run: python scripts/explain_player_directory.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: player-directory-plan-${{ github.run_id }}
+          path: player-directory-plan.json
+          if-no-files-found: error
+          retention-days: 7
